@@ -1,0 +1,25 @@
+## Visual Studio cache & temporary files
+.vs/
+.idea/
+.vscode/
+
+## Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Sensitive / local configuration files
+appsettings.Development.json
+secrets.json
+
+## OS generated files
+.DS_Store
+Thumbs.db

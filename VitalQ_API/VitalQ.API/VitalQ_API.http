@@ -1,0 +1,63 @@
+@VitalQ_API_HostAddress = http://localhost:5089
+
+### 0. Create an Admin User Account
+POST {{VitalQ_API_HostAddress}}/api/admin/users
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "AdminPassword123",
+  "fullName": "System Administrator",
+  "phoneNumber": "9998887770"
+}
+
+### 1. Create a Department (Cardiology)
+POST {{VitalQ_API_HostAddress}}/api/admin/departments
+Content-Type: application/json
+
+{
+  "name": "Cardiology",
+  "code": "CARD",
+  "locationFloor": "2nd Floor"
+}
+
+### 2. Get All Departments
+GET {{VitalQ_API_HostAddress}}/api/admin/departments
+Accept: application/json
+
+### 3. Update a Department (Replace {id} with actual department ID)
+PUT {{VitalQ_API_HostAddress}}/api/admin/departments/00000000-0000-0000-0000-000000000000
+Content-Type: application/json
+
+{
+  "name": "Cardiology & Vascular Center",
+  "locationFloor": "2nd Floor, Wing B",
+  "isActive": true
+}
+
+### 4. Get All Doctors
+GET {{VitalQ_API_HostAddress}}/api/admin/doctors
+Accept: application/json
+
+### 5. Create a Doctor (Paste the departmentId from step 1)
+POST {{VitalQ_API_HostAddress}}/api/admin/doctors
+Content-Type: application/json
+
+{
+  "username": "dr.smith",
+  "password": "Doctor123",
+  "fullName": "Dr. John Smith",
+  "phoneNumber": "9876543210",
+  "departmentId": "00000000-0000-0000-0000-000000000000",
+  "specialization": "Cardiologist",
+  "roomNumber": "Room 204",
+  "avgConsultationMinutes": 10
+}
+
+### 6. Toggle Doctor Status
+PATCH {{VitalQ_API_HostAddress}}/api/admin/doctors/00000000-0000-0000-0000-000000000000/status
+Content-Type: application/json
+
+{
+  "status": "Available"
+}
