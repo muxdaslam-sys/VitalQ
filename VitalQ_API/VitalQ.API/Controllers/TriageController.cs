@@ -1,9 +1,12 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VitalQ.BusinessLogic.Interfaces;
 using VitalQ.Entities.DTOs;
 
 namespace VitalQ.API.Controllers;
 
+[Authorize(Roles = "Nurse,Admin")]
 [ApiController]
 [Route("api")]
 public class TriageController : ControllerBase
@@ -18,7 +21,7 @@ public class TriageController : ControllerBase
     }
 
     /// <summary>
-    /// Search arriving patient by token number or phone number (Role: Nurse).
+    /// Search arriving patient by token number or phone number (Role: Nurse, Admin).
     /// </summary>
     [HttpGet("patients/search")]
     public async Task<IActionResult> SearchPatients([FromQuery] string query)
@@ -28,7 +31,7 @@ public class TriageController : ControllerBase
     }
 
     /// <summary>
-    /// Emergency walk-in token creation without prior booking (Role: Nurse).
+    /// Emergency walk-in token creation without prior booking (Role: Nurse, Admin).
     /// </summary>
     [HttpPost("tokens/walk-in")]
     public async Task<IActionResult> CreateWalkInToken([FromBody] WalkInTokenRequest request)
@@ -38,13 +41,14 @@ public class TriageController : ControllerBase
     }
 
     /// <summary>
-    /// Submit vitals + NursingStationId, compute triage level, move token to Waiting (Role: Nurse).
+    /// Submit vitals + NursingStationId, compute triage level, move token to Waiting (Role: Nurse, Admin).
     /// </summary>
     [HttpPost("tokens/{id}/triage")]
     public async Task<IActionResult> SubmitTriage(Guid id, [FromBody] TriageRequest request)
     {
-        // TODO: Extract nurseUserId from JWT claims
-        var nurseUserId = Guid.Empty;
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        Guid.TryParse(userIdStr, out var nurseUserId);
+
         var token = await _triageService.RecordTriageAsync(id, nurseUserId, request);
         return Ok(token);
     }

@@ -1,9 +1,12 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VitalQ.BusinessLogic.Interfaces;
 using VitalQ.Entities.DTOs;
 
 namespace VitalQ.API.Controllers;
 
+[Authorize(Roles = "Doctor,Admin")]
 [ApiController]
 [Route("api")]
 public class QueueController : ControllerBase
@@ -16,7 +19,7 @@ public class QueueController : ControllerBase
     }
 
     /// <summary>
-    /// Live priority-sorted queue for a doctor (Role: Doctor).
+    /// Live priority-sorted queue for a doctor (Role: Doctor, Admin).
     /// </summary>
     [HttpGet("queue/doctor/{doctorId}")]
     public async Task<IActionResult> GetDoctorQueue(Guid doctorId)
@@ -26,7 +29,7 @@ public class QueueController : ControllerBase
     }
 
     /// <summary>
-    /// Picks top-priority Waiting token for this doctor, moves to Called. Guarded by RowVersion (Role: Doctor).
+    /// Picks top-priority Waiting token for this doctor, moves to Called. Guarded by RowVersion (Role: Doctor, Admin).
     /// </summary>
     [HttpPost("queue/doctor/{doctorId}/call-next")]
     public async Task<IActionResult> CallNext(Guid doctorId)
@@ -37,23 +40,27 @@ public class QueueController : ControllerBase
     }
 
     /// <summary>
-    /// Holds an absent patient; token moves to Skipped (Role: Doctor).
+    /// Holds an absent patient; token moves to Skipped (Role: Doctor, Admin).
     /// </summary>
     [HttpPost("tokens/{id}/skip")]
     public async Task<IActionResult> SkipPatient(Guid id)
     {
-        var doctorUserId = Guid.Empty;
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        Guid.TryParse(userIdStr, out var doctorUserId);
+
         var token = await _queueService.SkipPatientAsync(id, doctorUserId);
         return Ok(token);
     }
 
     /// <summary>
-    /// Closes visit, stamps CompletedAtUtc, and saves ConsultationNotes (Role: Doctor).
+    /// Closes visit, stamps CompletedAtUtc, and saves ConsultationNotes (Role: Doctor, Admin).
     /// </summary>
     [HttpPost("tokens/{id}/complete")]
     public async Task<IActionResult> CompleteConsultation(Guid id, [FromBody] CompleteConsultationRequest request)
     {
-        var doctorUserId = Guid.Empty;
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        Guid.TryParse(userIdStr, out var doctorUserId);
+
         var token = await _queueService.CompleteConsultationAsync(id, doctorUserId, request);
         return Ok(token);
     }

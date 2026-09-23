@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VitalQ.BusinessLogic.Interfaces;
 using VitalQ.Entities.DTOs;
 
 namespace VitalQ.API.Controllers;
 
+[Authorize(Roles = "Admin")]
 [ApiController]
 [Route("api/admin")]
 public class AdminController : ControllerBase
@@ -76,6 +78,31 @@ public class AdminController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "An error occurred while creating the doctor.", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Update doctor details (PUT /api/admin/doctors/{id})
+    /// </summary>
+    [HttpPut("doctors/{id}")]
+    public async Task<IActionResult> UpdateDoctor(Guid id, [FromBody] UpdateDoctorRequest request)
+    {
+        try
+        {
+            var doctor = await _adminService.UpdateDoctorAsync(id, request);
+            return Ok(doctor);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while updating the doctor.", details = ex.Message });
         }
     }
 
@@ -153,23 +180,90 @@ public class AdminController : ControllerBase
     }
 
     // ==========================================
-    // NURSING STATION MANAGEMENT (Placeholders)
+    // NURSING STATION MANAGEMENT
     // ==========================================
+
+    /// <summary>
+    /// List all nursing stations, optionally filtered by department (GET /api/admin/nursing-stations?departmentId=...)
+    /// </summary>
     [HttpGet("nursing-stations")]
-    public Task<IActionResult> GetNursingStations() => Task.FromResult<IActionResult>(Ok());
+    public async Task<IActionResult> GetNursingStations([FromQuery] Guid? departmentId = null)
+    {
+        var stations = await _adminService.GetAllNursingStationsAsync(departmentId);
+        return Ok(stations);
+    }
 
+    /// <summary>
+    /// Create a new nursing desk (POST /api/admin/nursing-stations)
+    /// </summary>
     [HttpPost("nursing-stations")]
-    public Task<IActionResult> CreateNursingStation([FromBody] CreateNursingStationRequest request) => Task.FromResult<IActionResult>(Ok());
+    public async Task<IActionResult> CreateNursingStation([FromBody] CreateNursingStationRequest request)
+    {
+        try
+        {
+            var station = await _adminService.CreateNursingStationAsync(request);
+            return CreatedAtAction(nameof(GetNursingStations), new { id = station.Id }, station);
+        }
+        catch (ArgumentException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while creating the nursing station.", details = ex.Message });
+        }
+    }
 
+    /// <summary>
+    /// Update nursing desk details (PUT /api/admin/nursing-stations/{id})
+    /// </summary>
     [HttpPut("nursing-stations/{id}")]
-    public Task<IActionResult> UpdateNursingStation(Guid id, [FromBody] UpdateNursingStationRequest request) => Task.FromResult<IActionResult>(Ok());
+    public async Task<IActionResult> UpdateNursingStation(Guid id, [FromBody] UpdateNursingStationRequest request)
+    {
+        try
+        {
+            var station = await _adminService.UpdateNursingStationAsync(id, request);
+            return Ok(station);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while updating the nursing station.", details = ex.Message });
+        }
+    }
 
     // ==========================================
-    // PATIENT DIRECTORY & SEEDER
+    // PATIENT DIRECTORY
     // ==========================================
+
+    /// <summary>
+    /// Browse all registered and walk-in patients with their visit histories (GET /api/admin/patients)
+    /// </summary>
     [HttpGet("patients")]
-    public Task<IActionResult> GetPatients() => Task.FromResult<IActionResult>(Ok());
+    public async Task<IActionResult> GetPatients()
+    {
+        var patients = await _adminService.GetPatientDirectoryAsync();
+        return Ok(patients);
+    }
 
-    [HttpPost("seed/demo-data")]
-    public Task<IActionResult> SeedDemoData() => Task.FromResult<IActionResult>(Ok(new { message = "Demo data seeded successfully" }));
+    /// <summary>
+    /// Get a single patient's full profile and visit history (GET /api/admin/patients/{id})
+    /// </summary>
+    [HttpGet("patients/{id}")]
+    public async Task<IActionResult> GetPatientById(Guid id)
+    {
+        var patient = await _adminService.GetPatientDetailsByIdAsync(id);
+        if (patient == null)
+        {
+            return NotFound(new { message = $"Patient with ID '{id}' not found." });
+        }
+        return Ok(patient);
+    }
 }
