@@ -37,6 +37,42 @@ public class PatientSearchResult
     public string? ActiveTokenStatus { get; set; }
 }
 
+/// <summary>
+/// Full patient profile returned in the Admin Patient Directory (§07 Admin portal).
+/// Includes identity details and all past queue tokens/visits.
+/// </summary>
+public class PatientDetailResponse
+{
+    public Guid Id { get; set; }
+    public string MedicalRecordNumber { get; set; } = null!;
+    public string FullName { get; set; } = null!;
+    public string PhoneNumber { get; set; } = null!;
+    public DateOnly DateOfBirth { get; set; }
+    public string Gender { get; set; } = null!;
+    public bool IsRegisteredAppUser { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
+
+    public List<PatientVisitHistoryDto> Visits { get; set; } = new();
+}
+
+/// <summary>
+/// Summary of an individual consultation/visit.
+/// </summary>
+public class PatientVisitHistoryDto
+{
+    public Guid TokenId { get; set; }
+    public string TokenNumber { get; set; } = null!;
+    public string DepartmentName { get; set; } = string.Empty;
+    public string DoctorName { get; set; } = string.Empty;
+    public string Status { get; set; } = null!;
+    public string? TriageLevel { get; set; }
+    public DateTime BookedAtUtc { get; set; }
+    public DateTime? TriagedAtUtc { get; set; }
+    public DateTime? CalledAtUtc { get; set; }
+    public DateTime? CompletedAtUtc { get; set; }
+    public string? ConsultationNotes { get; set; }
+}
+
 // ==========================================
 // 2. DATA SENT FROM CLIENTS (REQUESTS)
 // ==========================================

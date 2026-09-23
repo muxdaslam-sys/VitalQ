@@ -60,10 +60,16 @@ public class CreateDoctorRequest
 }
 
 /// <summary>
-/// Used by Admin to edit a doctor's info.
+/// Used by Admin to edit a doctor's info (§07 Admin portal).
 /// </summary>
 public class UpdateDoctorRequest
 {
+    [MaxLength(100)]
+    public string? FullName { get; set; }
+
+    [MaxLength(20), Phone]
+    public string? PhoneNumber { get; set; }
+
     [Required]
     public Guid DepartmentId { get; set; }
 

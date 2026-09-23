@@ -35,11 +35,34 @@ Content-Type: application/json
   "isActive": true
 }
 
-### 4. Get All Doctors
+### 4. Create a General Nursing Station
+POST {{VitalQ_API_HostAddress}}/api/admin/nursing-stations
+Content-Type: application/json
+
+{
+  "stationName": "Main Triage Desk 1",
+  "locationFloor": "Ground Floor"
+}
+
+### 5. Create a Department-Linked Nursing Station
+POST {{VitalQ_API_HostAddress}}/api/admin/nursing-stations
+Content-Type: application/json
+
+{
+  "stationName": "Cardio Triage Desk A",
+  "departmentId": "00000000-0000-0000-0000-000000000000",
+  "locationFloor": "2nd Floor"
+}
+
+### 6. Get All Nursing Stations (or filter: ?departmentId=...)
+GET {{VitalQ_API_HostAddress}}/api/admin/nursing-stations
+Accept: application/json
+
+### 7. Get All Doctors
 GET {{VitalQ_API_HostAddress}}/api/admin/doctors
 Accept: application/json
 
-### 5. Create a Doctor (Paste the departmentId from step 1)
+### 8. Create a Doctor (Paste the departmentId from step 1)
 POST {{VitalQ_API_HostAddress}}/api/admin/doctors
 Content-Type: application/json
 
@@ -54,10 +77,32 @@ Content-Type: application/json
   "avgConsultationMinutes": 10
 }
 
-### 6. Toggle Doctor Status
+### 9. Update Doctor Details
+PUT {{VitalQ_API_HostAddress}}/api/admin/doctors/00000000-0000-0000-0000-000000000000
+Content-Type: application/json
+
+{
+  "fullName": "Dr. John A. Smith",
+  "phoneNumber": "9876543210",
+  "departmentId": "00000000-0000-0000-0000-000000000000",
+  "specialization": "Interventional Cardiologist",
+  "roomNumber": "Room 205",
+  "status": "Available",
+  "avgConsultationMinutes": 15
+}
+
+### 10. Toggle Doctor Status
 PATCH {{VitalQ_API_HostAddress}}/api/admin/doctors/00000000-0000-0000-0000-000000000000/status
 Content-Type: application/json
 
 {
   "status": "Available"
 }
+
+### 10. Get All Patients Directory with Visit Histories
+GET {{VitalQ_API_HostAddress}}/api/admin/patients
+Accept: application/json
+
+### 11. Get Single Patient Details with Visit History
+GET {{VitalQ_API_HostAddress}}/api/admin/patients/00000000-0000-0000-0000-000000000000
+Accept: application/json
