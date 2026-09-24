@@ -1,0 +1,205 @@
+<!-- ========================================================================= -->
+<!-- VITALQ CLINICAL DEPARTMENTS MANAGEMENT                                    -->
+<!-- Specialized medical departments, token numbering codes, and locations     -->
+<!-- ========================================================================= -->
+<div class="p-6 sm:p-8 space-y-6 max-w-7xl mx-auto">
+  
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">Clinical Departments</h2>
+      <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Specialized medical departments, token numbering prefixes, and floor locations</p>
+    </div>
+    <button (click)="openModal()" 
+            class="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white rounded-xl font-bold text-sm shadow-md shadow-teal-600/20 transition flex items-center gap-2 shrink-0">
+      <span>+</span>
+      <span>Add Department</span>
+    </button>
+  </div>
+
+  <!-- Search & Status Filter Toolbar -->
+  <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3.5">
+    <div class="relative flex-1 max-w-md">
+      <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </div>
+      <input type="text" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" 
+             placeholder="Search by department name, prefix code (e.g. CARD), or floor..."
+             class="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50/50">
+    </div>
+
+    <div class="flex items-center gap-1.5 self-start sm:self-auto">
+      <button (click)="selectedStatus.set('all')"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+              [ngClass]="selectedStatus() === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+        All ({{ departments().length }})
+      </button>
+      <button (click)="selectedStatus.set('active')"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              [ngClass]="selectedStatus() === 'active' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-300"></span> Active
+      </button>
+      <button (click)="selectedStatus.set('inactive')"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              [ngClass]="selectedStatus() === 'inactive' ? 'bg-slate-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+        Inactive
+      </button>
+    </div>
+  </div>
+
+  <!-- Responsive Data Table -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-sm min-w-[650px]">
+        <thead>
+          <tr class="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-xs uppercase tracking-wider">
+            <th class="py-3.5 px-5">Department Name</th>
+            <th class="py-3.5 px-5">Prefix Code</th>
+            <th class="py-3.5 px-5">Floor Location</th>
+            <th class="py-3.5 px-5">Last Token Counter</th>
+            <th class="py-3.5 px-5">Status</th>
+            <th class="py-3.5 px-5 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          @for (dept of filteredDepartments(); track dept.id) {
+            <tr class="hover:bg-slate-50/80 transition">
+              <td class="py-4 px-5">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-xs shrink-0 border border-teal-200">
+                    🏢
+                  </div>
+                  <div>
+                    <p class="font-bold text-slate-800 leading-tight">{{ dept.name }}</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Created {{ dept.createdAtUtc | date:'shortDate' }}</p>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 px-5">
+                <span class="px-3 py-1 bg-teal-50 text-teal-700 font-mono font-bold text-xs rounded-lg border border-teal-200">
+                  {{ dept.code }}
+                </span>
+              </td>
+              <td class="py-4 px-5 text-slate-600">{{ dept.locationFloor }}</td>
+              <td class="py-4 px-5 font-mono text-slate-700 font-semibold">{{ dept.lastTokenNumber }}</td>
+              <td class="py-4 px-5">
+                <span [ngClass]="dept.isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'" 
+                      class="px-2.5 py-1 rounded-full text-xs font-bold border inline-flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full" [ngClass]="dept.isActive ? 'bg-emerald-500' : 'bg-slate-400'"></span>
+                  {{ dept.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+              <td class="py-4 px-5 text-right">
+                <button (click)="openEditModal(dept)"
+                        class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-teal-50 hover:text-teal-700 text-slate-700 font-semibold transition">
+                  Edit
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="py-14 text-center">
+                <div class="max-w-xs mx-auto text-center space-y-2">
+                  <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center text-xl">🏢</div>
+                  <p class="font-bold text-slate-700 text-sm">No departments found</p>
+                  <p class="text-xs text-slate-400">Try modifying your search or click below to configure a new department.</p>
+                  <button (click)="openModal()" class="mt-2 text-xs font-bold text-teal-600 hover:text-teal-700 underline">
+                    + Add Department
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Add Department Modal -->
+  @if (showModal()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-3xl max-w-md w-full p-7 shadow-2xl border border-slate-100">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-5">
+          <div>
+            <h3 class="text-lg font-bold text-slate-800">Add Clinical Department</h3>
+            <p class="text-xs text-slate-400">Define routing prefix code and clinical location</p>
+          </div>
+          <button (click)="showModal.set(false)" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+        </div>
+
+        <div class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Department Name *</label>
+            <input type="text" [(ngModel)]="newDept.name" placeholder="Cardiology" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Prefix Code * (e.g. CARD, ORTH, PEDI)</label>
+            <input type="text" [(ngModel)]="newDept.code" placeholder="CARD" class="w-full px-3.5 py-2 border rounded-xl font-mono text-sm uppercase focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Floor Location *</label>
+            <input type="text" [(ngModel)]="newDept.locationFloor" placeholder="Floor 1, Wing A" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-7">
+          <button (click)="showModal.set(false)" [disabled]="isSubmitting()" class="px-4 py-2 border rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+          <button (click)="saveDepartment()" [disabled]="isSubmitting()" 
+                  class="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md shadow-teal-600/20 transition flex items-center gap-2">
+            @if (isSubmitting()) {
+              <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span>Saving...</span>
+            } @else {
+              <span>Save Department</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Edit Department Modal -->
+  @if (editingDeptId()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-3xl max-w-md w-full p-7 shadow-2xl border border-slate-100">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-5">
+          <div>
+            <h3 class="text-lg font-bold text-slate-800">Edit Department</h3>
+            <p class="text-xs text-slate-400">Update department location and operational status</p>
+          </div>
+          <button (click)="editingDeptId.set(null)" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+        </div>
+
+        <div class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Department Name</label>
+            <input type="text" [(ngModel)]="editDept.name" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Floor Location</label>
+            <input type="text" [(ngModel)]="editDept.locationFloor" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div class="flex items-center gap-2 pt-2">
+            <input type="checkbox" id="deptIsActive" [(ngModel)]="editDept.isActive" class="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-slate-300">
+            <label for="deptIsActive" class="text-xs font-bold text-slate-700 cursor-pointer select-none">Department is Active</label>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-7">
+          <button (click)="editingDeptId.set(null)" [disabled]="isSubmitting()" class="px-4 py-2 border rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+          <button (click)="updateDepartment()" [disabled]="isSubmitting()" 
+                  class="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md shadow-teal-600/20 transition flex items-center gap-2">
+            @if (isSubmitting()) {
+              <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span>Updating...</span>
+            } @else {
+              <span>Save Changes</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

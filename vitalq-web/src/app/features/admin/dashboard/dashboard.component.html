@@ -1,0 +1,206 @@
+<!-- ========================================================================= -->
+<!-- VITALQ ADMIN OVERVIEW DASHBOARD                                           -->
+<!-- Executive metrics, clinical triage breakdown, and operational shortcuts   -->
+<!-- ========================================================================= -->
+<div class="p-6 sm:p-8 space-y-8 max-w-7xl mx-auto">
+  
+  <!-- Welcome & Operational Status Banner -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 sm:p-7 rounded-3xl shadow-xl border border-slate-800">
+    <div>
+      <div class="flex items-center gap-2 text-teal-400 text-xs font-bold uppercase tracking-wider mb-1">
+        <span>Hospital Command Center</span>
+        <span>•</span>
+        <span>Live Operational State</span>
+      </div>
+      <h2 class="text-xl sm:text-2xl font-extrabold tracking-tight">Clinical Infrastructure & OPD Fleet</h2>
+      <p class="text-xs sm:text-sm text-slate-300 mt-1">Real-time status of clinical desks, doctor rosters, and patient intake</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <a routerLink="/admin/doctors" class="px-4 py-2 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs rounded-xl shadow-md transition">
+        Manage Doctors
+      </a>
+      <a routerLink="/admin/staff" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs rounded-xl transition">
+        Staff & Nurses
+      </a>
+    </div>
+  </div>
+
+  <!-- Primary Metric KPI Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+    
+    <!-- KPI 1: Doctor Fleet & Desk Readiness -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Doctor Fleet</span>
+        <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </div>
+      </div>
+      <div class="flex items-baseline gap-2">
+        <h3 class="text-3xl font-extrabold text-slate-800">{{ totalDoctors() }}</h3>
+        <span class="text-xs font-bold text-emerald-600">{{ availableDoctors() }} On Shift</span>
+      </div>
+      <div class="mt-3 w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+        <div class="bg-teal-600 h-1.5 rounded-full transition-all duration-500" [style.width.%]="doctorAvailabilityRate()"></div>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-2 font-medium">{{ doctorAvailabilityRate() }}% Desk Occupancy Ready</p>
+    </div>
+
+    <!-- KPI 2: Staff & Nurses -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Triage & Staff</span>
+        <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        </div>
+      </div>
+      <div class="flex items-baseline gap-2">
+        <h3 class="text-3xl font-extrabold text-slate-800">{{ totalStaff() }}</h3>
+        <span class="text-xs font-bold text-purple-600">Active Accounts</span>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-5 font-medium">Triage Nurses & Admin Operators</p>
+    </div>
+
+    <!-- KPI 3: Departments & Intake Desks -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Clinical Units</span>
+        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
+      </div>
+      <div class="flex items-baseline gap-2">
+        <h3 class="text-3xl font-extrabold text-slate-800">{{ totalDepartments() }}</h3>
+        <span class="text-xs font-bold text-blue-600">{{ totalStations() }} Intake Desks</span>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-5 font-medium">Cardio, Ortho, Pediatrics & Desks</p>
+    </div>
+
+    <!-- KPI 4: Patient Volume -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:shadow-md transition">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Patient Volume</span>
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </div>
+      </div>
+      <div class="flex items-baseline gap-2">
+        <h3 class="text-3xl font-extrabold text-slate-800">{{ totalPatients() }}</h3>
+        <span class="text-xs font-bold text-indigo-600">{{ totalVisits() }} Recorded Visits</span>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-5 font-medium">Outpatient directory & tokens</p>
+    </div>
+  </div>
+
+  <!-- Clinical Operations Telemetry (CTAS Triage & Shortcuts) -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    
+    <!-- CTAS Triage Distribution Breakdown -->
+    <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs lg:col-span-2">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h3 class="text-base font-bold text-slate-800">CTAS Clinical Triage Distribution</h3>
+          <p class="text-xs text-slate-400">Acuity breakdown across all evaluated outpatient encounters</p>
+        </div>
+        <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
+          {{ totalVisits() }} Total Consultations
+        </span>
+      </div>
+
+      <div class="space-y-4">
+        <!-- CTAS Red: Level 1 & 2 -->
+        <div>
+          <div class="flex justify-between text-xs font-bold mb-1.5">
+            <span class="flex items-center gap-1.5 text-rose-700">
+              <span class="w-2 h-2 rounded-full bg-rose-500"></span> CTAS 1-2 (Red: Resuscitation / Emergent)
+            </span>
+            <span class="font-mono text-slate-700">{{ triageRed() }} patients</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+            <div class="bg-rose-500 h-2.5 rounded-full transition-all duration-500" 
+                 [style.width.%]="totalVisits() > 0 ? (triageRed() / totalVisits()) * 100 : 0"></div>
+          </div>
+        </div>
+
+        <!-- CTAS Yellow: Level 3 -->
+        <div>
+          <div class="flex justify-between text-xs font-bold mb-1.5">
+            <span class="flex items-center gap-1.5 text-amber-700">
+              <span class="w-2 h-2 rounded-full bg-amber-500"></span> CTAS 3 (Yellow: Urgent / Severe Distress)
+            </span>
+            <span class="font-mono text-slate-700">{{ triageYellow() }} patients</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+            <div class="bg-amber-500 h-2.5 rounded-full transition-all duration-500" 
+                 [style.width.%]="totalVisits() > 0 ? (triageYellow() / totalVisits()) * 100 : 0"></div>
+          </div>
+        </div>
+
+        <!-- CTAS Green: Level 4 & 5 -->
+        <div>
+          <div class="flex justify-between text-xs font-bold mb-1.5">
+            <span class="flex items-center gap-1.5 text-emerald-700">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span> CTAS 4-5 (Green: Standard / Non-Urgent)
+            </span>
+            <span class="font-mono text-slate-700">{{ triageGreen() }} patients</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+            <div class="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" 
+                 [style.width.%]="totalVisits() > 0 ? (triageGreen() / totalVisits()) * 100 : 0"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Administrative Quick Navigation Center -->
+    <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs flex flex-col justify-between">
+      <div>
+        <h3 class="text-base font-bold text-slate-800 mb-1">Administrative Actions</h3>
+        <p class="text-xs text-slate-400 mb-4">Fast shortcuts to clinical roster and station tools</p>
+      </div>
+
+      <div class="space-y-2.5">
+        <a routerLink="/admin/doctors" class="flex items-center justify-between p-3.5 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-teal-50/70 hover:border-teal-200 transition group">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center font-bold text-xs">👨‍⚕️</div>
+            <div>
+              <p class="text-xs font-bold text-slate-800 group-hover:text-teal-700">Doctor Roster</p>
+              <p class="text-[10px] text-slate-400">Room numbers & leave status</p>
+            </div>
+          </div>
+          <span class="text-slate-400 group-hover:text-teal-600 font-bold">&rarr;</span>
+        </a>
+
+        <a routerLink="/admin/staff" class="flex items-center justify-between p-3.5 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-purple-50/70 hover:border-purple-200 transition group">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center font-bold text-xs">🛡️</div>
+            <div>
+              <p class="text-xs font-bold text-slate-800 group-hover:text-purple-700">Staff Credentials</p>
+              <p class="text-[10px] text-slate-400">Nurse accounts & password resets</p>
+            </div>
+          </div>
+          <span class="text-slate-400 group-hover:text-purple-600 font-bold">&rarr;</span>
+        </a>
+
+        <a routerLink="/admin/departments" class="flex items-center justify-between p-3.5 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-blue-50/70 hover:border-blue-200 transition group">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold text-xs">🏢</div>
+            <div>
+              <p class="text-xs font-bold text-slate-800 group-hover:text-blue-700">Departments & Desks</p>
+              <p class="text-[10px] text-slate-400">Prefix codes & triage locations</p>
+            </div>
+          </div>
+          <span class="text-slate-400 group-hover:text-blue-600 font-bold">&rarr;</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

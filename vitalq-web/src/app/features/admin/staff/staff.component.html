@@ -1,0 +1,337 @@
+<!-- ========================================================================= -->
+<!-- VITALQ STAFF & CLINICAL USERS MANAGEMENT                                  -->
+<!-- Triage nurses, administrators, login credentials, and account statuses   -->
+<!-- ========================================================================= -->
+<div class="p-6 sm:p-8 space-y-6 max-w-7xl mx-auto">
+  
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">Staff & Clinical Users</h2>
+      <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Manage triage nurses, clinical coordinators, and hospital administrative accounts</p>
+    </div>
+    <button (click)="openAddModal()"
+            class="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white rounded-xl font-bold text-sm shadow-md shadow-teal-600/20 transition flex items-center gap-2 shrink-0">
+      <span>+</span>
+      <span>Add Staff User</span>
+    </button>
+  </div>
+
+  <!-- Search & Multi-Filter Toolbar -->
+  <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5">
+    <div class="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
+      <!-- Search Input -->
+      <div class="relative flex-1">
+        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <input type="text" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" 
+               placeholder="Search by name, username, phone, or role..."
+               class="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50/50">
+      </div>
+
+      <!-- Role Filter Pills -->
+      <div class="flex items-center gap-1.5">
+        <button (click)="selectedRole.set('all')"
+                class="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+                [ngClass]="selectedRole() === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+          All Roles
+        </button>
+        <button (click)="selectedRole.set('Nurse')"
+                class="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+                [ngClass]="selectedRole() === 'Nurse' ? 'bg-teal-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+          Nurses
+        </button>
+        <button (click)="selectedRole.set('Admin')"
+                class="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+                [ngClass]="selectedRole() === 'Admin' ? 'bg-purple-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+          Admins
+        </button>
+      </div>
+    </div>
+
+    <!-- Status Filter Pills -->
+    <div class="flex items-center gap-1.5 self-start md:self-auto">
+      <button (click)="selectedStatus.set('all')"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+              [ngClass]="selectedStatus() === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+        All ({{ staffList().length }})
+      </button>
+      <button (click)="selectedStatus.set('active')"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              [ngClass]="selectedStatus() === 'active' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-300"></span> Active
+      </button>
+      <button (click)="selectedStatus.set('suspended')"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              [ngClass]="selectedStatus() === 'suspended' ? 'bg-rose-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+        <span class="w-1.5 h-1.5 rounded-full bg-rose-300"></span> Suspended
+      </button>
+    </div>
+  </div>
+
+  <!-- Responsive Data Table -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-sm min-w-[700px]">
+        <thead>
+          <tr class="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-xs uppercase tracking-wider">
+            <th class="py-3.5 px-5">Staff Member</th>
+            <th class="py-3.5 px-5">Assigned Role</th>
+            <th class="py-3.5 px-5">Phone Number</th>
+            <th class="py-3.5 px-5">Login Credentials</th>
+            <th class="py-3.5 px-5">Account Status</th>
+            <th class="py-3.5 px-5 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          @for (user of filteredStaff(); track user.id) {
+            <tr class="hover:bg-slate-50/80 transition">
+              <!-- Name & Role Icon Avatar -->
+              <td class="py-4 px-5">
+                <div class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0"
+                       [ngClass]="user.role === 'Admin' ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-teal-50 text-teal-700 border border-teal-200'">
+                    {{ user.role === 'Admin' ? '🛡️' : '👩‍⚕️' }}
+                  </div>
+                  <div>
+                    <p class="font-bold text-slate-800 leading-tight">{{ user.fullName }}</p>
+                    <p class="text-xs text-slate-400 mt-0.5">Created {{ user.createdAtUtc | date:'shortDate' }}</p>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Role Badge -->
+              <td class="py-4 px-5">
+                @if (user.role === 'Admin') {
+                  <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200">
+                    Super Admin
+                  </span>
+                } @else {
+                  <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-700 border border-teal-200">
+                    Triage Nurse
+                  </span>
+                }
+              </td>
+
+              <!-- Phone Number -->
+              <td class="py-4 px-5 font-mono text-slate-600 text-xs">{{ user.phoneNumber }}</td>
+
+              <!-- Credentials -->
+              <td class="py-4 px-5">
+                <div class="space-y-1">
+                  <!-- Username -->
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">User:</span>
+                    <span class="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200/80">{{ user.username }}</span>
+                    <button type="button" (click)="copyToClipboard(user.username, user.id + '-u')" title="Copy username" class="text-slate-400 hover:text-teal-600 transition">
+                      @if (copiedText() === user.id + '-u') {
+                        <span class="text-[10px] text-teal-600 font-bold">✓</span>
+                      } @else {
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      }
+                    </button>
+                  </div>
+                  <!-- Password -->
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Pass:</span>
+                    <span class="font-mono text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200/80">
+                      {{ visiblePasswords()[user.id] ? user.password : '••••••••' }}
+                    </span>
+                    <button type="button" (click)="togglePasswordVisibility(user.id)" title="Toggle password visibility" class="text-slate-400 hover:text-teal-600 transition">
+                      @if (visiblePasswords()[user.id]) {
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                        </svg>
+                      } @else {
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      }
+                    </button>
+                    <button type="button" (click)="copyToClipboard(user.password, user.id + '-p')" title="Copy password" class="text-slate-400 hover:text-teal-600 transition">
+                      @if (copiedText() === user.id + '-p') {
+                        <span class="text-[10px] text-teal-600 font-bold">✓</span>
+                      } @else {
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      }
+                    </button>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Account Status Badge -->
+              <td class="py-4 px-5">
+                <span [ngClass]="user.isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-rose-100 text-rose-700 border-rose-200'"
+                      class="px-2.5 py-1 rounded-full text-xs font-bold border inline-flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full" [ngClass]="user.isActive ? 'bg-emerald-500' : 'bg-rose-500'"></span>
+                  {{ user.isActive ? 'Active' : 'Suspended' }}
+                </span>
+              </td>
+
+              <!-- Action Buttons -->
+              <td class="py-4 px-5 text-right space-x-2">
+                <button (click)="openEditModal(user)"
+                        class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-teal-50 hover:text-teal-700 text-slate-700 font-semibold transition">
+                  Edit
+                </button>
+                <button (click)="toggleStatus(user)"
+                        class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold transition">
+                  {{ user.isActive ? 'Suspend' : 'Activate' }}
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <!-- High-Fidelity Empty State -->
+            <tr>
+              <td colspan="6" class="py-14 text-center">
+                <div class="max-w-xs mx-auto text-center space-y-2">
+                  <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center text-xl">👥</div>
+                  <p class="font-bold text-slate-700 text-sm">No personnel match your search</p>
+                  <p class="text-xs text-slate-400">Try clearing filters or click below to register a new clinical staff account.</p>
+                  <button (click)="openAddModal()" class="mt-2 text-xs font-bold text-teal-600 hover:text-teal-700 underline">
+                    + Add Staff User
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Add Staff Modal -->
+  @if (showAddModal()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-3xl max-w-md w-full p-7 shadow-2xl border border-slate-100">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-5">
+          <div>
+            <h3 class="text-lg font-bold text-slate-800">Add Staff User</h3>
+            <p class="text-xs text-slate-400">Create login credentials for a Nurse or Administrator</p>
+          </div>
+          <button (click)="showAddModal.set(false)" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+        </div>
+
+        <form (ngSubmit)="saveStaff()" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Assigned Role</label>
+            <select [(ngModel)]="newStaff.role" name="role" class="w-full px-3.5 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500 bg-white">
+              <option value="Nurse">👩‍⚕️ Nurse (Triage Desk)</option>
+              <option value="Admin">🛡️ Administrator (System Operations)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Full Name *</label>
+            <input type="text" [(ngModel)]="newStaff.fullName" name="fullName" required placeholder="e.g. Sarah Jenkins"
+                   class="w-full px-3.5 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Phone Number</label>
+            <input type="tel" [(ngModel)]="newStaff.phoneNumber" name="phoneNumber" placeholder="e.g. +1-555-0199"
+                   class="w-full px-3.5 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned Login Credentials</p>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Username / Staff ID *</label>
+              <input type="text" [(ngModel)]="newStaff.username" name="username" required placeholder="e.g. nurse.sarah"
+                     class="w-full px-3 py-2 border rounded-xl text-sm bg-white focus:ring-2 focus:ring-teal-500 font-mono">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Initial Password *</label>
+              <input type="text" [(ngModel)]="newStaff.password" name="password" required placeholder="e.g. NursePass123!"
+                     class="w-full px-3 py-2 border rounded-xl text-sm bg-white focus:ring-2 focus:ring-teal-500 font-mono">
+              <p class="text-[10px] text-slate-400 mt-1">This password will be displayed in the table for quick reference.</p>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-3">
+            <button type="button" (click)="showAddModal.set(false)" [disabled]="isSubmitting()" 
+                    class="px-4 py-2 border rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+            <button type="submit" [disabled]="isSubmitting()" 
+                    class="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md shadow-teal-600/20 transition flex items-center gap-2">
+              @if (isSubmitting()) {
+                <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <span>Creating...</span>
+              } @else {
+                <span>Create Account</span>
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- Edit Staff Modal -->
+  @if (editingStaffId()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-3xl max-w-md w-full p-7 shadow-2xl border border-slate-100">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-5">
+          <div>
+            <h3 class="text-lg font-bold text-slate-800">Edit Staff Account</h3>
+            <p class="text-xs text-slate-400">Update personnel profile or reset login password</p>
+          </div>
+          <button (click)="editingStaffId.set(null)" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+        </div>
+
+        <form (ngSubmit)="updateStaff()" class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Assigned Role</label>
+            <select [(ngModel)]="editStaff.role" name="editRole" class="w-full px-3.5 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500 bg-white">
+              <option value="Nurse">👩‍⚕️ Nurse (Triage Desk)</option>
+              <option value="Admin">🛡️ Administrator (System Operations)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Full Name</label>
+            <input type="text" [(ngModel)]="editStaff.fullName" name="editFullName" required class="w-full px-3.5 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Phone Number</label>
+            <input type="tel" [(ngModel)]="editStaff.phoneNumber" name="editPhone" class="w-full px-3.5 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-2">
+            <label class="block text-xs font-bold text-slate-700">Reset Password (Optional)</label>
+            <input type="text" [(ngModel)]="editStaff.password" name="editPassword" placeholder="Leave blank to keep existing password"
+                   class="w-full px-3 py-2 border rounded-xl text-sm bg-white focus:ring-2 focus:ring-teal-500 font-mono">
+            <p class="text-[10px] text-slate-400">Enter a new password if the staff member forgot their credentials.</p>
+          </div>
+
+          <div class="flex items-center gap-2 pt-1">
+            <input type="checkbox" [(ngModel)]="editStaff.isActive" name="editIsActive" id="editIsActive" class="w-4 h-4 rounded text-teal-600 focus:ring-teal-500">
+            <label for="editIsActive" class="text-xs font-bold text-slate-700 select-none cursor-pointer">Account is Active</label>
+          </div>
+
+          <div class="flex justify-end gap-3 pt-3">
+            <button type="button" (click)="editingStaffId.set(null)" [disabled]="isSubmitting()" 
+                    class="px-4 py-2 border rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+            <button type="submit" [disabled]="isSubmitting()" 
+                    class="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md shadow-teal-600/20 transition flex items-center gap-2">
+              @if (isSubmitting()) {
+                <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <span>Saving...</span>
+              } @else {
+                <span>Save Changes</span>
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</div>

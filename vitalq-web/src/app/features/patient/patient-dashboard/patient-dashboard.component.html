@@ -1,0 +1,61 @@
+<div class="min-h-screen bg-slate-50 flex flex-col font-sans max-w-md mx-auto shadow-2xl border-x border-slate-200">
+  <!-- Mobile Patient Header -->
+  <header class="bg-teal-700 text-white px-6 py-4 flex items-center justify-between">
+    <div>
+      <h1 class="text-base font-bold">VitalQ Patient Portal</h1>
+      <p class="text-xs text-teal-200">Hello, {{ auth.currentUser()?.fullName || 'Patient' }}</p>
+    </div>
+    <button (click)="logout()" class="text-xs bg-teal-800 px-3 py-1.5 rounded-lg text-teal-100 hover:text-white font-medium transition">
+      Logout
+    </button>
+  </header>
+
+  <!-- Active Token View -->
+  <main class="flex-1 p-5 space-y-5">
+    <!-- Live Token Card -->
+    <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-md text-center">
+      <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 mb-2 border border-amber-200">
+        Status: Waiting in Queue
+      </span>
+      <p class="text-xs text-slate-400 uppercase tracking-widest font-semibold">Your Token Number</p>
+      <h2 class="text-5xl font-black text-slate-800 tracking-tight my-2">CARD-104</h2>
+
+      <div class="border-t border-slate-100 pt-4 mt-4 grid grid-cols-2 gap-4 text-left">
+        <div>
+          <p class="text-xs text-slate-400">Doctor</p>
+          <p class="text-sm font-bold text-slate-800">Dr. Sarah Jenkins</p>
+          <p class="text-xs text-teal-600 font-medium">Cardiology</p>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400">Room Location</p>
+          <p class="text-sm font-bold text-slate-800">Room 102</p>
+          <p class="text-xs text-slate-500">Floor 1, Wing A</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Queue Tracker Details -->
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center">
+        <p class="text-xs text-slate-400 font-medium">Patients Ahead</p>
+        <p class="text-3xl font-extrabold text-teal-600 mt-1">2</p>
+      </div>
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center">
+        <p class="text-xs text-slate-400 font-medium">Est. Wait Time</p>
+        <p class="text-3xl font-extrabold text-slate-700 mt-1">~18m</p>
+      </div>
+    </div>
+
+    <!-- Reminder Alert -->
+    <div class="bg-teal-50 border border-teal-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-teal-800">
+      <span class="text-xl">🔔</span>
+      <p class="leading-relaxed">Your phone will automatically chime and vibrate when the doctor calls your token.</p>
+    </div>
+
+    <!-- Book Another Button -->
+    <button class="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-sm shadow-md transition">
+      Book New Consultation Slot
+    </button>
+  </main>
+</div>
+

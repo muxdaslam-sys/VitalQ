@@ -14,6 +14,8 @@ public class DoctorResponse
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string DoctorName { get; set; } = string.Empty;
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
     public Guid DepartmentId { get; set; }
     public string DepartmentName { get; set; } = string.Empty;
     public string Specialization { get; set; } = null!;
@@ -69,6 +71,8 @@ public class UpdateDoctorRequest
 
     [MaxLength(20), Phone]
     public string? PhoneNumber { get; set; }
+
+    public string? Password { get; set; }
 
     [Required]
     public Guid DepartmentId { get; set; }

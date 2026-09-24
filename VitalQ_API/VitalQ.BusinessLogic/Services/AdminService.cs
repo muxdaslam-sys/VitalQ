@@ -77,6 +77,8 @@ public class AdminService : IAdminService
             Id = doctor.Id,
             UserId = user.Id,
             DoctorName = user.FullName,
+            Username = user.Username,
+            Password = user.Password,
             DepartmentId = department.Id,
             DepartmentName = department.Name,
             Specialization = doctor.Specialization,
@@ -97,6 +99,8 @@ public class AdminService : IAdminService
                 Id = d.Id,
                 UserId = d.UserId,
                 DoctorName = d.User.FullName,
+                Username = d.User.Username,
+                Password = d.User.Password,
                 DepartmentId = d.DepartmentId,
                 DepartmentName = d.Department.Name,
                 Specialization = d.Specialization,
@@ -128,6 +132,8 @@ public class AdminService : IAdminService
             Id = doctor.Id,
             UserId = doctor.UserId,
             DoctorName = doctor.User.FullName,
+            Username = doctor.User.Username,
+            Password = doctor.User.Password,
             DepartmentId = doctor.DepartmentId,
             DepartmentName = doctor.Department.Name,
             Specialization = doctor.Specialization,
@@ -168,6 +174,11 @@ public class AdminService : IAdminService
             doctor.User.PhoneNumber = request.PhoneNumber.Trim();
         }
 
+        if (!string.IsNullOrWhiteSpace(request.Password))
+        {
+            doctor.User.Password = request.Password.Trim();
+        }
+
         // 3. Update Doctor profile details
         doctor.DepartmentId = request.DepartmentId;
         doctor.Specialization = request.Specialization.Trim();
@@ -182,6 +193,8 @@ public class AdminService : IAdminService
             Id = doctor.Id,
             UserId = doctor.UserId,
             DoctorName = doctor.User.FullName,
+            Username = doctor.User.Username,
+            Password = doctor.User.Password,
             DepartmentId = department.Id,
             DepartmentName = department.Name,
             Specialization = doctor.Specialization,
@@ -209,6 +222,7 @@ public class AdminService : IAdminService
             throw new InvalidOperationException($"Phone number '{request.PhoneNumber}' is already in use.");
         }
 
+        var assignedRole = string.IsNullOrWhiteSpace(request.Role) ? "Admin" : request.Role.Trim();
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -216,7 +230,7 @@ public class AdminService : IAdminService
             Password = request.Password, // Plain password as requested
             FullName = request.FullName,
             PhoneNumber = request.PhoneNumber,
-            Role = "Admin", // Strictly enforced on the backend
+            Role = assignedRole,
             IsActive = true,
             CreatedAtUtc = DateTime.UtcNow
         };
@@ -228,6 +242,61 @@ public class AdminService : IAdminService
         {
             Id = user.Id,
             Username = user.Username,
+            Password = user.Password,
+            FullName = user.FullName,
+            PhoneNumber = user.PhoneNumber,
+            Role = user.Role,
+            IsActive = user.IsActive,
+            CreatedAtUtc = user.CreatedAtUtc
+        };
+    }
+
+    public async Task<IEnumerable<UserResponse>> GetAllStaffUsersAsync()
+    {
+        return await _context.Users
+            .Where(u => u.Role == "Admin" || u.Role == "Nurse")
+            .OrderBy(u => u.FullName)
+            .Select(u => new UserResponse
+            {
+                Id = u.Id,
+                Username = u.Username,
+                Password = u.Password,
+                FullName = u.FullName,
+                PhoneNumber = u.PhoneNumber,
+                Role = u.Role,
+                IsActive = u.IsActive,
+                CreatedAtUtc = u.CreatedAtUtc
+            })
+            .ToListAsync();
+    }
+
+    public async Task<UserResponse> UpdateUserAsync(Guid id, UpdateUserRequest request)
+    {
+        var user = await _context.Users.FindAsync(id);
+        if (user == null)
+        {
+            throw new KeyNotFoundException($"User with ID '{id}' not found.");
+        }
+
+        user.FullName = request.FullName.Trim();
+        user.PhoneNumber = request.PhoneNumber.Trim();
+        if (!string.IsNullOrWhiteSpace(request.Role))
+        {
+            user.Role = request.Role.Trim();
+        }
+        if (!string.IsNullOrWhiteSpace(request.Password))
+        {
+            user.Password = request.Password.Trim();
+        }
+        user.IsActive = request.IsActive;
+
+        await _context.SaveChangesAsync();
+
+        return new UserResponse
+        {
+            Id = user.Id,
+            Username = user.Username,
+            Password = user.Password,
             FullName = user.FullName,
             PhoneNumber = user.PhoneNumber,
             Role = user.Role,

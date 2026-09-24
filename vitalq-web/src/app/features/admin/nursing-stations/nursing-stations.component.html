@@ -1,0 +1,227 @@
+<!-- ========================================================================= -->
+<!-- VITALQ NURSING STATIONS & TRIAGE DESKS MANAGEMENT                         -->
+<!-- Intake triage desks mapped across departments and clinical floors         -->
+<!-- ========================================================================= -->
+<div class="p-6 sm:p-8 space-y-6 max-w-7xl mx-auto">
+  
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">Nursing Stations & Triage Desks</h2>
+      <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Physical intake triage desks across departments, wings, and hospital floors</p>
+    </div>
+    <button (click)="openModal()" 
+            class="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white rounded-xl font-bold text-sm shadow-md shadow-teal-600/20 transition flex items-center gap-2 shrink-0">
+      <span>+</span>
+      <span>Add Station Desk</span>
+    </button>
+  </div>
+
+  <!-- Search & Multi-Filter Toolbar -->
+  <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5">
+    <div class="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
+      <!-- Search Input -->
+      <div class="relative flex-1">
+        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <input type="text" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" 
+               placeholder="Search desks by name, department, or floor..."
+               class="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50/50">
+      </div>
+
+      <!-- Department Filter Selector -->
+      <select [ngModel]="selectedDepartmentId()" (ngModelChange)="selectedDepartmentId.set($event)"
+              class="px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm bg-slate-50/50 focus:ring-2 focus:ring-teal-500">
+        <option value="all">All Departments</option>
+        @for (dept of departments(); track dept.id) {
+          <option [value]="dept.id">{{ dept.name }}</option>
+        }
+      </select>
+    </div>
+
+    <!-- Status Filter Chips -->
+    <div class="flex items-center gap-1.5 self-start md:self-auto">
+      <button (click)="selectedStatus.set('all')"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+              [ngClass]="selectedStatus() === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+        All ({{ stations().length }})
+      </button>
+      <button (click)="selectedStatus.set('active')"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              [ngClass]="selectedStatus() === 'active' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-300"></span> Active
+      </button>
+      <button (click)="selectedStatus.set('inactive')"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              [ngClass]="selectedStatus() === 'inactive' ? 'bg-slate-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+        Inactive
+      </button>
+    </div>
+  </div>
+
+  <!-- Responsive Data Table -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-sm min-w-[650px]">
+        <thead>
+          <tr class="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-xs uppercase tracking-wider">
+            <th class="py-3.5 px-5">Station / Desk Name</th>
+            <th class="py-3.5 px-5">Mapped Department</th>
+            <th class="py-3.5 px-5">Floor Location</th>
+            <th class="py-3.5 px-5">Status</th>
+            <th class="py-3.5 px-5 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          @for (station of filteredStations(); track station.id) {
+            <tr class="hover:bg-slate-50/80 transition">
+              <td class="py-4 px-5">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xs shrink-0 border border-purple-200">
+                    🩺
+                  </div>
+                  <span class="font-bold text-slate-800">{{ station.stationName }}</span>
+                </div>
+              </td>
+              <td class="py-4 px-5">
+                <span class="px-2.5 py-1 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold border border-purple-200">
+                  {{ station.departmentName || 'General Intake Desk' }}
+                </span>
+              </td>
+              <td class="py-4 px-5 text-slate-600">{{ station.locationFloor }}</td>
+              <td class="py-4 px-5">
+                <span [ngClass]="station.isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'" 
+                      class="px-2.5 py-0.5 rounded-full text-xs font-bold border inline-flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full" [ngClass]="station.isActive ? 'bg-emerald-500' : 'bg-slate-400'"></span>
+                  {{ station.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+              <td class="py-4 px-5 text-right">
+                <button (click)="openEditModal(station)"
+                        class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-teal-50 hover:text-teal-700 text-slate-700 font-semibold transition">
+                  Edit
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="py-14 text-center">
+                <div class="max-w-xs mx-auto text-center space-y-2">
+                  <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center text-xl">🩺</div>
+                  <p class="font-bold text-slate-700 text-sm">No nursing stations found</p>
+                  <p class="text-xs text-slate-400">Try adjusting your filters or click below to configure an intake desk.</p>
+                  <button (click)="openModal()" class="mt-2 text-xs font-bold text-teal-600 hover:text-teal-700 underline">
+                    + Add Station Desk
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Add Station Modal -->
+  @if (showModal()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-3xl max-w-md w-full p-7 shadow-2xl border border-slate-100">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-5">
+          <div>
+            <h3 class="text-lg font-bold text-slate-800">Add Nursing Station Desk</h3>
+            <p class="text-xs text-slate-400">Configure triage reception point and floor mapping</p>
+          </div>
+          <button (click)="showModal.set(false)" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+        </div>
+
+        <div class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Desk / Station Name *</label>
+            <input type="text" [(ngModel)]="newStation.stationName" placeholder="Desk 1 - Triage Intake" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Assigned Department</label>
+            <select [(ngModel)]="newStation.departmentId" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500 bg-white">
+              <option [value]="undefined">Unassigned / General Reception</option>
+              @for (dept of departments(); track dept.id) {
+                <option [value]="dept.id">{{ dept.name }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Floor Location *</label>
+            <input type="text" [(ngModel)]="newStation.locationFloor" placeholder="Floor 1, West Wing" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-7">
+          <button (click)="showModal.set(false)" [disabled]="isSubmitting()" class="px-4 py-2 border rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+          <button (click)="saveStation()" [disabled]="isSubmitting()" 
+                  class="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md shadow-teal-600/20 transition flex items-center gap-2">
+            @if (isSubmitting()) {
+              <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span>Saving...</span>
+            } @else {
+              <span>Save Station</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Edit Station Modal -->
+  @if (editingStationId()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-3xl max-w-md w-full p-7 shadow-2xl border border-slate-100">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-5">
+          <div>
+            <h3 class="text-lg font-bold text-slate-800">Edit Nursing Station</h3>
+            <p class="text-xs text-slate-400">Update desk name, assigned department, and status</p>
+          </div>
+          <button (click)="editingStationId.set(null)" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+        </div>
+
+        <div class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Desk / Station Name</label>
+            <input type="text" [(ngModel)]="editStation.stationName" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Department</label>
+            <select [(ngModel)]="editStation.departmentId" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500 bg-white">
+              <option [value]="undefined">Unassigned / General</option>
+              @for (dept of departments(); track dept.id) {
+                <option [value]="dept.id">{{ dept.name }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Floor Location</label>
+            <input type="text" [(ngModel)]="editStation.locationFloor" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div class="flex items-center gap-2 pt-2">
+            <input type="checkbox" id="stationIsActive" [(ngModel)]="editStation.isActive" class="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-slate-300">
+            <label for="stationIsActive" class="text-xs font-bold text-slate-700 cursor-pointer select-none">Desk is Active</label>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-7">
+          <button (click)="editingStationId.set(null)" [disabled]="isSubmitting()" class="px-4 py-2 border rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+          <button (click)="updateStation()" [disabled]="isSubmitting()" 
+                  class="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md shadow-teal-600/20 transition flex items-center gap-2">
+            @if (isSubmitting()) {
+              <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span>Updating...</span>
+            } @else {
+              <span>Save Changes</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
