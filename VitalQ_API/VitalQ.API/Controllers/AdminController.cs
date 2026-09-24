@@ -22,6 +22,16 @@ public class AdminController : ControllerBase
     // ==========================================
 
     /// <summary>
+    /// List all staff and admin accounts with their credentials (GET /api/admin/users).
+    /// </summary>
+    [HttpGet("users")]
+    public async Task<IActionResult> GetStaffUsers()
+    {
+        var users = await _adminService.GetAllStaffUsersAsync();
+        return Ok(users);
+    }
+
+    /// <summary>
     /// Create an Admin or Staff user account (POST /api/admin/users).
     /// </summary>
     [HttpPost("users")]
@@ -39,6 +49,27 @@ public class AdminController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "An error occurred while creating the user.", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Update a staff or admin user account (PUT /api/admin/users/{id}).
+    /// </summary>
+    [HttpPut("users/{id}")]
+    public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserRequest request)
+    {
+        try
+        {
+            var user = await _adminService.UpdateUserAsync(id, request);
+            return Ok(user);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred while updating the user.", details = ex.Message });
         }
     }
 

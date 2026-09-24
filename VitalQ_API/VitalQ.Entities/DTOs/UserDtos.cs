@@ -13,6 +13,7 @@ public class UserResponse
 {
     public Guid Id { get; set; }
     public string Username { get; set; } = null!;
+    public string Password { get; set; } = null!;
     public string FullName { get; set; } = null!;
     public string PhoneNumber { get; set; } = null!;
     public string Role { get; set; } = null!;              // "Admin", "Doctor", "Nurse", "Patient"
@@ -106,6 +107,8 @@ public class UpdateUserRequest
 
     [Required, MaxLength(20)]
     public string Role { get; set; } = null!;
+
+    public string? Password { get; set; }
 
     public bool IsActive { get; set; }
 }
