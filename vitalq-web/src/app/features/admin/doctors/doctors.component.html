@@ -1,0 +1,355 @@
+<!-- ========================================================================= -->
+<!-- VITALQ DOCTOR FLEET & ROSTER MANAGEMENT                                   -->
+<!-- Physician profiles, room numbers, credentials, and live availability      -->
+<!-- ========================================================================= -->
+<div class="p-6 sm:p-8 space-y-6 max-w-7xl mx-auto">
+  
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">Doctor Fleet & Roster</h2>
+      <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Manage physician profiles, assigned consultation rooms, and on-duty availability</p>
+    </div>
+    <button (click)="openAddModal()" 
+            class="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white rounded-xl font-bold text-sm shadow-md shadow-teal-600/20 transition flex items-center gap-2 shrink-0">
+      <span>+</span>
+      <span>Add Doctor</span>
+    </button>
+  </div>
+
+  <!-- Standardized Search & Multi-Filter Toolbar -->
+  <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5">
+    <div class="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
+      <!-- Search Input -->
+      <div class="relative flex-1">
+        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <input type="text" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" 
+               placeholder="Search by name, specialty, room, username..."
+               class="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50/50">
+      </div>
+
+      <!-- Department Filter Selector -->
+      <select [ngModel]="selectedDepartmentId()" (ngModelChange)="selectedDepartmentId.set($event)"
+              class="px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm bg-slate-50/50 focus:ring-2 focus:ring-teal-500">
+        <option value="all">All Departments</option>
+        @for (dept of departments(); track dept.id) {
+          <option [value]="dept.id">{{ dept.name }}</option>
+        }
+      </select>
+    </div>
+
+    <!-- Status Filter Pills -->
+    <div class="flex items-center gap-1.5 self-start md:self-auto">
+      <button (click)="selectedStatus.set('all')"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+              [ngClass]="selectedStatus() === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+        All ({{ doctors().length }})
+      </button>
+      <button (click)="selectedStatus.set('Available')"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              [ngClass]="selectedStatus() === 'Available' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-300"></span> Available
+      </button>
+      <button (click)="selectedStatus.set('OnLeave')"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              [ngClass]="selectedStatus() === 'OnLeave' ? 'bg-amber-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-300"></span> On Leave
+      </button>
+    </div>
+  </div>
+
+  <!-- Responsive Data Table -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-sm min-w-[700px]">
+        <thead>
+          <tr class="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-xs uppercase tracking-wider">
+            <th class="py-3.5 px-5">Doctor Profile</th>
+            <th class="py-3.5 px-5">Department</th>
+            <th class="py-3.5 px-5">Room #</th>
+            <th class="py-3.5 px-5">Login Credentials</th>
+            <th class="py-3.5 px-5">Avg Consult</th>
+            <th class="py-3.5 px-5">Duty Status</th>
+            <th class="py-3.5 px-5 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          @for (doc of filteredDoctors(); track doc.id) {
+            <tr class="hover:bg-slate-50/80 transition">
+              <!-- Name & Monogram Avatar -->
+              <td class="py-4 px-5">
+                <div class="flex items-center gap-3">
+                  <div class="relative w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center font-bold text-teal-800 text-xs shrink-0">
+                    {{ doc.doctorName.substring(0, 2).toUpperCase() }}
+                    <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white"
+                          [ngClass]="doc.status === 'Available' ? 'bg-emerald-500' : 'bg-amber-500'"></span>
+                  </div>
+                  <div>
+                    <p class="font-bold text-slate-800 leading-tight">{{ doc.doctorName }}</p>
+                    <p class="text-xs text-slate-400 mt-0.5">{{ doc.specialization }}</p>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Clinical Department -->
+              <td class="py-4 px-5">
+                <span class="px-2.5 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded-lg text-xs font-semibold">
+                  {{ doc.departmentName }}
+                </span>
+              </td>
+
+              <!-- Room Number -->
+              <td class="py-4 px-5 font-mono text-slate-700 font-bold">{{ doc.roomNumber }}</td>
+
+              <!-- Credentials -->
+              <td class="py-4 px-5">
+                <div class="space-y-1">
+                  <!-- Username -->
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">User:</span>
+                    <span class="font-mono text-xs font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200/80">{{ doc.username }}</span>
+                    <button type="button" (click)="copyToClipboard(doc.username, doc.id + '-u')" title="Copy username" class="text-slate-400 hover:text-teal-600 transition">
+                      @if (copiedText() === doc.id + '-u') {
+                        <span class="text-[10px] text-teal-600 font-bold">✓</span>
+                      } @else {
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      }
+                    </button>
+                  </div>
+                  <!-- Password -->
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Pass:</span>
+                    <span class="font-mono text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200/80">
+                      {{ visiblePasswords()[doc.id] ? doc.password : '••••••••' }}
+                    </span>
+                    <button type="button" (click)="togglePasswordVisibility(doc.id)" title="Toggle password visibility" class="text-slate-400 hover:text-teal-600 transition">
+                      @if (visiblePasswords()[doc.id]) {
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                        </svg>
+                      } @else {
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      }
+                    </button>
+                    <button type="button" (click)="copyToClipboard(doc.password, doc.id + '-p')" title="Copy password" class="text-slate-400 hover:text-teal-600 transition">
+                      @if (copiedText() === doc.id + '-p') {
+                        <span class="text-[10px] text-teal-600 font-bold">✓</span>
+                      } @else {
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      }
+                    </button>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Average Consultation Duration -->
+              <td class="py-4 px-5 text-slate-600">{{ doc.avgConsultationMinutes }} mins</td>
+
+              <!-- Duty Status Badge -->
+              <td class="py-4 px-5">
+                <span [ngClass]="{
+                  'bg-emerald-100 text-emerald-700 border-emerald-200': doc.status === 'Available',
+                  'bg-amber-100 text-amber-700 border-amber-200': doc.status === 'OnLeave',
+                  'bg-red-100 text-red-700 border-red-200': doc.status === 'Busy'
+                }" class="px-2.5 py-1 rounded-full text-xs font-bold border inline-flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full" [ngClass]="doc.status === 'Available' ? 'bg-emerald-500' : 'bg-amber-500'"></span>
+                  {{ doc.status }}
+                </span>
+              </td>
+
+              <!-- Actions -->
+              <td class="py-4 px-5 text-right space-x-2">
+                <button (click)="openEditModal(doc)"
+                        class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-teal-50 hover:text-teal-700 text-slate-700 font-semibold transition">
+                  Edit
+                </button>
+                <button (click)="toggleStatus(doc)" [title]="doc.status === 'Available' ? 'Mark On Leave' : 'Mark Available'"
+                        class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold transition">
+                  {{ doc.status === 'Available' ? 'Set On Leave' : 'Set Available' }}
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7" class="py-14 text-center">
+                <div class="max-w-xs mx-auto text-center space-y-2">
+                  <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center text-xl">🩺</div>
+                  <p class="font-bold text-slate-700 text-sm">No doctors match your criteria</p>
+                  <p class="text-xs text-slate-400">Try adjusting your search query or department filter, or add a new doctor profile.</p>
+                  <button (click)="openAddModal()" class="mt-2 text-xs font-bold text-teal-600 hover:text-teal-700 underline">
+                    + Register New Doctor
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Add Doctor Modal -->
+  @if (showModal()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-3xl max-w-lg w-full p-7 shadow-2xl border border-slate-100">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-5">
+          <div>
+            <h3 class="text-lg font-bold text-slate-800">Register New Doctor</h3>
+            <p class="text-xs text-slate-400">Creates credentials and attaches doctor profile</p>
+          </div>
+          <button (click)="showModal.set(false)" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+        </div>
+
+        <div class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Full Name *</label>
+            <input type="text" [(ngModel)]="newDoc.fullName" placeholder="Dr. John Smith" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">Username *</label>
+              <input type="text" [(ngModel)]="newDoc.username" placeholder="docsmith" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500 font-mono">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">Password *</label>
+              <input type="password" [(ngModel)]="newDoc.password" placeholder="••••••••" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500 font-mono">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">Phone Number</label>
+              <input type="text" [(ngModel)]="newDoc.phoneNumber" placeholder="9876543210" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">Department *</label>
+              <select [(ngModel)]="newDoc.departmentId" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500 bg-white">
+                <option value="" disabled selected>Select Department</option>
+                @for (dept of departments(); track dept.id) {
+                  <option [value]="dept.id">{{ dept.name }} ({{ dept.code }})</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">Specialization</label>
+              <input type="text" [(ngModel)]="newDoc.specialization" placeholder="Cardiologist" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">Room Number</label>
+              <input type="text" [(ngModel)]="newDoc.roomNumber" placeholder="Room 101" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Avg Consultation Duration (Minutes)</label>
+            <input type="number" [(ngModel)]="newDoc.avgConsultationMinutes" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-7">
+          <button (click)="showModal.set(false)" [disabled]="isSubmitting()" class="px-4 py-2 border rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+          <button (click)="saveDoctor()" [disabled]="isSubmitting()" 
+                  class="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md shadow-teal-600/20 transition flex items-center gap-2">
+            @if (isSubmitting()) {
+              <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span>Saving...</span>
+            } @else {
+              <span>Save Doctor</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Edit Doctor Modal -->
+  @if (editingDoctorId()) {
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-3xl max-w-lg w-full p-7 shadow-2xl border border-slate-100">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-5">
+          <div>
+            <h3 class="text-lg font-bold text-slate-800">Edit Doctor Profile</h3>
+            <p class="text-xs text-slate-400">Update clinic details and consultation settings</p>
+          </div>
+          <button (click)="editingDoctorId.set(null)" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+        </div>
+
+        <div class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Doctor Name</label>
+            <input type="text" [(ngModel)]="editDoc.fullName" placeholder="Doctor's name" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">Department</label>
+              <select [(ngModel)]="editDoc.departmentId" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500 bg-white">
+                @for (dept of departments(); track dept.id) {
+                  <option [value]="dept.id">{{ dept.name }} ({{ dept.code }})</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">Specialization</label>
+              <input type="text" [(ngModel)]="editDoc.specialization" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">Room Number</label>
+              <input type="text" [(ngModel)]="editDoc.roomNumber" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">Duty Status</label>
+              <select [(ngModel)]="editDoc.status" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500 bg-white">
+                <option value="Available">Available</option>
+                <option value="OnLeave">OnLeave</option>
+                <option value="Busy">Busy</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Avg Consultation Duration (Minutes)</label>
+            <input type="number" [(ngModel)]="editDoc.avgConsultationMinutes" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+          </div>
+
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
+            <label class="block text-xs font-bold text-slate-700">Reset Password (Optional)</label>
+            <input type="text" [(ngModel)]="editDoc.password" placeholder="Leave blank to keep existing password" class="w-full px-3 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500 bg-white font-mono">
+            <p class="text-[11px] text-slate-400">Enter a new password if the doctor forgot or needs new credentials.</p>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-7">
+          <button (click)="editingDoctorId.set(null)" [disabled]="isSubmitting()" class="px-4 py-2 border rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+          <button (click)="updateDoctor()" [disabled]="isSubmitting()" 
+                  class="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md shadow-teal-600/20 transition flex items-center gap-2">
+            @if (isSubmitting()) {
+              <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span>Updating...</span>
+            } @else {
+              <span>Save Changes</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
