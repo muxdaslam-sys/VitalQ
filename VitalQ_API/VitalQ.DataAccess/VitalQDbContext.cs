@@ -90,8 +90,6 @@ public partial class VitalQDbContext : DbContext
 
             entity.HasIndex(e => e.UserId, "UQ__Patients__1788CC4DDB52AD00").IsUnique();
 
-            entity.HasIndex(e => e.PhoneNumber, "UQ__Patients__85FB4E38C4051772").IsUnique();
-
             entity.HasIndex(e => e.MedicalRecordNumber, "UQ__Patients__8E549ED0439BE140").IsUnique();
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
