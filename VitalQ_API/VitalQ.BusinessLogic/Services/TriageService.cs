@@ -1,18 +1,16 @@
 using VitalQ.BusinessLogic.Interfaces;
-using VitalQ.DataAccess.Repositories;
+using VitalQ.DataAccess;
 using VitalQ.Entities.DTOs;
 
 namespace VitalQ.BusinessLogic.Services;
 
 public class TriageService : ITriageService
 {
-    private readonly IQueueTokenRepository _tokenRepo;
-    private readonly IPatientRepository _patientRepo;
+    private readonly VitalQDbContext _context;
 
-    public TriageService(IQueueTokenRepository tokenRepo, IPatientRepository patientRepo)
+    public TriageService(VitalQDbContext context)
     {
-        _tokenRepo = tokenRepo;
-        _patientRepo = patientRepo;
+        _context = context;
     }
 
     public Task<QueueTokenResponse> RecordTriageAsync(Guid tokenId, Guid nurseUserId, TriageRequest request)

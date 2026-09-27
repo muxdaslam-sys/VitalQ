@@ -1,16 +1,16 @@
 using VitalQ.BusinessLogic.Interfaces;
-using VitalQ.DataAccess.Repositories;
+using VitalQ.DataAccess;
 using VitalQ.Entities.DTOs;
 
 namespace VitalQ.BusinessLogic.Services;
 
 public class QueueService : IQueueService
 {
-    private readonly IQueueTokenRepository _tokenRepo;
+    private readonly VitalQDbContext _context;
 
-    public QueueService(IQueueTokenRepository tokenRepo)
+    public QueueService(VitalQDbContext context)
     {
-        _tokenRepo = tokenRepo;
+        _context = context;
     }
 
     public Task<IEnumerable<QueueTokenResponse>> GetDoctorQueueAsync(Guid doctorId)
