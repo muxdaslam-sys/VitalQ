@@ -117,3 +117,55 @@ public class UpdatePatientRequest
     [Required, MaxLength(10)]
     public string Gender { get; set; } = null!;
 }
+
+/// <summary>
+/// Patient self-registration request (Phone + DOB credentials).
+/// </summary>
+public class SelfRegisterRequest
+{
+    [Required, MaxLength(100)]
+    public string FullName { get; set; } = null!;
+
+    [Required, MaxLength(20), Phone]
+    public string PhoneNumber { get; set; } = null!;
+
+    [Required]
+    public DateOnly DateOfBirth { get; set; }
+
+    [Required, MaxLength(10)]
+    public string Gender { get; set; } = "Male";
+}
+
+/// <summary>
+/// Walk-in registration at the nursing station desk.
+/// </summary>
+public class WalkInRegisterRequest
+{
+    [Required, MaxLength(100)]
+    public string FullName { get; set; } = null!;
+
+    [Required, MaxLength(20), Phone]
+    public string PhoneNumber { get; set; } = null!;
+
+    [Required]
+    public DateOnly DateOfBirth { get; set; }
+
+    [Required, MaxLength(10)]
+    public string Gender { get; set; } = "Male";
+}
+
+/// <summary>
+/// Logged-in patient adds a child or dependent family member.
+/// </summary>
+public class AddFamilyMemberRequest
+{
+    [Required, MaxLength(100)]
+    public string FullName { get; set; } = null!;
+
+    [Required]
+    public DateOnly DateOfBirth { get; set; }
+
+    [Required, MaxLength(10)]
+    public string Gender { get; set; } = "Male";
+}
+
