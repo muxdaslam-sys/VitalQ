@@ -8,7 +8,6 @@ using VitalQ.API.Hubs;
 using VitalQ.BusinessLogic.Interfaces;
 using VitalQ.BusinessLogic.Services;
 using VitalQ.DataAccess;
-using VitalQ.DataAccess.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,18 +61,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// 4. Data Access Repositories (DAL)
-builder.Services.AddScoped<IQueueTokenRepository, QueueTokenRepository>();
-builder.Services.AddScoped<IPatientRepository, PatientRepository>();
-builder.Services.AddScoped<IDoctorRepository, DoctorRepository>();
-builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
-
-// 5. Business Logic Services (BLL)
+// 4. Business Logic Services (BLL)
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<ITriageService, TriageService>();
 builder.Services.AddScoped<IQueueService, QueueService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IPatientService, PatientService>();
 
 // 6. SignalR & Background Aging Worker
 builder.Services.AddSignalR();
