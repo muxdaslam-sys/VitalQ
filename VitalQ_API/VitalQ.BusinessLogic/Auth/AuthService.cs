@@ -73,7 +73,7 @@ public class AuthService : IAuthService
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
-            MedicalRecordNumber = $"MRN-{DateTime.UtcNow:yyyyMMdd}-{Random.Shared.Next(1000, 9999)}",
+            MedicalRecordNumber = $"MRN-{DateTime.UtcNow:yyyyMMdd}-{DateTime.UtcNow:HHmmss}01",
             FullName = request.FullName,
             PhoneNumber = request.PhoneNumber,
             DateOfBirth = request.DateOfBirth,
