@@ -88,7 +88,11 @@ public partial class VitalQDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Patients__3214EC07FC77F5AF");
 
-            entity.HasIndex(e => e.UserId, "UQ__Patients__1788CC4DDB52AD00").IsUnique();
+            entity.HasIndex(e => e.UserId, "UQ_Patients_UserId")
+                .IsUnique()
+                .HasFilter("[UserId] IS NOT NULL");
+
+            entity.HasIndex(e => e.PhoneNumber, "IX_Patients_PhoneNumber");
 
             entity.HasIndex(e => e.MedicalRecordNumber, "UQ__Patients__8E549ED0439BE140").IsUnique();
 
