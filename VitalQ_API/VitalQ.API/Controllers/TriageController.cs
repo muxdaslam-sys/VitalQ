@@ -21,16 +21,6 @@ public class TriageController : ControllerBase
     }
 
     /// <summary>
-    /// Search arriving patient by token number or phone number (Role: Nurse, Admin).
-    /// </summary>
-    [HttpGet("patients/search")]
-    public async Task<IActionResult> SearchPatients([FromQuery] string query)
-    {
-        var results = await _triageService.SearchPatientsAsync(query);
-        return Ok(results);
-    }
-
-    /// <summary>
     /// Emergency walk-in token creation without prior booking (Role: Nurse, Admin).
     /// </summary>
     [HttpPost("tokens/walk-in")]
