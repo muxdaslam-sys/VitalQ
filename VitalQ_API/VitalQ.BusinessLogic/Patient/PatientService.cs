@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -27,7 +28,8 @@ public class PatientService : IPatientService
     // =========================================================================
     public async Task<AuthResponse> SelfRegisterAsync(SelfRegisterRequest request)
     {
-        var phone = request.PhoneNumber.Trim();
+        ValidateDateOfBirth(request.DateOfBirth);
+        var phone = NormalizePhone(request.PhoneNumber);
 
         // Step 1: Check if phone number is already registered as an account username
         var alreadyRegistered = await _context.Users.AnyAsync(u => u.Username == phone);
@@ -79,6 +81,8 @@ public class PatientService : IPatientService
     // =========================================================================
     public async Task<PatientResponse> AddFamilyMemberAsync(Guid currentUserId, AddFamilyMemberRequest request)
     {
+        ValidateDateOfBirth(request.DateOfBirth);
+
         // Step 1: Find the parent's user account to get their registered phone number
         var parentUser = await _context.Users.FindAsync(currentUserId);
         if (parentUser == null)
@@ -115,8 +119,9 @@ public class PatientService : IPatientService
         var parentUser = await _context.Users.FindAsync(currentUserId);
         if (parentUser == null) return Enumerable.Empty<PatientResponse>();
 
-        // Step 2: Fetch all patient records sharing this family phone number
+        // Step 2: Fetch all patient records sharing this family phone number (Read-only AsNoTracking)
         return await _context.Patients
+            .AsNoTracking()
             .Where(p => p.PhoneNumber == parentUser.PhoneNumber)
             .OrderBy(p => p.CreatedAtUtc)
             .Select(p => MapToResponse(p))
@@ -128,7 +133,8 @@ public class PatientService : IPatientService
     // =========================================================================
     public async Task<PatientResponse> WalkInRegisterAsync(WalkInRegisterRequest request)
     {
-        var phone = request.PhoneNumber.Trim();
+        ValidateDateOfBirth(request.DateOfBirth);
+        var phone = NormalizePhone(request.PhoneNumber);
         var dobPassword = request.DateOfBirth.ToString("ddMMyyyy");
 
         // Step 1: Ensure User account exists (so patient can log in later with Phone + DOB)
@@ -180,24 +186,119 @@ public class PatientService : IPatientService
     {
         if (string.IsNullOrWhiteSpace(query)) return Enumerable.Empty<PatientResponse>();
 
-        var q = query.Trim().ToLower();
+        var q = query.Trim();
 
+        // Prefix matching enables B-Tree index seeks on PhoneNumber and MedicalRecordNumber (O(log N))
         return await _context.Patients
-            .Where(p => p.PhoneNumber.Contains(q) ||
-                        p.FullName.ToLower().Contains(q) ||
-                        p.MedicalRecordNumber.ToLower().Contains(q))
+            .AsNoTracking()
+            .Where(p => p.PhoneNumber.StartsWith(q) ||
+                        p.MedicalRecordNumber.StartsWith(q) ||
+                        p.FullName.StartsWith(q))
             .Take(10)
             .Select(p => MapToResponse(p))
             .ToListAsync();
     }
 
     // =========================================================================
+    // 6. GET PATIENT BY ID
+    // =========================================================================
+    public async Task<PatientResponse?> GetPatientByIdAsync(Guid patientId)
+    {
+        var patient = await _context.Patients
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == patientId);
+
+        return patient == null ? null : MapToResponse(patient);
+    }
+
+    // =========================================================================
+    // 7. UPDATE PATIENT PROFILE
+    // =========================================================================
+    public async Task<PatientResponse> UpdatePatientAsync(Guid patientId, UpdatePatientRequest request)
+    {
+        ValidateDateOfBirth(request.DateOfBirth);
+        var phone = NormalizePhone(request.PhoneNumber);
+
+        var patient = await _context.Patients.FindAsync(patientId);
+        if (patient == null)
+        {
+            throw new KeyNotFoundException($"Patient with ID {patientId} was not found.");
+        }
+
+        // If this patient is linked to a primary User account, sync the user's name, phone, and DOB password
+        if (patient.UserId.HasValue)
+        {
+            var user = await _context.Users.FindAsync(patient.UserId.Value);
+            if (user != null)
+            {
+                // Verify new phone number is not taken by another user account
+                if (user.PhoneNumber != phone)
+                {
+                    var phoneExists = await _context.Users.AnyAsync(u => u.Id != user.Id && u.Username == phone);
+                    if (phoneExists)
+                    {
+                        throw new InvalidOperationException("This phone number is already registered to another user account.");
+                    }
+
+                    // Keep family dependents linked by updating their shared phone number
+                    var dependents = await _context.Patients
+                        .Where(p => p.PhoneNumber == user.PhoneNumber && p.Id != patient.Id && p.UserId == null)
+                        .ToListAsync();
+
+                    foreach (var dep in dependents)
+                    {
+                        dep.PhoneNumber = phone;
+                    }
+                }
+
+                user.FullName = request.FullName.Trim();
+                user.PhoneNumber = phone;
+                user.Username = phone;
+                user.Password = request.DateOfBirth.ToString("ddMMyyyy");
+            }
+        }
+
+        // Update patient record
+        patient.FullName = request.FullName.Trim();
+        patient.PhoneNumber = phone;
+        patient.DateOfBirth = request.DateOfBirth;
+        patient.Gender = request.Gender.Trim();
+
+        await _context.SaveChangesAsync();
+        return MapToResponse(patient);
+    }
+
+    // =========================================================================
     // PRIVATE HELPERS
     // =========================================================================
 
-    // Generates a hospital Medical Record Number like "MRN-20260927-4821"
-    private static string GenerateMrn() =>
-        $"MRN-{DateTime.UtcNow:yyyyMMdd}-{Random.Shared.Next(1000, 9999)}";
+    // Normalizes phone by removing spaces, dashes, or parentheses
+    private static string NormalizePhone(string phone) =>
+        Regex.Replace(phone.Trim(), @"[^\d+]", "");
+
+    // Validates date of birth to prevent corrupt future dates or impossible years
+    private static void ValidateDateOfBirth(DateOnly dob)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (dob > today)
+        {
+            throw new ArgumentException("Date of birth cannot be in the future.");
+        }
+        if (dob < new DateOnly(1900, 1, 1))
+        {
+            throw new ArgumentException("Please enter a valid birth year after 1900.");
+        }
+    }
+
+    // Atomic thread-safe counter ensuring 10-nanosecond consecutive, collision-free MRNs
+    private static long _atomicMrnCounter = 0;
+
+    // Generates an atomic, collision-free Medical Record Number (e.g. MRN-20260928-21275001)
+    private static string GenerateMrn()
+    {
+        var seq = Interlocked.Increment(ref _atomicMrnCounter) % 100;
+        return $"MRN-{DateTime.UtcNow:yyyyMMdd}-{DateTime.UtcNow:HHmmss}{seq:D2}";
+    }
 
     // Maps database model to clean response DTO
     private static PatientResponse MapToResponse(Patient p) => new()

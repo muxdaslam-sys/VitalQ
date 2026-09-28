@@ -28,9 +28,22 @@ public class PatientsController : ControllerBase
         try
         {
             var result = await _patientService.SelfRegisterAsync(request);
+
+            // Set HttpOnly cookie for seamless token refresh
+            if (!string.IsNullOrEmpty(result.RefreshToken))
+            {
+                Response.Cookies.Append("refreshToken", result.RefreshToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTime.UtcNow.AddDays(7)
+                });
+            }
+
             return Ok(result);
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
         {
             return BadRequest(new { message = ex.Message });
         }
@@ -87,8 +100,15 @@ public class PatientsController : ControllerBase
     [HttpPost("walk-in")]
     public async Task<IActionResult> WalkInRegister([FromBody] WalkInRegisterRequest request)
     {
-        var result = await _patientService.WalkInRegisterAsync(request);
-        return Ok(result);
+        try
+        {
+            var result = await _patientService.WalkInRegisterAsync(request);
+            return Ok(result);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -101,5 +121,76 @@ public class PatientsController : ControllerBase
     {
         var results = await _patientService.SearchPatientsAsync(query);
         return Ok(results);
+    }
+
+    /// <summary>
+    /// 6. Get Patient Profile by ID (Role: Nurse, Admin, Doctor, Patient)
+    /// GET /api/patients/{id:guid}
+    /// </summary>
+    [Authorize(Roles = "Nurse,Admin,Doctor,Patient")]
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById([FromRoute] Guid id)
+    {
+        // If caller is a Patient, ensure they can only view their own or their family's records
+        if (User.IsInRole("Patient"))
+        {
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdStr, out var currentUserId))
+            {
+                return Unauthorized();
+            }
+
+            var family = await _patientService.GetMyFamilyMembersAsync(currentUserId);
+            if (!family.Any(f => f.Id == id))
+            {
+                return Forbid();
+            }
+        }
+
+        var patient = await _patientService.GetPatientByIdAsync(id);
+        if (patient == null)
+        {
+            return NotFound(new { message = $"Patient with ID {id} was not found." });
+        }
+        return Ok(patient);
+    }
+
+    /// <summary>
+    /// 7. Update Patient Profile (Role: Patient, Nurse, Admin)
+    /// PUT /api/patients/{id:guid}
+    /// </summary>
+    [Authorize(Roles = "Patient,Nurse,Admin")]
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update([FromRoute] Guid id, [FromBody] UpdatePatientRequest request)
+    {
+        // If caller is a Patient, ensure they can only update their own or their family's records
+        if (User.IsInRole("Patient"))
+        {
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdStr, out var currentUserId))
+            {
+                return Unauthorized();
+            }
+
+            var family = await _patientService.GetMyFamilyMembersAsync(currentUserId);
+            if (!family.Any(f => f.Id == id))
+            {
+                return Forbid();
+            }
+        }
+
+        try
+        {
+            var result = await _patientService.UpdatePatientAsync(id, request);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

@@ -18,4 +18,10 @@ public interface IPatientService
 
     // 5. Nurse searches patients by Phone, Name, or MRN
     Task<IEnumerable<PatientResponse>> SearchPatientsAsync(string query);
+
+    // 6. Get patient profile by ID
+    Task<PatientResponse?> GetPatientByIdAsync(Guid patientId);
+
+    // 7. Update patient profile
+    Task<PatientResponse> UpdatePatientAsync(Guid patientId, UpdatePatientRequest request);
 }
