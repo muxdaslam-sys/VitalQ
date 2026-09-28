@@ -23,7 +23,6 @@
   <ItemGroup>
     <ProjectReference Include="..\VitalQ.BusinessLogic\VitalQ.BusinessLogic.csproj" />
     <ProjectReference Include="..\VitalQ.DataAccess\VitalQ.DataAccess.csproj" />
-    <ProjectReference Include="..\VitalQ.Entities\VitalQ.Entities.csproj" />
   </ItemGroup>
 
 </Project>

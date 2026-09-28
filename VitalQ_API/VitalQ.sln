@@ -9,8 +9,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VitalQ.BusinessLogic", "Vit
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VitalQ.DataAccess", "VitalQ.DataAccess\VitalQ.DataAccess.csproj", "{8B784645-2904-4A36-9280-199265D95741}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VitalQ.Entities", "VitalQ.Entities\VitalQ.Entities.csproj", "{4EAE153F-0ECF-42CD-9BF5-065D27C8736C}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,18 +55,6 @@ Global
 		{8B784645-2904-4A36-9280-199265D95741}.Release|x64.Build.0 = Release|Any CPU
 		{8B784645-2904-4A36-9280-199265D95741}.Release|x86.ActiveCfg = Release|Any CPU
 		{8B784645-2904-4A36-9280-199265D95741}.Release|x86.Build.0 = Release|Any CPU
-		{4EAE153F-0ECF-42CD-9BF5-065D27C8736C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4EAE153F-0ECF-42CD-9BF5-065D27C8736C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4EAE153F-0ECF-42CD-9BF5-065D27C8736C}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{4EAE153F-0ECF-42CD-9BF5-065D27C8736C}.Debug|x64.Build.0 = Debug|Any CPU
-		{4EAE153F-0ECF-42CD-9BF5-065D27C8736C}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{4EAE153F-0ECF-42CD-9BF5-065D27C8736C}.Debug|x86.Build.0 = Debug|Any CPU
-		{4EAE153F-0ECF-42CD-9BF5-065D27C8736C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4EAE153F-0ECF-42CD-9BF5-065D27C8736C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4EAE153F-0ECF-42CD-9BF5-065D27C8736C}.Release|x64.ActiveCfg = Release|Any CPU
-		{4EAE153F-0ECF-42CD-9BF5-065D27C8736C}.Release|x64.Build.0 = Release|Any CPU
-		{4EAE153F-0ECF-42CD-9BF5-065D27C8736C}.Release|x86.ActiveCfg = Release|Any CPU
-		{4EAE153F-0ECF-42CD-9BF5-065D27C8736C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
