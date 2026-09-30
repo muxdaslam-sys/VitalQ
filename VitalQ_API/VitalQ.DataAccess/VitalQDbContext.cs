@@ -49,6 +49,7 @@ public partial class VitalQDbContext : DbContext
             entity.HasKey(e => e.Id).HasName("PK__Doctors__3214EC07F7077CCD");
 
             entity.HasIndex(e => e.UserId, "UQ__Doctors__1788CC4D6EEFBA27").IsUnique();
+            entity.HasIndex(e => new { e.DepartmentId, e.Status }, "IX_Doctors_Dept_Status");
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.AvgConsultationMinutes).HasDefaultValue(10);
@@ -112,6 +113,10 @@ public partial class VitalQDbContext : DbContext
         modelBuilder.Entity<QueueToken>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__QueueTok__3214EC0750657CDB");
+            entity.HasIndex(e => e.TokenNumber, "UQ_TokenNumber").IsUnique();
+            entity.HasIndex(e => new { e.PatientId, e.BookedAtUtc }, "IX_QueueTokens_Patient_Date");
+            entity.HasIndex(e => new { e.DepartmentId, e.Status, e.PriorityScore, e.BookedAtUtc }, "IX_QueueTokens_Dept_Status");
+            entity.HasIndex(e => new { e.DoctorId, e.Status, e.PriorityScore, e.BookedAtUtc }, "IX_QueueTokens_Doctor_Status");
 
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.BookedAtUtc).HasDefaultValueSql("(sysutcdatetime())");

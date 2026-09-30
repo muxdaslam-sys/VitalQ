@@ -11,9 +11,12 @@ using VitalQ.DataAccess;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Database Context
-builder.Services.AddDbContext<VitalQDbContext>(options =>
+// 1. Database Context (Pooled for high-concurrency 100k+ throughput)
+builder.Services.AddDbContextPool<VitalQDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// 1.1 In-Memory Caching for hospital metadata
+builder.Services.AddMemoryCache();
 
 // 2. CORS (Allows Angular http://localhost:4200 to send cookies and connect via WebSockets)
 builder.Services.AddCors(options =>
