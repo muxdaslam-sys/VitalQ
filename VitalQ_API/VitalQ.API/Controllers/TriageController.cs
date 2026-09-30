@@ -12,22 +12,10 @@ namespace VitalQ.API.Controllers;
 public class TriageController : ControllerBase
 {
     private readonly ITriageService _triageService;
-    private readonly IBookingService _bookingService;
 
-    public TriageController(ITriageService triageService, IBookingService bookingService)
+    public TriageController(ITriageService triageService)
     {
         _triageService = triageService;
-        _bookingService = bookingService;
-    }
-
-    /// <summary>
-    /// Emergency walk-in token creation without prior booking (Role: Nurse, Admin).
-    /// </summary>
-    [HttpPost("tokens/walk-in")]
-    public async Task<IActionResult> CreateWalkInToken([FromBody] WalkInTokenRequest request)
-    {
-        var token = await _bookingService.CreateWalkInTokenAsync(request);
-        return Ok(token);
     }
 
     /// <summary>
