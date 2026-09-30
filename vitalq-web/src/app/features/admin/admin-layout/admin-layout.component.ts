@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ============================================================================
  * COMPONENT: AdminLayoutComponent (Hospital Administration Master Shell)
  * ============================================================================
@@ -96,17 +96,17 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
    */
   updateTitle(url: string): void {
     if (url.includes('/doctors')) {
-      this.pageTitle.set('Doctors & Duty Roster');
+      this.pageTitle.set('Doctors');
     } else if (url.includes('/staff')) {
-      this.pageTitle.set('Staff & Clinical Users');
+      this.pageTitle.set('Staff');
     } else if (url.includes('/departments')) {
-      this.pageTitle.set('Departments & Flow Prefixes');
+      this.pageTitle.set('Departments');
     } else if (url.includes('/nursing-stations')) {
-      this.pageTitle.set('Nursing Triage Desks');
+      this.pageTitle.set('Nursing Stations');
     } else if (url.includes('/patients')) {
-      this.pageTitle.set('Patient Directory & History');
+      this.pageTitle.set('Patients');
     } else {
-      this.pageTitle.set('Clinical Overview Dashboard');
+      this.pageTitle.set('Dashboard');
     }
   }
 

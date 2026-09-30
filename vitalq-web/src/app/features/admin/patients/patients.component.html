@@ -7,10 +7,10 @@
   <!-- Page Header -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">Patient Directory & History</h2>
+      <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">Patients</h2>
       <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Historical records of registered outpatients, triage evaluations, and doctor consultations</p>
     </div>
-    <div class="flex items-center gap-2 text-xs font-bold text-slate-500 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-xs">
+    <div class="flex items-center gap-2 text-xs font-bold text-slate-500 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-xs whitespace-nowrap">
       <span>Total Registered:</span>
       <span class="text-teal-700 font-mono text-sm">{{ patients().length }} Patients</span>
     </div>
@@ -32,75 +32,98 @@
     <!-- Gender Filter Chips -->
     <div class="flex items-center gap-1.5 self-start md:self-auto">
       <button (click)="selectedGender.set('all')"
-              class="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap"
               [ngClass]="selectedGender() === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
         All ({{ patients().length }})
       </button>
       <button (click)="selectedGender.set('Male')"
-              class="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap"
               [ngClass]="selectedGender() === 'Male' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
         Male
       </button>
       <button (click)="selectedGender.set('Female')"
-              class="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap"
               [ngClass]="selectedGender() === 'Female' ? 'bg-pink-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
         Female
       </button>
     </div>
   </div>
 
-  <!-- Responsive Data Table -->
+  <!-- Optimized Responsive Data Table (Full Width, Locked Proportions, No Awkward Multiline Wrapping) -->
   <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse text-sm min-w-[700px]">
+      <table class="w-full text-left border-collapse text-sm min-w-[1100px] table-fixed">
+        <colgroup>
+          <col class="w-[18%]">
+          <col class="w-[24%]">
+          <col class="w-[15%]">
+          <col class="w-[10%]">
+          <col class="w-[13%]">
+          <col class="w-[10%]">
+          <col class="w-[10%]">
+        </colgroup>
         <thead>
-          <tr class="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-xs uppercase tracking-wider">
-            <th class="py-3.5 px-5">MRN Code</th>
-            <th class="py-3.5 px-5">Patient Name</th>
-            <th class="py-3.5 px-5">Phone Number</th>
-            <th class="py-3.5 px-5">Gender</th>
-            <th class="py-3.5 px-5">Registered Date</th>
-            <th class="py-3.5 px-5">Total Consults</th>
-            <th class="py-3.5 px-5 text-right">Actions</th>
+          <tr class="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider backdrop-blur-xs">
+            <th class="py-3.5 px-4 whitespace-nowrap">MRN Code</th>
+            <th class="py-3.5 px-4 whitespace-nowrap">Patient Name</th>
+            <th class="py-3.5 px-4 whitespace-nowrap">Phone Number</th>
+            <th class="py-3.5 px-4 whitespace-nowrap text-center">Gender</th>
+            <th class="py-3.5 px-4 whitespace-nowrap">Registered Date</th>
+            <th class="py-3.5 px-4 whitespace-nowrap text-center">Consults</th>
+            <th class="py-3.5 px-4 whitespace-nowrap text-right">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           @for (p of filteredPatients(); track p.id) {
-            <tr class="hover:bg-slate-50/80 transition">
-              <td class="py-4 px-5">
-                <span class="font-mono font-bold text-xs bg-teal-50 text-teal-700 px-2.5 py-1 rounded-lg border border-teal-200">
+            <tr class="odd:bg-white even:bg-slate-50/50 hover:bg-teal-50/30 transition">
+              <!-- MRN Code -->
+              <td class="py-3.5 px-4 whitespace-nowrap">
+                <span class="font-mono font-bold text-xs bg-teal-50 text-teal-700 px-2.5 py-1 rounded-lg border border-teal-200 inline-block">
                   {{ p.medicalRecordNumber }}
                 </span>
               </td>
-              <td class="py-4 px-5">
+
+              <!-- Patient Name -->
+              <td class="py-3.5 px-4 whitespace-nowrap">
                 <div class="flex items-center gap-2.5">
-                  <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0 border border-slate-200">
+                  <div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 font-bold text-xs flex items-center justify-center shrink-0 border border-teal-200">
                     {{ p.fullName.substring(0, 1).toUpperCase() }}
                   </div>
-                  <div>
-                    <p class="font-bold text-slate-800 leading-tight">{{ p.fullName }}</p>
+                  <div class="min-w-0">
+                    <p class="font-bold text-slate-900 leading-tight truncate max-w-[200px]" [title]="p.fullName">{{ p.fullName }}</p>
                     <p class="text-xs text-slate-400 mt-0.5">DOB: {{ p.dateOfBirth | date:'mediumDate' }}</p>
                   </div>
                 </div>
               </td>
-              <td class="py-4 px-5 font-mono text-slate-600 text-xs">{{ p.phoneNumber }}</td>
-              <td class="py-4 px-5 text-slate-600">
-                <span class="text-xs font-semibold px-2 py-0.5 rounded-md"
-                      [ngClass]="p.gender === 'Male' ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'">
+
+              <!-- Phone Number -->
+              <td class="py-3.5 px-4 font-mono text-slate-600 text-xs whitespace-nowrap">{{ p.phoneNumber }}</td>
+
+              <!-- Gender -->
+              <td class="py-3.5 px-4 text-center whitespace-nowrap">
+                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full border inline-block"
+                      [ngClass]="p.gender === 'Male' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-pink-50 text-pink-700 border-pink-200'">
                   {{ p.gender }}
                 </span>
               </td>
-              <td class="py-4 px-5 text-slate-500 text-xs">{{ p.createdAtUtc | date:'mediumDate' }}</td>
-              <td class="py-4 px-5">
+
+              <!-- Registered Date -->
+              <td class="py-3.5 px-4 text-slate-500 text-xs whitespace-nowrap">{{ p.createdAtUtc | date:'mediumDate' }}</td>
+
+              <!-- Total Consults -->
+              <td class="py-3.5 px-4 text-center whitespace-nowrap">
                 <span class="font-mono font-bold text-xs px-2.5 py-0.5 rounded-full"
                       [ngClass]="p.visits.length > 0 ? 'bg-slate-100 text-slate-800' : 'bg-slate-50 text-slate-400'">
                   {{ p.visits.length }} {{ p.visits.length === 1 ? 'visit' : 'visits' }}
                 </span>
               </td>
-              <td class="py-4 px-5 text-right">
+
+              <!-- Actions -->
+              <td class="py-3.5 px-4 text-right whitespace-nowrap shrink-0">
                 <button (click)="openHistory(p)" 
-                        class="px-3.5 py-1.5 bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-700 text-xs font-bold rounded-lg transition border border-slate-200">
-                  View Visits
+                        class="px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-xs transition inline-flex items-center gap-1.5 shadow-2xs whitespace-nowrap shrink-0">
+                  <span>📋</span>
+                  <span>View Visits</span>
                 </button>
               </td>
             </tr>
@@ -120,27 +143,32 @@
     </div>
   </div>
 
-  <!-- Visit History Modal -->
+  <!-- Visit History Modal (Top-Anchored 3-Zone Enterprise Layout, z-[100]) -->
   @if (selectedPatient()) {
-    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-3xl max-w-2xl w-full p-7 shadow-2xl border border-slate-100 max-h-[85vh] flex flex-col">
-        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
-          <div>
-            <div class="flex items-center gap-2">
-              <h3 class="text-lg font-bold text-slate-800">{{ selectedPatient()?.fullName }}</h3>
-              <span class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">{{ selectedPatient()?.gender }}</span>
+    <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-start justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+      <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden mt-6 sm:mt-10 mb-8 max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+        <!-- 1. High-Contrast Header Bar -->
+        <div class="px-6 py-4 bg-slate-100 border-b border-slate-200 flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center text-base shadow-xs">👤</div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-base font-bold text-slate-900 leading-tight">{{ selectedPatient()?.fullName }}</h3>
+                <span class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700">{{ selectedPatient()?.gender }}</span>
+              </div>
+              <p class="text-xs text-slate-500 font-mono mt-0.5">{{ selectedPatient()?.medicalRecordNumber }} · {{ selectedPatient()?.phoneNumber }}</p>
             </div>
-            <p class="text-xs text-slate-400 font-mono mt-0.5">{{ selectedPatient()?.medicalRecordNumber }} · {{ selectedPatient()?.phoneNumber }}</p>
           </div>
-          <button (click)="closeHistory()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+          <button (click)="closeHistory()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition font-bold text-lg">&times;</button>
         </div>
 
-        <div class="flex-1 overflow-y-auto py-5 space-y-4">
+        <!-- 2. Scrollable Body -->
+        <div class="p-5 sm:p-6 overflow-y-auto space-y-3.5 flex-1">
           @for (v of selectedPatient()?.visits; track v.tokenId) {
-            <div class="p-4 border rounded-2xl bg-slate-50/70 border-slate-200/80 space-y-2">
+            <div class="p-4 border rounded-2xl bg-slate-50/80 border-slate-200 space-y-2">
               <div class="flex items-center justify-between">
                 <span class="font-mono font-bold text-xs bg-teal-100 text-teal-800 px-2.5 py-0.5 rounded-lg border border-teal-200">{{ v.tokenNumber }}</span>
-                <span class="text-xs text-slate-400">{{ v.bookedAtUtc | date:'medium' }}</span>
+                <span class="text-xs text-slate-500">{{ v.bookedAtUtc | date:'medium' }}</span>
               </div>
               <p class="text-xs text-slate-700"><strong>Attending Doctor:</strong> {{ v.doctorName }} ({{ v.departmentName }})</p>
               
@@ -169,8 +197,9 @@
           }
         </div>
 
-        <div class="pt-4 border-t border-slate-100 flex justify-end">
-          <button (click)="closeHistory()" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">
+        <!-- 3. Anchored Action Footer Bar -->
+        <div class="px-6 py-3.5 bg-slate-100/80 border-t border-slate-200 flex justify-end shrink-0">
+          <button (click)="closeHistory()" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition">
             Close
           </button>
         </div>
