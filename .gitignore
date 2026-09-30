@@ -31,3 +31,7 @@ dist/
 .npm/
 .yarn/
 
+## Project state & internal documentation
+PROJECT_STATE.md
+
+
