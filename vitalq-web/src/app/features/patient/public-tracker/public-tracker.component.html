@@ -1,0 +1,124 @@
+<div class="min-h-screen bg-slate-50 flex flex-col font-sans">
+  <!-- Minimalist Clean Top Header -->
+  <header class="bg-white border-b border-slate-200 px-4 sm:px-6 h-16 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-xl bg-teal-600 flex items-center justify-center text-white font-black text-lg shadow-sm">
+        V
+      </div>
+      <div>
+        <h1 class="text-base font-extrabold text-slate-800 leading-none">VitalQ</h1>
+        <span class="text-[10px] text-teal-600 font-bold uppercase tracking-wider">Live Token Tracker</span>
+      </div>
+    </div>
+    <a routerLink="/login" class="px-3.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition">
+      Patient Login &rarr;
+    </a>
+  </header>
+
+  <!-- Main Tracking Container -->
+  <main class="flex-1 max-w-xl w-full mx-auto p-4 sm:p-6 space-y-5">
+    
+    <!-- Token Lookup Input Box -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+      <form (ngSubmit)="onSearch()" class="flex gap-2">
+        <input type="text" [(ngModel)]="tokenInput" name="searchToken" 
+               placeholder="Enter token number (e.g. CARD-104)"
+               class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono uppercase tracking-wider text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50/50 focus:bg-white">
+        <button type="submit" [disabled]="isLoading()"
+                class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition shadow-md shadow-teal-600/20 disabled:opacity-50">
+          Track
+        </button>
+      </form>
+    </div>
+
+    <!-- Loading State -->
+    @if (isLoading()) {
+      <div class="bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm">
+        <div class="inline-block w-8 h-8 border-3 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-xs text-slate-500 mt-2 font-medium">Looking up live queue status...</p>
+      </div>
+    }
+
+    <!-- Error State -->
+    @if (errorMessage()) {
+      <div class="bg-rose-50 border border-rose-200 rounded-2xl p-5 text-rose-800 text-xs">
+        <p class="font-bold">Token Not Found</p>
+        <p class="mt-0.5 text-rose-700">{{ errorMessage() }}</p>
+      </div>
+    }
+
+    <!-- Active Slip Live Status Card -->
+    @if (token() && !isLoading()) {
+      <div class="bg-white rounded-3xl border border-slate-200 shadow-lg overflow-hidden">
+        
+        <!-- Header Banner (State Responsive) -->
+        <div [class]="token()!.status === 'Called' 
+              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white animate-pulse' 
+              : 'bg-slate-900 text-white'"
+             class="p-6 text-center">
+          <span class="text-xs uppercase tracking-widest font-mono text-teal-300">Official OPD Token</span>
+          <div class="text-4xl sm:text-5xl font-mono font-black mt-1 tracking-tight">
+            {{ token()!.tokenNumber }}
+          </div>
+          <p class="text-xs mt-2 text-slate-200">
+            {{ token()!.departmentName }} • Consultation Room {{ token()!.roomNumber || 'TBD' }}
+          </p>
+        </div>
+
+        <!-- DOCTOR SUMMONED (Called) FLASH BANNER -->
+        @if (token()!.status === 'Called') {
+          <div class="bg-emerald-50 border-y border-emerald-200 p-5 text-center">
+            <span class="text-2xl">🔔</span>
+            <h2 class="text-base font-extrabold text-emerald-900 mt-1">PLEASE ENTER CONSULTATION ROOM {{ token()!.roomNumber }} NOW</h2>
+            <p class="text-xs text-emerald-700 mt-0.5 font-medium">
+              Dr. {{ token()!.doctorName }} is calling you inside.
+            </p>
+          </div>
+        }
+
+        <!-- Body Details -->
+        <div class="p-6 space-y-5">
+          <!-- Status Grid -->
+          <div class="grid grid-cols-2 gap-3 text-center">
+            <div class="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+              <span class="text-[10px] uppercase font-bold text-slate-400">Patients Ahead</span>
+              <p class="text-xl font-bold text-slate-800 mt-0.5">
+                {{ token()!.status === 'Called' ? '0 (Now)' : (token()!.patientsAhead || 0) + ' in line' }}
+              </p>
+            </div>
+            <div class="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+              <span class="text-[10px] uppercase font-bold text-slate-400">Estimated Wait</span>
+              <p class="text-xl font-bold text-slate-800 mt-0.5">
+                {{ token()!.status === 'Called' ? 'Inside' : '~' + (token()!.estimatedWaitMinutes || 0) + ' min' }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Doctor & Patient Row -->
+          <div class="space-y-2 text-xs border-t border-slate-100 pt-4">
+            <div class="flex justify-between py-1">
+              <span class="text-slate-400 font-medium">Patient</span>
+              <span class="font-bold text-slate-800">{{ token()!.patientName }}</span>
+            </div>
+            <div class="flex justify-between py-1">
+              <span class="text-slate-400 font-medium">Consulting Doctor</span>
+              <span class="font-bold text-slate-800">Dr. {{ token()!.doctorName }}</span>
+            </div>
+            <div class="flex justify-between py-1">
+              <span class="text-slate-400 font-medium">Current Status</span>
+              <span class="font-bold uppercase px-2 py-0.5 rounded text-[10px]"
+                    [ngClass]="{
+                      'bg-sky-100 text-sky-800': token()!.status === 'Booked',
+                      'bg-amber-100 text-amber-800': token()!.status === 'Waiting',
+                      'bg-emerald-100 text-emerald-800': token()!.status === 'Called',
+                      'bg-purple-100 text-purple-800': token()!.status === 'Completed'
+                    }">
+                {{ token()!.status }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </main>
+</div>

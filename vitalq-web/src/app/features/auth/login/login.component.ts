@@ -70,8 +70,8 @@ export class LoginComponent {
       return;
     }
     this.showQuickTokenModal.set(false);
-    // Navigate to patient live display with token query
-    this.router.navigate(['/patient/dashboard'], { queryParams: { token: token.toUpperCase() } });
+    // Navigate to public live display with token query
+    this.router.navigate(['/track'], { queryParams: { token: token.toUpperCase() } });
   }
 
   onSubmit() {

@@ -25,7 +25,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../../core/services/admin.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { UserResponse, CreateUserRequest, UpdateUserRequest } from '../../../shared/models/admin.model';
+import { StaffUserResponse, CreateUserRequest, UpdateUserRequest } from '../../../shared/models/admin.model';
 
 @Component({
   selector: 'app-staff',
@@ -46,7 +46,7 @@ export class StaffComponent implements OnInit {
   // --------------------------------------------------------------------------
 
   /** Master list of staff accounts loaded from backend */
-  staffList = signal<UserResponse[]>([]);
+  staffList = signal<StaffUserResponse[]>([]);
 
   /** Controls display of the Add Staff User modal */
   showAddModal = signal(false);
@@ -209,7 +209,7 @@ export class StaffComponent implements OnInit {
   /**
    * Pre-populates the edit form with selected user data and opens edit modal.
    */
-  openEditModal(user: UserResponse): void {
+  openEditModal(user: StaffUserResponse): void {
     this.editingStaffId.set(user.id);
     this.editStaff = {
       fullName: user.fullName,
@@ -245,7 +245,7 @@ export class StaffComponent implements OnInit {
   /**
    * Fast toggle between Active and Suspended status without opening a modal.
    */
-  toggleStatus(user: UserResponse): void {
+  toggleStatus(user: StaffUserResponse): void {
     const updatedReq: UpdateUserRequest = {
       fullName: user.fullName,
       phoneNumber: user.phoneNumber,
