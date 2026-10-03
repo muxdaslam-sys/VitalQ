@@ -15,6 +15,8 @@ public partial class Department
 
     public int LastTokenNumber { get; set; }
 
+    public DateOnly? LastTokenDate { get; set; }
+
     public bool IsActive { get; set; }
 
     public DateTime CreatedAtUtc { get; set; }

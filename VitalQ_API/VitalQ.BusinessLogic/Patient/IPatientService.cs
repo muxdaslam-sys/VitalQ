@@ -24,4 +24,7 @@ public interface IPatientService
 
     // 7. Update patient profile
     Task<PatientResponse> UpdatePatientAsync(Guid patientId, UpdatePatientRequest request);
+
+    // 8. Get patient visit history
+    Task<IEnumerable<PatientVisitHistoryDto>> GetPatientVisitHistoryAsync(Guid patientId);
 }

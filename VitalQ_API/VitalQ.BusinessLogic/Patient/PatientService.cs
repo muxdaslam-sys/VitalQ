@@ -269,6 +269,39 @@ public class PatientService : IPatientService
     }
 
     // =========================================================================
+    // 8. GET PATIENT VISIT HISTORY
+    // =========================================================================
+    public async Task<IEnumerable<PatientVisitHistoryDto>> GetPatientVisitHistoryAsync(Guid patientId)
+    {
+        return await _context.QueueTokens
+            .AsNoTracking()
+            .Include(t => t.Department)
+            .Include(t => t.Doctor).ThenInclude(d => d.User)
+            .Include(t => t.TriageAssessment)
+            .Include(t => t.Patient)                                          // load patient nav
+            .Where(t => t.PatientId == patientId)
+            .Where(t => t.Status == "Completed" || t.Status == "Cancelled")  // only past visits
+            .OrderByDescending(t => t.BookedAtUtc)
+            .Select(t => new PatientVisitHistoryDto
+            {
+                TokenId = t.Id,
+                TokenNumber = t.TokenNumber,
+                PatientId = t.PatientId,
+                PatientName = t.Patient.FullName,
+                DepartmentName = t.Department.Name,
+                DoctorName = t.Doctor.User.FullName,
+                Status = t.Status,
+                TriageLevel = t.TriageAssessment != null ? t.TriageAssessment.TriageLevel : null,
+                BookedAtUtc = t.BookedAtUtc,
+                TriagedAtUtc = t.TriagedAtUtc,
+                CalledAtUtc = t.CalledAtUtc,
+                CompletedAtUtc = t.CompletedAtUtc,
+                ConsultationNotes = t.ConsultationNotes
+            })
+            .ToListAsync();
+    }
+
+    // =========================================================================
     // PRIVATE HELPERS
     // =========================================================================
 

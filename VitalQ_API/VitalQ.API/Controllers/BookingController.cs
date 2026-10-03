@@ -132,4 +132,84 @@ public class BookingController : ControllerBase
         }
         return Ok(token);
     }
+
+    /// <summary>
+    /// 5. All active tokens today for authenticated user and family dependents (Patient, Admin)
+    /// GET /api/bookings/my-tokens
+    /// </summary>
+    [Authorize(Roles = "Patient,Admin")]
+    [HttpGet("bookings/my-tokens")]
+    public async Task<IActionResult> GetMyTokens()
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdStr, out var currentUserId))
+        {
+            return Unauthorized();
+        }
+
+        var tokens = await _bookingService.GetUserActiveTokensAsync(currentUserId);
+        return Ok(tokens);
+    }
+
+    /// <summary>
+    /// 6. Cancel an active booking (Patient, Admin)
+    /// POST /api/bookings/{id:guid}/cancel
+    /// </summary>
+    [Authorize(Roles = "Patient,Admin")]
+    [HttpPost("bookings/{id:guid}/cancel")]
+    public async Task<IActionResult> CancelBooking([FromRoute] Guid id, [FromBody] CancelTokenRequest? request)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdStr, out var currentUserId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var token = await _bookingService.CancelTokenAsync(id, currentUserId, request?.Notes);
+
+            // SignalR: notify doctor console and department TV
+            await _hubContext.Clients.Group($"doctor-{token.DoctorId}").SendAsync("QueueUpdated", token);
+            await _hubContext.Clients.Group($"dept-{token.DepartmentId}").SendAsync("QueueUpdated", token);
+            await _hubContext.Clients.Group($"patient-{token.Id}").SendAsync("QueueUpdated", token);
+
+            return Ok(token);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// 7. Public live tracker for walk-in patients with printed paper slips.
+    /// GET /api/bookings/track/{tokenNumber}
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("bookings/track/{tokenNumber}")]
+    public async Task<IActionResult> TrackToken(string tokenNumber)
+    {
+        if (string.IsNullOrWhiteSpace(tokenNumber))
+        {
+            return BadRequest(new { message = "Token number is required." });
+        }
+
+        var token = await _bookingService.TrackTokenAsync(tokenNumber.Trim().ToUpper());
+        if (token == null)
+        {
+            return NotFound(new { message = $"No active consultation slip found matching '{tokenNumber}' for today." });
+        }
+
+        return Ok(token);
+    }
 }
+

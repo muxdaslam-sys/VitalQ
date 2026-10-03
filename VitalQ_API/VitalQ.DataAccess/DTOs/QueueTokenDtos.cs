@@ -70,9 +70,18 @@ public class BookTokenRequest
 /// </summary>
 public class UpdateTokenStatusRequest
 {
-    [Required, MaxLength(20)]
-    public string Status { get; set; } = null!;            // "Skipped", "Cancelled", etc.
+    [MaxLength(20)]
+    public string? Status { get; set; } = "Cancelled";            // "Skipped", "Cancelled", etc.
 
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+}
+
+/// <summary>
+/// Optional payload when cancelling an appointment.
+/// </summary>
+public class CancelTokenRequest
+{
     [MaxLength(500)]
     public string? Notes { get; set; }
 }

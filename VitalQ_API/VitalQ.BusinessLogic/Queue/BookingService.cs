@@ -117,9 +117,10 @@ public class BookingService : IBookingService
                 $"Patient '{patient.FullName}' already has an active appointment with Dr. {doctor.User.FullName} today.");
         }
 
-        // Step D: Generate sequential token (e.g. CARD-001)
+        // Step D: Generate sequential token with daily reset (e.g. CARD-1003-001)
         var nextNumber = await GetNextTokenNumberAsync(doctor.DepartmentId);
-        var tokenNumber = $"{doctor.Department.Code.Trim().ToUpper()}-{nextNumber:D3}";
+        var dateStr = DateTime.UtcNow.ToString("MMdd");
+        var tokenNumber = $"{doctor.Department.Code.Trim().ToUpper()}-{dateStr}-{nextNumber:D3}";
 
         // Step E: Save Token & Audit Log
         var queueToken = new QueueToken
@@ -174,7 +175,206 @@ public class BookingService : IBookingService
 
         if (token == null) return null;
 
+        var response = MapToResponse(token, token.Patient, token.Doctor);
+
+        // Calculate live position and ETA countdown for active waiting patients
+        if (token.Status == "Waiting")
+        {
+            var aheadCount = await _context.QueueTokens
+                .AsNoTracking()
+                .CountAsync(t => t.DoctorId == token.DoctorId
+                              && t.BookedAtUtc >= today
+                              && (t.Status == "Waiting" || t.Status == "Called")
+                              && (t.PriorityScore > token.PriorityScore ||
+                                 (t.PriorityScore == token.PriorityScore && t.BookedAtUtc < token.BookedAtUtc)));
+
+            var avgConsult = token.Doctor?.AvgConsultationMinutes ?? 10;
+            response.PatientsAhead = aheadCount;
+            response.EstimatedWaitMinutes = aheadCount * avgConsult;
+        }
+        else if (token.Status == "Called")
+        {
+            response.PatientsAhead = 0;
+            response.EstimatedWaitMinutes = 0;
+        }
+
+        return response;
+    }
+
+    // =========================================================================
+    // 5. GET ALL ACTIVE TOKENS TODAY FOR USER & FAMILY
+    // =========================================================================
+    public async Task<IEnumerable<QueueTokenResponse>> GetUserActiveTokensAsync(Guid currentUserId)
+    {
+        var today = DateTime.UtcNow.Date;
+
+        // 1. Get logged-in user's phone number
+        var user = await _context.Users.FindAsync(currentUserId);
+        if (user == null) return Enumerable.Empty<QueueTokenResponse>();
+
+        // 2. Find all patient IDs sharing this phone number (self + dependents)
+        var familyPatientIds = await _context.Patients
+            .AsNoTracking()
+            .Where(p => p.PhoneNumber == user.PhoneNumber)
+            .Select(p => p.Id)
+            .ToListAsync();
+
+        if (!familyPatientIds.Any()) return Enumerable.Empty<QueueTokenResponse>();
+
+        // 3. Fetch all active tokens today
+        var tokens = await _context.QueueTokens
+            .AsNoTracking()
+            .Include(t => t.Patient)
+            .Include(t => t.Doctor).ThenInclude(d => d.User)
+            .Include(t => t.Department)
+            .Include(t => t.TriageAssessment)
+            .Where(t => familyPatientIds.Contains(t.PatientId)
+                     && t.BookedAtUtc >= today
+                     && (t.Status == "Booked" || t.Status == "Waiting" || t.Status == "Called"))
+            .OrderBy(t => t.BookedAtUtc)
+            .ToListAsync();
+
+        var responseList = new List<QueueTokenResponse>();
+        foreach (var token in tokens)
+        {
+            var res = MapToResponse(token, token.Patient!, token.Doctor!);
+
+            if (token.Status == "Waiting")
+            {
+                res.PatientsAhead = await _context.QueueTokens
+                    .AsNoTracking()
+                    .CountAsync(t => t.DoctorId == token.DoctorId
+                                  && t.BookedAtUtc >= today
+                                  && (t.Status == "Waiting" || t.Status == "Called")
+                                  && (t.PriorityScore > token.PriorityScore ||
+                                     (t.PriorityScore == token.PriorityScore && t.BookedAtUtc < token.BookedAtUtc)));
+
+                var avgMinutes = token.Doctor?.AvgConsultationMinutes ?? 10;
+                res.EstimatedWaitMinutes = res.PatientsAhead * avgMinutes;
+            }
+            else if (token.Status == "Called")
+            {
+                res.PatientsAhead = 0;
+                res.EstimatedWaitMinutes = 0;
+            }
+
+            responseList.Add(res);
+        }
+
+        return responseList;
+    }
+
+    // =========================================================================
+    // 6. CANCEL ACTIVE BOOKING (Patient or Admin)
+    // =========================================================================
+    public async Task<QueueTokenResponse> CancelTokenAsync(Guid tokenId, Guid currentUserId, string? reason = null)
+    {
+        var token = await _context.QueueTokens
+            .Include(t => t.Patient)
+            .Include(t => t.Doctor)
+                .ThenInclude(d => d.User)
+            .Include(t => t.Doctor)
+                .ThenInclude(d => d.Department)
+            .Include(t => t.Department)
+            .Include(t => t.TriageAssessment)
+            .FirstOrDefaultAsync(t => t.Id == tokenId);
+
+        if (token == null)
+        {
+            throw new KeyNotFoundException($"Token with ID {tokenId} was not found.");
+        }
+
+        var user = await _context.Users.FindAsync(currentUserId);
+        if (user == null)
+        {
+            throw new UnauthorizedAccessException("User not found.");
+        }
+
+        bool isOwner = (token.Patient.UserId == currentUserId) 
+                    || (token.Patient.PhoneNumber == user.PhoneNumber) 
+                    || (user.Role == "Admin")
+                    || await _context.Patients.AnyAsync(p => p.Id == token.PatientId && (p.UserId == currentUserId || p.PhoneNumber == user.PhoneNumber));
+        if (!isOwner)
+        {
+            throw new UnauthorizedAccessException("You are not authorized to cancel this token.");
+        }
+
+        if (token.Status == "Completed")
+        {
+            throw new InvalidOperationException("Cannot cancel a consultation that has already been completed.");
+        }
+
+        if (token.Status == "Cancelled")
+        {
+            throw new InvalidOperationException("This token has already been cancelled.");
+        }
+
+        var previousStatus = token.Status;
+        token.Status = "Cancelled";
+
+        var audit = new TokenAuditLog
+        {
+            Id = Guid.NewGuid(),
+            QueueTokenId = tokenId,
+            PreviousStatus = previousStatus,
+            NewStatus = "Cancelled",
+            ChangeSource = user.Role == "Admin" ? "Admin" : "Patient",
+            ChangedByUserId = currentUserId,
+            Notes = string.IsNullOrWhiteSpace(reason) ? "Cancelled by patient" : $"Cancelled: {reason.Trim()}",
+            ChangedAtUtc = DateTime.UtcNow
+        };
+        await _context.TokenAuditLogs.AddAsync(audit);
+
+        await _context.SaveChangesAsync();
+
         return MapToResponse(token, token.Patient, token.Doctor);
+    }
+
+    // =========================================================================
+    // 7. TRACK TOKEN (Public anonymous tracker for paper slip holders)
+    // =========================================================================
+    public async Task<QueueTokenResponse?> TrackTokenAsync(string tokenNumber)
+    {
+        var today = DateTime.UtcNow.Date;
+        var token = await _context.QueueTokens
+            .AsNoTracking()
+            .Include(t => t.Patient)
+            .Include(t => t.Doctor)
+                .ThenInclude(d => d.User)
+            .Include(t => t.Doctor)
+                .ThenInclude(d => d.Department)
+            .Include(t => t.Department)
+            .Include(t => t.TriageAssessment)
+            .FirstOrDefaultAsync(t => t.TokenNumber == tokenNumber && t.BookedAtUtc >= today);
+
+        if (token == null)
+        {
+            return null;
+        }
+
+        var res = MapToResponse(token, token.Patient!, token.Doctor!);
+
+        // Compute dynamic queue wait metrics
+        if (token.Status == "Waiting")
+        {
+            res.PatientsAhead = await _context.QueueTokens
+                .AsNoTracking()
+                .CountAsync(t => t.DoctorId == token.DoctorId
+                              && t.BookedAtUtc >= today
+                              && (t.Status == "Waiting" || t.Status == "Called")
+                              && (t.PriorityScore > token.PriorityScore ||
+                                 (t.PriorityScore == token.PriorityScore && t.BookedAtUtc < token.BookedAtUtc)));
+
+            var avgMinutes = token.Doctor?.AvgConsultationMinutes ?? 10;
+            res.EstimatedWaitMinutes = res.PatientsAhead * avgMinutes;
+        }
+        else if (token.Status == "Called")
+        {
+            res.PatientsAhead = 0;
+            res.EstimatedWaitMinutes = 0;
+        }
+
+        return res;
     }
 
     // =========================================================================
@@ -183,7 +383,15 @@ public class BookingService : IBookingService
     private async Task<int> GetNextTokenNumberAsync(Guid departmentId)
     {
         await using var cmd = _context.Database.GetDbConnection().CreateCommand();
-        cmd.CommandText = "UPDATE Departments SET LastTokenNumber = LastTokenNumber + 1 OUTPUT INSERTED.LastTokenNumber WHERE Id = @deptId";
+        cmd.CommandText = @"
+            UPDATE Departments 
+            SET LastTokenNumber = CASE 
+                    WHEN LastTokenDate = CAST(GETUTCDATE() AS DATE) THEN LastTokenNumber + 1 
+                    ELSE 1 
+                END,
+                LastTokenDate = CAST(GETUTCDATE() AS DATE)
+            OUTPUT INSERTED.LastTokenNumber 
+            WHERE Id = @deptId";
 
         var param = cmd.CreateParameter();
         param.ParameterName = "@deptId";

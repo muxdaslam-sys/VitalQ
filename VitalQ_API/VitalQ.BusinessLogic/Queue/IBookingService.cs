@@ -15,4 +15,13 @@ public interface IBookingService
 
     // 4. Current patient's active token today
     Task<QueueTokenResponse?> GetPatientActiveTokenAsync(Guid patientId);
+
+    // 5. All active tokens today for authenticated user and family dependents
+    Task<IEnumerable<QueueTokenResponse>> GetUserActiveTokensAsync(Guid currentUserId);
+
+    // 6. Cancel an active booking (Patient or Admin)
+    Task<QueueTokenResponse> CancelTokenAsync(Guid tokenId, Guid currentUserId, string? reason = null);
+
+    // 7. Public live tracker for paper slip holders (no authentication required)
+    Task<QueueTokenResponse?> TrackTokenAsync(string tokenNumber);
 }

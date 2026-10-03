@@ -193,4 +193,62 @@ public class PatientsController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    /// <summary>
+    /// 8. Get Patient Visit History (Role: Patient, Nurse, Doctor, Admin)
+    /// GET /api/patients/{id:guid}/history
+    /// </summary>
+    [Authorize(Roles = "Patient,Nurse,Doctor,Admin")]
+    [HttpGet("{id:guid}/history")]
+    public async Task<IActionResult> GetVisitHistory([FromRoute] Guid id)
+    {
+        if (User.IsInRole("Patient"))
+        {
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdStr, out var currentUserId))
+            {
+                return Unauthorized();
+            }
+
+            var family = await _patientService.GetMyFamilyMembersAsync(currentUserId);
+            if (!family.Any(f => f.Id == id))
+            {
+                return Forbid();
+            }
+        }
+
+        var history = await _patientService.GetPatientVisitHistoryAsync(id);
+        return Ok(history);
+    }
+
+    /// <summary>
+    /// 9. Get Current Logged-in Patient's Visit History (Role: Patient)
+    /// GET /api/patients/my-history
+    /// </summary>
+    [Authorize(Roles = "Patient")]
+    [HttpGet("my-history")]
+    public async Task<IActionResult> GetMyVisitHistory()
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdStr, out var currentUserId))
+            return Unauthorized();
+
+        var family = await _patientService.GetMyFamilyMembersAsync(currentUserId);
+        if (!family.Any())
+            return NotFound(new { message = "No patient profiles found for this account." });
+
+        // Fetch history for every family member in parallel and merge
+        var historyTasks = family
+            .Select(member => _patientService.GetPatientVisitHistoryAsync(member.Id));
+
+        var results = await Task.WhenAll(historyTasks);
+
+        var combined = results
+            .SelectMany(h => h)
+            .OrderByDescending(h => h.BookedAtUtc)
+            .ToList();
+
+        return Ok(combined);
+    }
 }
+
