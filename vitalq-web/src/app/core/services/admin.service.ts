@@ -7,7 +7,7 @@ import {
   DepartmentResponse, CreateDepartmentRequest, UpdateDepartmentRequest,
   NursingStationResponse, CreateNursingStationRequest, UpdateNursingStationRequest,
   PatientDetailResponse,
-  UserResponse, CreateUserRequest, UpdateUserRequest
+  StaffUserResponse, CreateUserRequest, UpdateUserRequest
 } from '../../shared/models/admin.model';
 
 @Injectable({ providedIn: 'root' })
@@ -16,16 +16,16 @@ export class AdminService {
   private baseUrl = environment.apiUrl + '/admin';
 
   // Staff & Admin Users
-  getUsers(): Observable<UserResponse[]> {
-    return this.http.get<UserResponse[]>(this.baseUrl + '/users');
+  getUsers(): Observable<StaffUserResponse[]> {
+    return this.http.get<StaffUserResponse[]>(this.baseUrl + '/users');
   }
 
-  createUser(req: CreateUserRequest): Observable<UserResponse> {
-    return this.http.post<UserResponse>(this.baseUrl + '/users', req);
+  createUser(req: CreateUserRequest): Observable<StaffUserResponse> {
+    return this.http.post<StaffUserResponse>(this.baseUrl + '/users', req);
   }
 
-  updateUser(id: string, req: UpdateUserRequest): Observable<UserResponse> {
-    return this.http.put<UserResponse>(this.baseUrl + '/users/' + id, req);
+  updateUser(id: string, req: UpdateUserRequest): Observable<StaffUserResponse> {
+    return this.http.put<StaffUserResponse>(this.baseUrl + '/users/' + id, req);
   }
 
   // Doctors
