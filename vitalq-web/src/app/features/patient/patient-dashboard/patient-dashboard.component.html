@@ -1,61 +1,355 @@
-<div class="min-h-screen bg-slate-50 flex flex-col font-sans max-w-md mx-auto shadow-2xl border-x border-slate-200">
-  <!-- Mobile Patient Header -->
-  <header class="bg-teal-700 text-white px-6 py-4 flex items-center justify-between">
-    <div>
-      <h1 class="text-base font-bold">VitalQ Patient Portal</h1>
-      <p class="text-xs text-teal-200">Hello, {{ auth.currentUser()?.fullName || 'Patient' }}</p>
+<div class="space-y-6">
+
+  <!-- Floating Toast Notification -->
+  @if (successToast()) {
+    <div class="fixed top-20 right-4 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold animate-in slide-in-from-top-2 duration-200">
+      <span class="text-base">✓</span>
+      <span>{{ successToast() }}</span>
     </div>
-    <button (click)="logout()" class="text-xs bg-teal-800 px-3 py-1.5 rounded-lg text-teal-100 hover:text-white font-medium transition">
-      Logout
-    </button>
-  </header>
+  }
 
-  <!-- Active Token View -->
-  <main class="flex-1 p-5 space-y-5">
-    <!-- Live Token Card -->
-    <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-md text-center">
-      <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 mb-2 border border-amber-200">
-        Status: Waiting in Queue
-      </span>
-      <p class="text-xs text-slate-400 uppercase tracking-widest font-semibold">Your Token Number</p>
-      <h2 class="text-5xl font-black text-slate-800 tracking-tight my-2">CARD-104</h2>
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="py-24 text-center space-y-3">
+      <div class="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <p class="text-xs font-semibold text-slate-500">Connecting to live hospital queue...</p>
+    </div>
+  } @else {
 
-      <div class="border-t border-slate-100 pt-4 mt-4 grid grid-cols-2 gap-4 text-left">
-        <div>
-          <p class="text-xs text-slate-400">Doctor</p>
-          <p class="text-sm font-bold text-slate-800">Dr. Sarah Jenkins</p>
-          <p class="text-xs text-teal-600 font-medium">Cardiology</p>
+    <!-- Multi-Slip Switcher (Shown when user has >1 active token today for dependents) -->
+    @if (tokens().length > 1) {
+      <div class="flex items-center gap-2 overflow-x-auto pb-1">
+        <span class="text-xs font-bold text-slate-500 whitespace-nowrap">Your Active Tokens:</span>
+        @for (token of tokens(); track token.id) {
+          <button (click)="selectSlip(token.id)"
+                  [class.bg-teal-600]="selectedTokenId() === token.id"
+                  [class.text-white]="selectedTokenId() === token.id"
+                  [class.shadow-md]="selectedTokenId() === token.id"
+                  [class.bg-white]="selectedTokenId() !== token.id"
+                  [class.text-slate-700]="selectedTokenId() !== token.id"
+                  class="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold transition flex items-center gap-2 whitespace-nowrap hover:border-teal-400">
+            <span class="font-mono">{{ token.tokenNumber }}</span>
+            <span class="text-[10px] opacity-80">({{ token.patientName }})</span>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- MAIN GRID: 12 COLS DESKTOP, STACKED MOBILE -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+      <!-- LEFT COLUMN (7 COLS): THE LIVE CONSULTATION PASS -->
+      <div class="lg:col-span-8 space-y-6">
+
+        @if (selectedToken(); as currentToken) {
+          
+          <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden transition-all duration-300">
+            
+            <!-- Pass Header: Calming Deep Teal Header (Turns Emerald Gradient on Doctor Summon) -->
+            <div [class.bg-gradient-to-r]="currentToken.status === 'Called'"
+                 [class.from-emerald-600]="currentToken.status === 'Called'"
+                 [class.via-teal-600]="currentToken.status === 'Called'"
+                 [class.to-teal-700]="currentToken.status === 'Called'"
+                 [class.bg-slate-900]="currentToken.status !== 'Called'"
+                 class="p-6 text-white transition-colors duration-500">
+              
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <span class="text-[11px] font-bold tracking-widest uppercase opacity-75 block">
+                    {{ currentToken.departmentName }} &bull; Today's Consultation Pass
+                  </span>
+                  <div class="flex items-baseline gap-3 mt-1">
+                    <span class="font-mono text-3xl sm:text-4xl font-black tracking-tight"
+                          [class.text-teal-400]="currentToken.status !== 'Called'"
+                          [class.text-white]="currentToken.status === 'Called'">
+                      {{ currentToken.tokenNumber }}
+                    </span>
+                    <span class="text-xs font-semibold opacity-90">
+                      for {{ currentToken.patientName }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Status Pill -->
+                <div class="text-right">
+                  <span class="inline-block px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider"
+                        [class]="currentToken.status === 'Called' ? 'bg-white text-emerald-700' : 'bg-teal-900 text-teal-300 border border-teal-500'">
+                    {{ currentToken.status }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Estimated Wait / Call Alert Banner -->
+              <div class="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-xs">
+                @if (currentToken.status === 'Called') {
+                  <div class="flex items-center gap-2 text-white font-extrabold animate-pulse">
+                    <span class="text-lg">📢</span>
+                    <span>DOCTOR IS CALLING NOW &bull; ENTER ROOM {{ currentToken.roomNumber }}</span>
+                  </div>
+                } @else if (currentToken.status === 'Waiting') {
+                  <div class="flex items-center gap-1.5 text-teal-200">
+                    <span>⏱️</span>
+                    <span>Estimated Wait: <strong>~{{ currentToken.estimatedWaitMinutes }} Minutes</strong></span>
+                  </div>
+                  <span class="text-[11px] opacity-75">
+                    {{ currentToken.patientsAhead }} {{ currentToken.patientsAhead === 1 ? 'patient' : 'patients' }} ahead in line
+                  </span>
+                } @else if (currentToken.status === 'Booked') {
+                  <div class="flex items-center gap-1.5 text-amber-200">
+                    <span>📍</span>
+                    <span>Action Required: Please visit the <strong>{{ currentToken.departmentName }} Nurse Desk</strong></span>
+                  </div>
+                } @else {
+                  <span class="text-xs opacity-75">Status: {{ currentToken.status }}</span>
+                }
+              </div>
+            </div>
+
+            <!-- Pass Body -->
+            <div class="p-6 sm:p-8 space-y-6">
+
+              <!-- STAGE 1: BOOKED (NEEDS NURSE TRIAGE) -->
+              @if (currentToken.status === 'Booked') {
+                <div class="bg-amber-50/80 border border-amber-200 rounded-2xl p-5 space-y-2">
+                  <div class="flex items-center gap-2 text-amber-900 font-bold text-sm">
+                    <span>🩺</span>
+                    <h4>Step 1: Clinical Triage &amp; Vitals Intake</h4>
+                  </div>
+                  <p class="text-xs text-amber-800 leading-relaxed">
+                    Please report to the <strong>{{ currentToken.departmentName }} Nurse Station</strong>. The triage nurse will record your blood pressure, temperature, and pulse to assign your priority level.
+                  </p>
+                </div>
+              }
+
+              <!-- STAGE 2: WAITING IN QUEUE WITH AGING PROGRESS -->
+              @if (currentToken.status === 'Waiting') {
+                <div class="space-y-4">
+                  <!-- Priority Aging Bar -->
+                  <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                    <div class="flex items-center justify-between text-xs font-bold">
+                      <span class="text-slate-600 flex items-center gap-1.5">
+                        <span>🛡️</span>
+                        <span>Fair-Wait Priority Guarantee</span>
+                      </span>
+                      <span class="text-teal-700 font-mono">{{ getAgingProgressPercent(currentToken.priorityScore) }}%</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div class="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full transition-all duration-500"
+                           [style.width.%]="getAgingProgressPercent(currentToken.priorityScore)"></div>
+                    </div>
+                    <p class="text-[11px] text-slate-400">
+                      Your priority score dynamically increases each minute you wait, protecting you from queue starvation.
+                    </p>
+                  </div>
+
+                  <!-- Queue Position Stats -->
+                  <div class="grid grid-cols-2 gap-3">
+                    <div class="p-4 bg-teal-50/60 border border-teal-100 rounded-2xl text-center">
+                      <span class="text-2xl font-black text-teal-800 font-mono">{{ currentToken.patientsAhead }}</span>
+                      <span class="block text-[11px] font-bold text-teal-700 mt-0.5">Patients Ahead of You</span>
+                    </div>
+                    <div class="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-center">
+                      <span class="text-2xl font-black text-slate-800 font-mono">~{{ currentToken.estimatedWaitMinutes }}m</span>
+                      <span class="block text-[11px] font-bold text-slate-600 mt-0.5">Estimated Consultation Wait</span>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- STAGE 3: DOCTOR IS CALLING PATIENT -->
+              @if (currentToken.status === 'Called') {
+                <div class="bg-emerald-50 border border-emerald-300 rounded-2xl p-5 space-y-2 animate-in zoom-in-95">
+                  <div class="flex items-center gap-2.5 text-emerald-800 font-black text-base">
+                    <span class="text-2xl">🚪</span>
+                    <h4>Please Enter Consultation Room {{ currentToken.roomNumber }}</h4>
+                  </div>
+                  <p class="text-xs text-emerald-700 leading-relaxed font-semibold">
+                    Dr. {{ currentToken.doctorName }} is expecting you inside Room {{ currentToken.roomNumber }}. Please proceed immediately.
+                  </p>
+                </div>
+              }
+
+              <!-- STAGE 4: PATIENT ABSENT / SKIPPED -->
+              @if (currentToken.status === 'Skipped') {
+                <div class="bg-rose-50 border border-rose-200 rounded-2xl p-5 space-y-2">
+                  <div class="flex items-center gap-2.5 text-rose-800 font-bold text-sm">
+                    <span>⚠️</span>
+                    <h4>Token Placed on Temporary Hold</h4>
+                  </div>
+                  <p class="text-xs text-rose-700 leading-relaxed">
+                    You were called to Consultation Room {{ currentToken.roomNumber }} but were absent. Please approach the <strong>{{ currentToken.departmentName }} Nurse Desk</strong> to restore your turn in line.
+                  </p>
+                </div>
+              }
+
+              <!-- Doctor Room Details & Action Buttons -->
+              <div class="border-t border-slate-100 pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
+                <div>
+                  <span class="text-slate-400 block font-medium">Consulting Specialist</span>
+                  <span class="font-extrabold text-slate-900 text-sm">Dr. {{ currentToken.doctorName }}</span>
+                  <span class="text-[11px] text-slate-500 block">Consultation Room {{ currentToken.roomNumber }}</span>
+                </div>
+
+                <div class="flex items-center gap-2.5">
+                  <button (click)="printSlip()" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs flex items-center gap-1.5 transition">
+                    <span>🖨️</span>
+                    <span>Print Slip</span>
+                  </button>
+
+                  @if (currentToken.status === 'Booked' || currentToken.status === 'Waiting') {
+                    <button (click)="openCancelModal()" 
+                            class="px-4 py-2 rounded-xl border border-rose-200 text-xs font-bold text-rose-700 hover:bg-rose-50 transition">
+                      Cancel Token
+                    </button>
+                  }
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        } @else {
+
+          <!-- Empty State: No Active Appointments Today -->
+          <div class="bg-white rounded-3xl border border-slate-200/90 p-8 sm:p-12 text-center space-y-5 shadow-xs">
+            <div class="w-16 h-16 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center text-3xl mx-auto border border-teal-100">
+              🎫
+            </div>
+            <div>
+              <h3 class="text-lg font-black text-slate-900">No Active Appointments Today</h3>
+              <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                You do not have any outpatient consultation tokens active today. Book a doctor appointment to receive your queue token.
+              </p>
+            </div>
+            <a routerLink="/patient/book" 
+               class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 text-white font-extrabold text-xs shadow-md shadow-teal-600/25 transition">
+              <span>+</span>
+              <span>Book Doctor Appointment</span>
+            </a>
+          </div>
+
+        }
+
+      </div>
+
+      <!-- RIGHT COLUMN (4 COLS): CLINICAL GUIDELINES & FAST ACCESS -->
+      <div class="lg:col-span-4 space-y-5">
+        
+        <!-- FAST SHORTCUTS CARD -->
+        <div class="bg-white rounded-3xl border border-slate-200/90 p-6 space-y-4 shadow-xs">
+          <h3 class="text-sm font-extrabold text-slate-900">Quick Patient Services</h3>
+          
+          <div class="space-y-2">
+            <a routerLink="/patient/book" 
+               class="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-teal-50/60 hover:border-teal-200 flex items-center justify-between text-xs font-bold text-slate-700 hover:text-teal-900 transition group">
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg">📅</span>
+                <span>Book Appointment</span>
+              </div>
+              <span class="text-slate-400 group-hover:text-teal-600 transition">➔</span>
+            </a>
+
+            <a routerLink="/patient/family" 
+               class="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-teal-50/60 hover:border-teal-200 flex items-center justify-between text-xs font-bold text-slate-700 hover:text-teal-900 transition group">
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg">👨‍👩‍👧</span>
+                <span>Manage Family Members</span>
+              </div>
+              <span class="text-slate-400 group-hover:text-teal-600 transition">➔</span>
+            </a>
+
+            <a routerLink="/patient/history" 
+               class="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-teal-50/60 hover:border-teal-200 flex items-center justify-between text-xs font-bold text-slate-700 hover:text-teal-900 transition group">
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg">📜</span>
+                <span>View Past Diagnoses &amp; Notes</span>
+              </div>
+              <span class="text-slate-400 group-hover:text-teal-600 transition">➔</span>
+            </a>
+          </div>
         </div>
-        <div>
-          <p class="text-xs text-slate-400">Room Location</p>
-          <p class="text-sm font-bold text-slate-800">Room 102</p>
-          <p class="text-xs text-slate-500">Floor 1, Wing A</p>
+
+        <!-- OPD VISIT GUIDELINES CARD -->
+        <div class="bg-white rounded-3xl border border-slate-200/90 p-6 space-y-3.5 shadow-xs text-xs text-slate-600">
+          <div class="flex items-center gap-2 text-slate-900 font-extrabold">
+            <span>ℹ️</span>
+            <h4>OPD Queue Guidelines</h4>
+          </div>
+
+          <ul class="space-y-2 text-[11px] leading-relaxed">
+            <li class="flex items-start gap-2">
+              <span class="text-teal-600 font-bold mt-0.5">&bull;</span>
+              <span><strong>Arrival:</strong> Please report to your consultation department 10–15 minutes before your estimated time.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-teal-600 font-bold mt-0.5">&bull;</span>
+              <span><strong>Summon Alert:</strong> When your token turns green, enter the doctor's room immediately.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-teal-600 font-bold mt-0.5">&bull;</span>
+              <span><strong>Missed Calls:</strong> Tokens are held for 10 minutes before moving to the next patient.</span>
+            </li>
+          </ul>
+
+          <div class="pt-2 border-t border-slate-100 text-[11px] text-slate-400">
+            Need urgent assistance? Please approach the Central Reception Desk.
+          </div>
         </div>
+
       </div>
+
     </div>
 
-    <!-- Live Queue Tracker Details -->
-    <div class="grid grid-cols-2 gap-3">
-      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center">
-        <p class="text-xs text-slate-400 font-medium">Patients Ahead</p>
-        <p class="text-3xl font-extrabold text-teal-600 mt-1">2</p>
-      </div>
-      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center">
-        <p class="text-xs text-slate-400 font-medium">Est. Wait Time</p>
-        <p class="text-3xl font-extrabold text-slate-700 mt-1">~18m</p>
-      </div>
-    </div>
+  }
 
-    <!-- Reminder Alert -->
-    <div class="bg-teal-50 border border-teal-200 rounded-2xl p-4 flex items-start gap-3 text-xs text-teal-800">
-      <span class="text-xl">🔔</span>
-      <p class="leading-relaxed">Your phone will automatically chime and vibrate when the doctor calls your token.</p>
-    </div>
-
-    <!-- Book Another Button -->
-    <button class="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-sm shadow-md transition">
-      Book New Consultation Slot
-    </button>
-  </main>
 </div>
 
+<!-- MODAL: CANCEL APPOINTMENT CONFIRMATION -->
+@if (isCancelModalOpen()) {
+  <div class="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95">
+      <div class="flex items-center gap-2 text-rose-600">
+        <span class="text-xl">⚠️</span>
+        <h3 class="text-base font-bold text-rose-900">Cancel Appointment</h3>
+      </div>
+
+      @if (cancelError()) {
+        <div class="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold flex items-center gap-2">
+          <span>⚠️</span>
+          <span>{{ cancelError() }}</span>
+        </div>
+      }
+      
+      <p class="text-xs text-slate-600 leading-relaxed">
+        Are you sure you want to cancel token <strong class="font-mono text-slate-900 text-sm">{{ selectedToken()?.tokenNumber }}</strong>?
+      </p>
+
+      <div class="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 space-y-1">
+        <p class="font-bold">Cancellation Policy:</p>
+        <p class="text-amber-800 leading-relaxed">
+          Cancelling immediately releases your queue sequence to patients waiting behind you. Once cancelled, this spot cannot be restored.
+        </p>
+      </div>
+
+      <div>
+        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Reason for Cancellation (Optional)</label>
+        <input type="text" 
+               [ngModel]="cancelReason()"
+               (ngModelChange)="cancelReason.set($event)"
+               placeholder="e.g. Schedule conflict, feeling better" 
+               class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs bg-white text-slate-800 focus:ring-2 focus:ring-rose-500">
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button (click)="closeCancelModal()" class="px-4 py-2 border rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">
+          Keep My Spot
+        </button>
+        <button (click)="confirmCancellation()" 
+                [disabled]="cancelling()"
+                class="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition disabled:opacity-50">
+          {{ cancelling() ? 'Cancelling...' : 'Yes, Cancel Token' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -62,6 +62,9 @@ public class PatientVisitHistoryDto
 {
     public Guid TokenId { get; set; }
     public string TokenNumber { get; set; } = null!;
+    /// <summary>The patient (family member) this visit belongs to.</summary>
+    public Guid PatientId { get; set; }
+    public string PatientName { get; set; } = string.Empty;
     public string DepartmentName { get; set; } = string.Empty;
     public string DoctorName { get; set; } = string.Empty;
     public string Status { get; set; } = null!;

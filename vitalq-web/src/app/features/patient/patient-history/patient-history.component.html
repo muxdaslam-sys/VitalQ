@@ -1,0 +1,130 @@
+<div class="space-y-6 max-w-4xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Medical Consultation Records</h2>
+      <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Past diagnoses, physician clinical advice, and encounter timeline</p>
+    </div>
+    <a routerLink="/patient/book" 
+       class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-xs shadow-md shadow-teal-600/20 transition w-fit">
+      <span>+</span>
+      <span>Book New Appointment</span>
+    </a>
+  </div>
+
+  <!-- Filters & Search Bar Card -->
+  <div class="bg-white rounded-2xl border border-slate-200/90 p-4 space-y-3 shadow-xs">
+    
+    <!-- Family Member Filter Pills -->
+    @if (familyMembers().length > 1) {
+      <div class="flex flex-wrap items-center gap-2">
+        <button (click)="selectedFilterId.set(null)"
+                [class.bg-teal-600]="selectedFilterId() === null"
+                [class.text-white]="selectedFilterId() === null"
+                [class.border-teal-600]="selectedFilterId() === null"
+                class="px-3.5 py-1.5 rounded-full border border-slate-200 text-xs font-bold transition text-slate-600 bg-white hover:border-teal-400">
+          All Records ({{ visits().length }})
+        </button>
+        @for (mem of familyMembers(); track mem.id) {
+          <button (click)="selectedFilterId.set(mem.id)"
+                  [class.bg-teal-600]="selectedFilterId() === mem.id"
+                  [class.text-white]="selectedFilterId() === mem.id"
+                  [class.border-teal-600]="selectedFilterId() === mem.id"
+                  class="px-3.5 py-1.5 rounded-full border border-slate-200 text-xs font-bold transition text-slate-600 bg-white hover:border-teal-400">
+            {{ mem.fullName }} ({{ getMemberVisitCount(mem.id) }})
+          </button>
+        }
+      </div>
+    }
+
+    <!-- Search Input -->
+    <div>
+      <input type="text"
+             [ngModel]="searchTerm()"
+             (ngModelChange)="searchTerm.set($event)"
+             placeholder="Search by token #, doctor name, department, or diagnosis note..."
+             class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-teal-500 transition">
+    </div>
+  </div>
+
+  <!-- History Records List -->
+  @if (loading()) {
+    <div class="py-16 text-center text-xs text-slate-400">Loading consultation records...</div>
+  } @else if (filteredVisits().length === 0) {
+    <!-- Empty State -->
+    <div class="bg-white rounded-3xl border border-slate-200/90 p-8 sm:p-12 text-center space-y-4 shadow-xs">
+      <div class="w-16 h-16 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center text-3xl mx-auto border border-teal-100">
+        📜
+      </div>
+      <div>
+        <h3 class="text-base font-extrabold text-slate-900">No Past Consultations Found</h3>
+        <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+          {{ searchTerm() ? 'No records match your search criteria.' : 'Completed OPD visits and doctor prescriptions will appear here automatically.' }}
+        </p>
+      </div>
+    </div>
+  } @else {
+    <div class="space-y-3.5">
+      @for (v of filteredVisits(); track v.tokenId) {
+        <div [class.border-l-emerald-500]="v.status === 'Completed'"
+             [class.border-l-rose-400]="v.status === 'Cancelled'"
+             [class.border-l-amber-400]="v.status === 'Skipped'"
+             class="bg-white rounded-2xl border border-slate-200/90 border-l-4 p-5 space-y-3 shadow-xs hover:shadow-md hover:border-teal-300/80 transition">
+          
+          <!-- Top Row: Token # + Date & Time -->
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-black text-teal-800 tracking-wide text-xs bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-100">
+                {{ v.tokenNumber }}
+              </span>
+              @if (!selectedFilterId() && v.patientName) {
+                <span class="text-[11px] font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-md">
+                  👤 {{ v.patientName }}
+                </span>
+              }
+            </div>
+            <span class="text-[11px] text-slate-400 font-medium">
+              {{ (v.completedAtUtc || v.bookedAtUtc) | date:'MMM d, y • h:mm a' }}
+            </span>
+          </div>
+
+          <!-- Doctor & Department -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h4 class="font-black text-slate-900 text-sm">Dr. {{ v.doctorName }}</h4>
+              <p class="text-xs text-slate-500 font-medium mt-0.5">{{ v.departmentName }} Clinic</p>
+            </div>
+
+            <!-- Status & Urgency Badges -->
+            <div class="flex items-center gap-2">
+              <span [class]="getStatusBadgeClass(v.status)"
+                    class="px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                {{ getStatusDisplay(v.status) }}
+              </span>
+              @if (v.triageLevel) {
+                <span [class]="getTriageBadgeClass(v.triageLevel)"
+                      class="px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                  Clinical Urgency: {{ v.triageLevel }}
+                </span>
+              }
+            </div>
+          </div>
+
+          <!-- Doctor's Consultation Advice / Notes -->
+          @if (v.consultationNotes) {
+            <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-100 space-y-1">
+              <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                Doctor's Clinical Advice & Notes
+              </span>
+              <p class="text-xs text-slate-700 leading-relaxed font-serif italic">
+                "{{ v.consultationNotes }}"
+              </p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+</div>

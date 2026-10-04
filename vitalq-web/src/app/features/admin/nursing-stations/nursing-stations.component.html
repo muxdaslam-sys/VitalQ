@@ -1,5 +1,5 @@
 <!-- ========================================================================= -->
-<!-- VITALQ NURSING STATIONS & TRIAGE DESKS MANAGEMENT                         -->
+<!-- VITALQ NURSING STATIONS MANAGEMENT                                         -->
 <!-- Intake triage desks mapped across departments and clinical floors         -->
 <!-- ========================================================================= -->
 <div class="p-6 sm:p-8 space-y-6 max-w-7xl mx-auto">
@@ -7,7 +7,7 @@
   <!-- Page Header -->
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">Nursing Stations & Triage Desks</h2>
+      <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">Nursing Stations</h2>
       <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Physical intake triage desks across departments, wings, and hospital floors</p>
     </div>
     <button (click)="openModal()" 
@@ -45,70 +45,87 @@
     <!-- Status Filter Chips -->
     <div class="flex items-center gap-1.5 self-start md:self-auto">
       <button (click)="selectedStatus.set('all')"
-              class="px-3 py-1.5 rounded-xl text-xs font-bold transition"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap"
               [ngClass]="selectedStatus() === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
         All ({{ stations().length }})
       </button>
       <button (click)="selectedStatus.set('active')"
-              class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap"
               [ngClass]="selectedStatus() === 'active' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-300"></span> Active
       </button>
       <button (click)="selectedStatus.set('inactive')"
-              class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap"
               [ngClass]="selectedStatus() === 'inactive' ? 'bg-slate-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
         Inactive
       </button>
     </div>
   </div>
 
-  <!-- Responsive Data Table -->
+  <!-- Optimized Responsive Data Table (Vertical Stacked Actions: Edit on Top, Status Down) -->
   <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse text-sm min-w-[650px]">
+      <table class="w-full text-left border-collapse text-sm min-w-[950px] table-fixed">
+        <colgroup>
+          <col class="w-[32%]">
+          <col class="w-[32%]">
+          <col class="w-[24%]">
+          <col class="w-[12%]">
+        </colgroup>
         <thead>
-          <tr class="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold text-xs uppercase tracking-wider">
-            <th class="py-3.5 px-5">Station / Desk Name</th>
-            <th class="py-3.5 px-5">Mapped Department</th>
-            <th class="py-3.5 px-5">Floor Location</th>
-            <th class="py-3.5 px-5">Status</th>
-            <th class="py-3.5 px-5 text-right">Actions</th>
+          <tr class="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider backdrop-blur-xs">
+            <th class="py-3.5 px-4 whitespace-nowrap">Station / Desk Name</th>
+            <th class="py-3.5 px-4 whitespace-nowrap">Mapped Department</th>
+            <th class="py-3.5 px-4 whitespace-nowrap">Floor Location</th>
+            <th class="py-3.5 px-4 whitespace-nowrap text-right">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           @for (station of filteredStations(); track station.id) {
-            <tr class="hover:bg-slate-50/80 transition">
-              <td class="py-4 px-5">
+            <tr class="odd:bg-white even:bg-slate-50/50 hover:bg-teal-50/30 transition">
+              <!-- Desk Name -->
+              <td class="py-3 px-4 whitespace-nowrap">
                 <div class="flex items-center gap-2.5">
-                  <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xs shrink-0 border border-purple-200">
+                  <div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center font-bold text-xs shrink-0 border border-teal-200">
                     🩺
                   </div>
-                  <span class="font-bold text-slate-800">{{ station.stationName }}</span>
+                  <span class="font-bold text-slate-900 truncate max-w-[230px]" [title]="station.stationName">{{ station.stationName }}</span>
                 </div>
               </td>
-              <td class="py-4 px-5">
-                <span class="px-2.5 py-1 bg-purple-50 text-purple-700 rounded-lg text-xs font-semibold border border-purple-200">
+
+              <!-- Mapped Department (Expanded 32% Width, No Breakout) -->
+              <td class="py-3 px-4 whitespace-nowrap">
+                <span class="px-2.5 py-1 bg-teal-50 text-teal-800 rounded-lg text-xs font-semibold border border-teal-200 inline-block max-w-[260px] truncate" [title]="station.departmentName || 'General Intake Desk'">
                   {{ station.departmentName || 'General Intake Desk' }}
                 </span>
               </td>
-              <td class="py-4 px-5 text-slate-600">{{ station.locationFloor }}</td>
-              <td class="py-4 px-5">
-                <span [ngClass]="station.isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'" 
-                      class="px-2.5 py-0.5 rounded-full text-xs font-bold border inline-flex items-center gap-1.5">
-                  <span class="w-1.5 h-1.5 rounded-full" [ngClass]="station.isActive ? 'bg-emerald-500' : 'bg-slate-400'"></span>
-                  {{ station.isActive ? 'Active' : 'Inactive' }}
-                </span>
+
+              <!-- Floor Location -->
+              <td class="py-3 px-4 text-slate-700 font-medium whitespace-nowrap">
+                <span class="truncate block max-w-[200px]" [title]="station.locationFloor">{{ station.locationFloor }}</span>
               </td>
-              <td class="py-4 px-5 text-right">
-                <button (click)="openEditModal(station)"
-                        class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-teal-50 hover:text-teal-700 text-slate-700 font-semibold transition">
-                  Edit
-                </button>
+
+              <!-- Actions Column (Top: Edit Button | Down: Status Badge) -->
+              <td class="py-3 px-4 text-right whitespace-nowrap shrink-0">
+                <div class="flex flex-col items-end gap-1.5">
+                  <!-- Top: Edit Button -->
+                  <button (click)="openEditModal(station)"
+                          class="px-2.5 py-1 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-xs transition inline-flex items-center gap-1 shadow-2xs whitespace-nowrap">
+                    <span>✏️</span> Edit
+                  </button>
+
+                  <!-- Down: Status Badge -->
+                  <span [ngClass]="station.isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'" 
+                        class="px-2 py-0.5 rounded-full text-[11px] font-bold border inline-flex items-center gap-1 shadow-2xs">
+                    <span class="w-1.5 h-1.5 rounded-full" [ngClass]="station.isActive ? 'bg-emerald-500' : 'bg-slate-400'"></span>
+                    {{ station.isActive ? 'Active' : 'Inactive' }}
+                  </span>
+                </div>
               </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="5" class="py-14 text-center">
+              <td colspan="4" class="py-14 text-center">
                 <div class="max-w-xs mx-auto text-center space-y-2">
                   <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center text-xl">🩺</div>
                   <p class="font-bold text-slate-700 text-sm">No nursing stations found</p>
@@ -125,26 +142,31 @@
     </div>
   </div>
 
-  <!-- Add Station Modal -->
+  <!-- Add Station Modal (Top-Anchored 3-Zone Enterprise Layout, z-[100]) -->
   @if (showModal()) {
-    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-3xl max-w-md w-full p-7 shadow-2xl border border-slate-100">
-        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-5">
-          <div>
-            <h3 class="text-lg font-bold text-slate-800">Add Nursing Station Desk</h3>
-            <p class="text-xs text-slate-400">Configure triage reception point and floor mapping</p>
+    <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-start justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+      <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden mt-6 sm:mt-10 mb-8 animate-in fade-in zoom-in-95 duration-150">
+        <!-- 1. High-Contrast Header Bar -->
+        <div class="px-6 py-4 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center text-base shadow-xs">🩺</div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900 leading-tight">Add Nursing Station</h3>
+              <p class="text-xs text-slate-500">Configure triage reception point and floor mapping</p>
+            </div>
           </div>
-          <button (click)="showModal.set(false)" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+          <button (click)="showModal.set(false)" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition font-bold text-lg">&times;</button>
         </div>
 
-        <div class="space-y-3.5">
+        <!-- 2. Form Body (Tightened Padding, Zero Giant Gaps) -->
+        <div class="p-5 sm:p-6 space-y-3.5">
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Desk / Station Name *</label>
-            <input type="text" [(ngModel)]="newStation.stationName" placeholder="Desk 1 - Triage Intake" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+            <label class="block text-xs font-bold text-slate-700 mb-1">Desk / Station Name *</label>
+            <input type="text" [(ngModel)]="newStation.stationName" placeholder="Desk 1 - Triage Intake" class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none bg-slate-50/50">
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Assigned Department</label>
-            <select [(ngModel)]="newStation.departmentId" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500 bg-white">
+            <label class="block text-xs font-bold text-slate-700 mb-1">Assigned Department</label>
+            <select [(ngModel)]="newStation.departmentId" class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none bg-slate-50/50">
               <option [value]="undefined">Unassigned / General Reception</option>
               @for (dept of departments(); track dept.id) {
                 <option [value]="dept.id">{{ dept.name }}</option>
@@ -152,17 +174,18 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Floor Location *</label>
-            <input type="text" [(ngModel)]="newStation.locationFloor" placeholder="Floor 1, West Wing" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+            <label class="block text-xs font-bold text-slate-700 mb-1">Floor Location *</label>
+            <input type="text" [(ngModel)]="newStation.locationFloor" placeholder="Floor 1, West Wing" class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none bg-slate-50/50">
           </div>
         </div>
 
-        <div class="flex justify-end gap-3 mt-7">
-          <button (click)="showModal.set(false)" [disabled]="isSubmitting()" class="px-4 py-2 border rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+        <!-- 3. Anchored Action Footer Bar -->
+        <div class="px-6 py-3.5 bg-slate-100/80 border-t border-slate-200 flex justify-end gap-2.5">
+          <button (click)="showModal.set(false)" [disabled]="isSubmitting()" class="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-200 transition">Cancel</button>
           <button (click)="saveStation()" [disabled]="isSubmitting()" 
-                  class="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md shadow-teal-600/20 transition flex items-center gap-2">
+                  class="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-600/20 transition flex items-center gap-2">
             @if (isSubmitting()) {
-              <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
               <span>Saving...</span>
             } @else {
               <span>Save Station</span>
@@ -173,26 +196,31 @@
     </div>
   }
 
-  <!-- Edit Station Modal -->
+  <!-- Edit Station Modal (Top-Anchored 3-Zone Enterprise Layout, z-[100]) -->
   @if (editingStationId()) {
-    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-3xl max-w-md w-full p-7 shadow-2xl border border-slate-100">
-        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-5">
-          <div>
-            <h3 class="text-lg font-bold text-slate-800">Edit Nursing Station</h3>
-            <p class="text-xs text-slate-400">Update desk name, assigned department, and status</p>
+    <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-start justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+      <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden mt-6 sm:mt-10 mb-8 animate-in fade-in zoom-in-95 duration-150">
+        <!-- 1. High-Contrast Header Bar -->
+        <div class="px-6 py-4 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center text-base shadow-xs">✏️</div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900 leading-tight">Edit Nursing Station</h3>
+              <p class="text-xs text-slate-500">Update desk name, assigned department, and status</p>
+            </div>
           </div>
-          <button (click)="editingStationId.set(null)" class="text-slate-400 hover:text-slate-600 text-2xl font-bold">&times;</button>
+          <button (click)="editingStationId.set(null)" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition font-bold text-lg">&times;</button>
         </div>
 
-        <div class="space-y-3.5">
+        <!-- 2. Form Body (Tightened Padding, Zero Giant Gaps) -->
+        <div class="p-5 sm:p-6 space-y-3.5">
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Desk / Station Name</label>
-            <input type="text" [(ngModel)]="editStation.stationName" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+            <label class="block text-xs font-bold text-slate-700 mb-1">Desk / Station Name</label>
+            <input type="text" [(ngModel)]="editStation.stationName" class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none bg-slate-50/50">
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Department</label>
-            <select [(ngModel)]="editStation.departmentId" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500 bg-white">
+            <label class="block text-xs font-bold text-slate-700 mb-1">Department</label>
+            <select [(ngModel)]="editStation.departmentId" class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none bg-slate-50/50">
               <option [value]="undefined">Unassigned / General</option>
               @for (dept of departments(); track dept.id) {
                 <option [value]="dept.id">{{ dept.name }}</option>
@@ -200,21 +228,22 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">Floor Location</label>
-            <input type="text" [(ngModel)]="editStation.locationFloor" class="w-full px-3.5 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-teal-500">
+            <label class="block text-xs font-bold text-slate-700 mb-1">Floor Location</label>
+            <input type="text" [(ngModel)]="editStation.locationFloor" class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none bg-slate-50/50">
           </div>
-          <div class="flex items-center gap-2 pt-2">
+          <div class="flex items-center gap-2 pt-1">
             <input type="checkbox" id="stationIsActive" [(ngModel)]="editStation.isActive" class="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-slate-300">
             <label for="stationIsActive" class="text-xs font-bold text-slate-700 cursor-pointer select-none">Desk is Active</label>
           </div>
         </div>
 
-        <div class="flex justify-end gap-3 mt-7">
-          <button (click)="editingStationId.set(null)" [disabled]="isSubmitting()" class="px-4 py-2 border rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+        <!-- 3. Anchored Action Footer Bar -->
+        <div class="px-6 py-3.5 bg-slate-100/80 border-t border-slate-200 flex justify-end gap-2.5">
+          <button (click)="editingStationId.set(null)" [disabled]="isSubmitting()" class="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-200 transition">Cancel</button>
           <button (click)="updateStation()" [disabled]="isSubmitting()" 
-                  class="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md shadow-teal-600/20 transition flex items-center gap-2">
+                  class="px-5 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-600/20 transition flex items-center gap-2">
             @if (isSubmitting()) {
-              <span class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
               <span>Updating...</span>
             } @else {
               <span>Save Changes</span>

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using VitalQ.API.Hubs;
+using VitalQ.BusinessLogic.Interfaces;
 
 namespace VitalQ.API.BackgroundServices;
 
@@ -31,8 +32,16 @@ public class AgingWorker : BackgroundService
         {
             try
             {
-                // TODO: Recalculate waiting queue scores and broadcast updates via _hubContext
                 await Task.Delay(TimeSpan.FromSeconds(60), stoppingToken);
+
+                using (var scope = _serviceProvider.CreateScope())
+                {
+                    var doctorService = scope.ServiceProvider.GetRequiredService<IDoctorService>();
+                    await doctorService.RecalculateQueueScoresAsync();
+                }
+
+                // Broadcast tick to all connected clients so active queues re-sort
+                await _hubContext.Clients.All.SendAsync("QueueScoresRecalculated", DateTime.UtcNow, cancellationToken: stoppingToken);
             }
             catch (OperationCanceledException)
             {

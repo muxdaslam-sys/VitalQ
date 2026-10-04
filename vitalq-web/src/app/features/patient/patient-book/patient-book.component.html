@@ -1,0 +1,281 @@
+<div class="space-y-6 max-w-4xl mx-auto">
+
+  <!-- Page Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Book Doctor Appointment</h2>
+      <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Generate an OPD consultation token in 3 easy steps</p>
+    </div>
+    <a routerLink="/patient" class="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition w-fit">
+      <span>⬅️</span>
+      <span>Back to My Tokens</span>
+    </a>
+  </div>
+
+  <!-- Wizard Step Indicator -->
+  <div class="bg-white rounded-2xl border border-slate-200 p-3 sm:p-4 shadow-sm">
+    <div class="grid grid-cols-3 gap-2 text-center text-xs font-bold">
+      <!-- Step 1 Pill -->
+      <button (click)="goToStep(1)" 
+              [class.bg-teal-600]="currentStep() === 1"
+              [class.text-white]="currentStep() === 1"
+              [class.bg-teal-50]="currentStep() > 1"
+              [class.text-teal-700]="currentStep() > 1"
+              [class.bg-slate-50]="currentStep() < 1"
+              [class.text-slate-400]="currentStep() < 1"
+              class="py-2.5 px-2 rounded-xl transition flex items-center justify-center gap-1.5">
+        <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black"
+              [class.bg-white]="currentStep() === 1"
+              [class.text-teal-700]="currentStep() === 1"
+              [class.bg-teal-600]="currentStep() > 1"
+              [class.text-white]="currentStep() > 1"
+              [class.bg-slate-200]="currentStep() < 1"
+              [class.text-slate-600]="currentStep() < 1">
+          {{ currentStep() > 1 ? '✓' : '1' }}
+        </span>
+        <span class="hidden sm:inline">1. Patient</span>
+        <span class="sm:hidden">Patient</span>
+      </button>
+
+      <!-- Step 2 Pill -->
+      <button (click)="selectedPatientId() ? goToStep(2) : null" 
+              [class.bg-teal-600]="currentStep() === 2"
+              [class.text-white]="currentStep() === 2"
+              [class.bg-teal-50]="currentStep() > 2"
+              [class.text-teal-700]="currentStep() > 2"
+              [class.bg-slate-50]="currentStep() < 2"
+              [class.text-slate-400]="currentStep() < 2"
+              class="py-2.5 px-2 rounded-xl transition flex items-center justify-center gap-1.5">
+        <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black"
+              [class.bg-white]="currentStep() === 2"
+              [class.text-teal-700]="currentStep() === 2"
+              [class.bg-teal-600]="currentStep() > 2"
+              [class.text-white]="currentStep() > 2"
+              [class.bg-slate-200]="currentStep() < 2"
+              [class.text-slate-600]="currentStep() < 2">
+          {{ currentStep() > 2 ? '✓' : '2' }}
+        </span>
+        <span class="hidden sm:inline">2. Specialty</span>
+        <span class="sm:hidden">Specialty</span>
+      </button>
+
+      <!-- Step 3 Pill -->
+      <button (click)="selectedDepartmentId() ? goToStep(3) : null" 
+              [class.bg-teal-600]="currentStep() === 3"
+              [class.text-white]="currentStep() === 3"
+              [class.bg-slate-50]="currentStep() < 3"
+              [class.text-slate-400]="currentStep() < 3"
+              class="py-2.5 px-2 rounded-xl transition flex items-center justify-center gap-1.5">
+        <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black"
+              [class.bg-white]="currentStep() === 3"
+              [class.text-teal-700]="currentStep() === 3"
+              [class.bg-slate-200]="currentStep() < 3"
+              [class.text-slate-600]="currentStep() < 3">
+          3
+        </span>
+        <span class="hidden sm:inline">3. Doctor</span>
+        <span class="sm:hidden">Doctor</span>
+      </button>
+    </div>
+  </div>
+
+  @if (errorMessage()) {
+    <div class="p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs font-semibold flex items-center gap-2">
+      <span class="text-base">⚠️</span>
+      <span>{{ errorMessage() }}</span>
+    </div>
+  }
+
+  <!-- STEP 1: SELECT PATIENT -->
+  @if (currentStep() === 1) {
+    <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6 shadow-sm">
+      <div>
+        <h3 class="text-base sm:text-lg font-black text-slate-900">Step 1: Who is visiting the doctor today?</h3>
+        <p class="text-xs text-slate-500 mt-1">Select yourself or a registered family dependent.</p>
+      </div>
+
+      @if (loadingFamily()) {
+        <div class="py-12 text-center text-xs text-slate-400">Loading family profiles...</div>
+      } @else {
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          @for (member of familyMembers(); track member.id) {
+            <div (click)="selectPatient(member.id)"
+                 [class.border-teal-600]="selectedPatientId() === member.id"
+                 [class.bg-teal-50]="selectedPatientId() === member.id"
+                 class="p-4 rounded-2xl border border-slate-200 cursor-pointer flex items-center justify-between transition hover:border-teal-400 bg-white">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-lg font-bold">
+                  👤
+                </div>
+                <div>
+                  <p class="font-extrabold text-slate-900 text-sm">{{ member.fullName }}</p>
+                  <p class="text-[11px] text-slate-400 font-mono mt-0.5">ID: {{ member.medicalRecordNumber }} &bull; {{ member.gender }}</p>
+                </div>
+              </div>
+              <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition"
+                   [class.border-teal-600]="selectedPatientId() === member.id"
+                   [class.bg-teal-600]="selectedPatientId() === member.id"
+                   [class.border-slate-300]="selectedPatientId() !== member.id">
+                @if (selectedPatientId() === member.id) {
+                  <span class="text-white text-[10px] font-black">✓</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
+          <a routerLink="/patient/family" class="text-xs font-bold text-teal-600 hover:text-teal-700">
+            + Need to add a new dependent?
+          </a>
+          <button (click)="goToStep(2)" 
+                  [disabled]="!selectedPatientId()"
+                  class="w-full sm:w-auto px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-extrabold text-xs shadow-md transition">
+            Continue to Specialty ➔
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- STEP 2: CHOOSE DEPARTMENT -->
+  @if (currentStep() === 2) {
+    <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-base sm:text-lg font-black text-slate-900">Step 2: Choose Clinical Specialty</h3>
+          <p class="text-xs text-slate-500 mt-1">Select the outpatient clinic for {{ getSelectedPatient()?.fullName }}.</p>
+        </div>
+        <span class="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700">
+          Patient: {{ getSelectedPatient()?.fullName }}
+        </span>
+      </div>
+
+      @if (loadingDepartments()) {
+        <div class="py-12 text-center text-xs text-slate-400">Loading hospital departments...</div>
+      } @else {
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+          @for (dept of departments(); track dept.id) {
+            <div (click)="selectDepartment(dept.id)"
+                 [class.border-teal-600]="selectedDepartmentId() === dept.id"
+                 [class.bg-teal-50]="selectedDepartmentId() === dept.id"
+                 class="p-4 rounded-2xl border border-slate-200 cursor-pointer flex flex-col justify-between transition hover:border-teal-400 bg-white min-h-[105px]">
+              <div class="flex items-start justify-between">
+                <div>
+                  <span class="font-mono text-[10px] font-black text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">
+                    {{ dept.code }}
+                  </span>
+                  <h4 class="font-extrabold text-slate-900 text-sm mt-1.5">{{ dept.name }}</h4>
+                </div>
+                <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition"
+                     [class.border-teal-600]="selectedDepartmentId() === dept.id"
+                     [class.bg-teal-600]="selectedDepartmentId() === dept.id"
+                     [class.border-slate-300]="selectedDepartmentId() !== dept.id">
+                  @if (selectedDepartmentId() === dept.id) {
+                    <span class="text-white text-[10px] font-black">✓</span>
+                  }
+                </div>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-2 truncate">Floor {{ dept.locationFloor || '1' }} &bull; Active Clinic</p>
+            </div>
+          }
+        </div>
+
+        <div class="pt-4 flex items-center justify-between border-t border-slate-100">
+          <button (click)="goToStep(1)" class="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+            ⬅️ Back to Patient
+          </button>
+          <button (click)="goToStep(3)" 
+                  [disabled]="!selectedDepartmentId()"
+                  class="px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-extrabold text-xs shadow-md transition">
+            Continue to Doctor ➔
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- STEP 3: CHOOSE DOCTOR & CONFIRM -->
+  @if (currentStep() === 3) {
+    <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6 shadow-sm">
+      <div>
+        <h3 class="text-base sm:text-lg font-black text-slate-900">Step 3: Select Consulting Doctor</h3>
+        <p class="text-xs text-slate-500 mt-1">
+          Showing specialists in <strong>{{ getSelectedDepartment()?.name }}</strong>.
+        </p>
+      </div>
+
+      @if (loadingDoctors()) {
+        <div class="py-12 text-center text-xs text-slate-400">Loading on-duty doctors...</div>
+      } @else if (doctors().length === 0) {
+        <div class="p-8 text-center bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
+          <p class="text-sm font-bold text-amber-900">No doctors currently on duty in this department</p>
+          <p class="text-xs text-amber-700">Please choose a different department or approach the reception desk.</p>
+          <button (click)="goToStep(2)" class="mt-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition">
+            Choose Another Department
+          </button>
+        </div>
+      } @else {
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          @for (doc of doctors(); track doc.id) {
+            <div (click)="selectDoctor(doc.id)"
+                 [class.border-teal-600]="selectedDoctorId() === doc.id"
+                 [class.bg-teal-50]="selectedDoctorId() === doc.id"
+                 class="p-4 rounded-2xl border border-slate-200 cursor-pointer flex items-center justify-between transition hover:border-teal-400 bg-white">
+              <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-xl bg-teal-100 text-teal-800 font-black flex items-center justify-center text-sm border border-teal-200">
+                  Dr
+                </div>
+                <div>
+                  <h4 class="font-extrabold text-slate-900 text-sm">Dr. {{ doc.doctorName }}</h4>
+                  <p class="text-[11px] text-slate-500 font-medium">Room {{ doc.roomNumber }} &bull; ~{{ doc.avgConsultationMinutes }} mins/patient</p>
+                </div>
+              </div>
+              <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition"
+                   [class.border-teal-600]="selectedDoctorId() === doc.id"
+                   [class.bg-teal-600]="selectedDoctorId() === doc.id"
+                   [class.border-slate-300]="selectedDoctorId() !== doc.id">
+                @if (selectedDoctorId() === doc.id) {
+                  <span class="text-white text-[10px] font-black">✓</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Appointment Summary Box -->
+        @if (selectedDoctorId()) {
+          <div class="p-5 bg-teal-50 border border-teal-200 rounded-2xl space-y-3">
+            <h4 class="text-xs font-black text-teal-900 uppercase tracking-wider">Appointment Summary</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div>
+                <span class="text-slate-400 block text-[11px]">Patient</span>
+                <span class="font-extrabold text-slate-900">{{ getSelectedPatient()?.fullName }}</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block text-[11px]">Department</span>
+                <span class="font-extrabold text-slate-900">{{ getSelectedDepartment()?.name }}</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block text-[11px]">Consultant</span>
+                <span class="font-extrabold text-slate-900">Dr. {{ getSelectedDoctor()?.doctorName }} (Room {{ getSelectedDoctor()?.roomNumber }})</span>
+              </div>
+            </div>
+          </div>
+        }
+
+        <div class="pt-4 flex items-center justify-between border-t border-slate-100">
+          <button (click)="goToStep(2)" class="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition">
+            ⬅️ Back to Specialty
+          </button>
+          <button (click)="confirmBooking()" 
+                  [disabled]="submitting() || !selectedDoctorId()"
+                  class="px-7 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-extrabold text-xs shadow-md transition">
+            {{ submitting() ? 'Generating Token...' : 'Confirm Appointment & Issue Token' }}
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+</div>

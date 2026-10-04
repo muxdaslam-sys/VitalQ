@@ -56,28 +56,7 @@ public class QueueTokenResponse
 public class BookTokenRequest
 {
     [Required]
-    public Guid DepartmentId { get; set; }
-
-    [Required]
-    public Guid DoctorId { get; set; }
-}
-
-/// <summary>
-/// Used by a nurse to create a walk-in token for a patient without an account. (POST /api/tokens/walk-in)
-/// </summary>
-public class WalkInTokenRequest
-{
-    [Required, MaxLength(100)]
-    public string FullName { get; set; } = null!;
-
-    [Required, MaxLength(20), Phone]
-    public string PhoneNumber { get; set; } = null!;
-
-    [Required]
-    public DateOnly DateOfBirth { get; set; }
-
-    [Required, MaxLength(10)]
-    public string Gender { get; set; } = null!;
+    public Guid PatientId { get; set; }
 
     [Required]
     public Guid DepartmentId { get; set; }
@@ -91,9 +70,18 @@ public class WalkInTokenRequest
 /// </summary>
 public class UpdateTokenStatusRequest
 {
-    [Required, MaxLength(20)]
-    public string Status { get; set; } = null!;            // "Skipped", "Cancelled", etc.
+    [MaxLength(20)]
+    public string? Status { get; set; } = "Cancelled";            // "Skipped", "Cancelled", etc.
 
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+}
+
+/// <summary>
+/// Optional payload when cancelling an appointment.
+/// </summary>
+public class CancelTokenRequest
+{
     [MaxLength(500)]
     public string? Notes { get; set; }
 }

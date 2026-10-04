@@ -1,7 +1,7 @@
 namespace VitalQ.BusinessLogic.Services;
 
 /// <summary>
-/// Priority Aging calculation engine (§07 Priority engine, Page 7).
+/// Priority Aging calculation engine.
 /// Prevents routine (Green) patients from starving while maintaining clinical urgency ceilings.
 /// </summary>
 public static class PriorityScoreCalculator

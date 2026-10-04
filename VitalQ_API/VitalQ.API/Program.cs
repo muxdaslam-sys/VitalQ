@@ -11,9 +11,12 @@ using VitalQ.DataAccess;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Database Context
-builder.Services.AddDbContext<VitalQDbContext>(options =>
+// 1. Database Context (Pooled for high-concurrency 100k+ throughput)
+builder.Services.AddDbContextPool<VitalQDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// 1.1 In-Memory Caching for hospital metadata
+builder.Services.AddMemoryCache();
 
 // 2. CORS (Allows Angular http://localhost:4200 to send cookies and connect via WebSockets)
 builder.Services.AddCors(options =>
@@ -61,13 +64,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// 4. Business Logic Services (BLL)
+// 4. Core Infrastructure, Notifications & Token Generator
+builder.Services.AddScoped<ITokenGenerator, TokenGenerator>();
+builder.Services.AddScoped<IQueueNotificationService, VitalQ.API.Services.QueueNotificationService>();
+
+// 5. Role-Based & Domain Services
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IBookingService, BookingService>();
-builder.Services.AddScoped<ITriageService, TriageService>();
-builder.Services.AddScoped<IQueueService, QueueService>();
-builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IPublicService, PublicService>();
 builder.Services.AddScoped<IPatientService, PatientService>();
+builder.Services.AddScoped<INurseService, NurseService>();
+builder.Services.AddScoped<IDoctorService, DoctorService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 
 // 6. SignalR & Background Aging Worker
 builder.Services.AddSignalR();

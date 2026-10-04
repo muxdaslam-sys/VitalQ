@@ -35,7 +35,7 @@ export interface UpdateDoctorRequest {
   avgConsultationMinutes: number;
 }
 
-export interface UserResponse {
+export interface StaffUserResponse {
   id: string;
   username: string;
   password: string;
