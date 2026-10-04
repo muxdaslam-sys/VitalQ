@@ -6,80 +6,21 @@ using VitalQ.Entities.Models;
 
 namespace VitalQ.BusinessLogic.Services;
 
-public class QueueService : IQueueService
+/// <summary>
+/// Service powering the Doctor Consultation Room console on PC.
+/// Handles priority queue viewing, calling next, skipping, requeueing, and consultation completion.
+/// </summary>
+public class DoctorService : IDoctorService
 {
     private readonly VitalQDbContext _context;
 
-    public QueueService(VitalQDbContext context)
+    public DoctorService(VitalQDbContext context)
     {
         _context = context;
     }
 
     // =========================================================================
-    // 1. GET DOCTOR LIVE QUEUE (Sorted by PriorityScore DESC, BookedAtUtc ASC)
-    // =========================================================================
-    public async Task<IEnumerable<QueueTokenResponse>> GetDoctorQueueAsync(Guid doctorId)
-    {
-        var todayUtc = DateTime.UtcNow.Date;
-
-        var tokens = await _context.QueueTokens
-            .AsNoTracking()
-            .Include(t => t.Patient)
-            .Include(t => t.Department)
-            .Include(t => t.Doctor)
-                .ThenInclude(d => d.User)
-            .Include(t => t.TriageAssessment)
-            .Where(t => t.DoctorId == doctorId &&
-                        t.BookedAtUtc.Date == todayUtc &&
-                        (t.Status == "Called" || t.Status == "Waiting" || t.Status == "Skipped"))
-            .ToListAsync();
-
-        // 1. Called patients first (active in room)
-        var called = tokens
-            .Where(t => t.Status == "Called")
-            .OrderBy(t => t.CalledAtUtc)
-            .ToList();
-
-        // 2. Waiting patients ranked by PriorityScore DESC, BookedAtUtc ASC
-        var waiting = tokens
-            .Where(t => t.Status == "Waiting")
-            .OrderByDescending(t => t.PriorityScore)
-            .ThenBy(t => t.BookedAtUtc)
-            .ToList();
-
-        // 3. Skipped / On-Hold patients
-        var skipped = tokens
-            .Where(t => t.Status == "Skipped")
-            .OrderBy(t => t.BookedAtUtc)
-            .ToList();
-
-        var result = new List<QueueTokenResponse>();
-
-        // Add called
-        foreach (var c in called)
-        {
-            result.Add(MapToResponse(c, 0, 0));
-        }
-
-        // Add waiting with accurate live position and wait times
-        for (int i = 0; i < waiting.Count; i++)
-        {
-            var w = waiting[i];
-            var avgMins = w.Doctor?.AvgConsultationMinutes ?? 10;
-            result.Add(MapToResponse(w, i, avgMins));
-        }
-
-        // Add skipped
-        foreach (var s in skipped)
-        {
-            result.Add(MapToResponse(s, 0, 0));
-        }
-
-        return result;
-    }
-
-    // =========================================================================
-    // 2. GET DOCTOR PROFILE BY LOGGED-IN USER ID
+    // 1. GET DOCTOR PROFILE BY USER ID
     // =========================================================================
     public async Task<DoctorResponse?> GetDoctorByUserIdAsync(Guid userId)
     {
@@ -108,7 +49,59 @@ public class QueueService : IQueueService
     }
 
     // =========================================================================
-    // 3. GET CURRENTLY CALLED PATIENT FOR DOCTOR
+    // 2. GET DOCTOR'S LIVE QUEUE
+    // =========================================================================
+    public async Task<IEnumerable<QueueTokenResponse>> GetMyQueueAsync(Guid doctorId)
+    {
+        var todayUtc = DateTime.UtcNow.Date;
+
+        var tokens = await _context.QueueTokens
+            .AsNoTracking()
+            .Include(t => t.Patient)
+            .Include(t => t.Department)
+            .Include(t => t.Doctor).ThenInclude(d => d.User)
+            .Include(t => t.TriageAssessment)
+            .Where(t => t.DoctorId == doctorId &&
+                        t.BookedAtUtc.Date == todayUtc &&
+                        (t.Status == "Called" || t.Status == "Waiting" || t.Status == "Skipped"))
+            .ToListAsync();
+
+        // 1. Called patient (currently in room)
+        var called = tokens.Where(t => t.Status == "Called").OrderBy(t => t.CalledAtUtc).ToList();
+
+        // 2. Waiting patients ranked by PriorityScore DESC, BookedAtUtc ASC
+        var waiting = tokens.Where(t => t.Status == "Waiting")
+            .OrderByDescending(t => t.PriorityScore)
+            .ThenBy(t => t.BookedAtUtc)
+            .ToList();
+
+        // 3. Skipped patients on hold
+        var skipped = tokens.Where(t => t.Status == "Skipped").OrderBy(t => t.BookedAtUtc).ToList();
+
+        var result = new List<QueueTokenResponse>();
+
+        foreach (var c in called)
+        {
+            result.Add(MapToResponse(c, 0, 0));
+        }
+
+        for (int i = 0; i < waiting.Count; i++)
+        {
+            var w = waiting[i];
+            var avgMins = w.Doctor?.AvgConsultationMinutes ?? 10;
+            result.Add(MapToResponse(w, i, avgMins));
+        }
+
+        foreach (var s in skipped)
+        {
+            result.Add(MapToResponse(s, 0, 0));
+        }
+
+        return result;
+    }
+
+    // =========================================================================
+    // 3. GET PATIENT CURRENTLY INSIDE THE ROOM
     // =========================================================================
     public async Task<QueueTokenResponse?> GetCurrentCalledPatientAsync(Guid doctorId)
     {
@@ -118,10 +111,11 @@ public class QueueService : IQueueService
             .AsNoTracking()
             .Include(t => t.Patient)
             .Include(t => t.Department)
-            .Include(t => t.Doctor)
-                .ThenInclude(d => d.User)
+            .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.TriageAssessment)
-            .Where(t => t.DoctorId == doctorId && t.Status == "Called" && t.BookedAtUtc.Date == todayUtc)
+            .Where(t => t.DoctorId == doctorId &&
+                        t.BookedAtUtc.Date == todayUtc &&
+                        t.Status == "Called")
             .OrderByDescending(t => t.CalledAtUtc)
             .FirstOrDefaultAsync();
 
@@ -129,41 +123,64 @@ public class QueueService : IQueueService
     }
 
     // =========================================================================
-    // 4. CALL NEXT PATIENT (Guarded by RowVersion Optimistic Concurrency)
+    // 4. CALL NEXT PATIENT (Optimistic Concurrency via RowVersion)
     // =========================================================================
     public async Task<QueueTokenResponse?> CallNextPatientAsync(Guid doctorId)
     {
-        var todayUtc = DateTime.UtcNow.Date;
-
-        // Clinical Safety Guard: Check if a consultation is already in progress
-        var currentCalled = await _context.QueueTokens
+        var doctor = await _context.Doctors
             .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.DoctorId == doctorId && t.Status == "Called" && t.BookedAtUtc.Date == todayUtc);
+            .Include(d => d.User)
+            .FirstOrDefaultAsync(d => d.Id == doctorId);
 
-        if (currentCalled != null)
+        if (doctor == null)
         {
-            throw new InvalidOperationException($"Patient {currentCalled.TokenNumber} is currently in consultation. Please complete or skip them before calling the next patient.");
+            throw new InvalidOperationException("Doctor record not found.");
         }
 
-        // Select the top-priority waiting patient
+        var todayUtc = DateTime.UtcNow.Date;
+
+        // Automatically complete or skip any existing 'Called' patient before calling next
+        var currentlyCalled = await _context.QueueTokens
+            .Where(t => t.DoctorId == doctorId && t.Status == "Called" && t.BookedAtUtc.Date == todayUtc)
+            .ToListAsync();
+
+        foreach (var active in currentlyCalled)
+        {
+            active.Status = "Completed";
+            active.CompletedAtUtc = DateTime.UtcNow;
+
+            await _context.TokenAuditLogs.AddAsync(new TokenAuditLog
+            {
+                Id = Guid.NewGuid(),
+                QueueTokenId = active.Id,
+                PreviousStatus = "Called",
+                NewStatus = "Completed",
+                ChangeSource = "Doctor",
+                ChangedByUserId = doctor.UserId,
+                Notes = "Automatically completed upon calling next patient.",
+                ChangedAtUtc = DateTime.UtcNow
+            });
+        }
+
+        // Pick top-priority waiting patient
         var nextToken = await _context.QueueTokens
             .Include(t => t.Patient)
             .Include(t => t.Department)
-            .Include(t => t.Doctor)
-                .ThenInclude(d => d.User)
+            .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.TriageAssessment)
-            .Where(t => t.DoctorId == doctorId && t.Status == "Waiting" && t.BookedAtUtc.Date == todayUtc)
+            .Where(t => t.DoctorId == doctorId &&
+                        t.Status == "Waiting" &&
+                        t.BookedAtUtc.Date == todayUtc)
             .OrderByDescending(t => t.PriorityScore)
             .ThenBy(t => t.BookedAtUtc)
             .FirstOrDefaultAsync();
 
         if (nextToken == null)
         {
+            await _context.SaveChangesAsync();
             return null;
         }
 
-        // Move to Called
-        var previousStatus = nextToken.Status;
         nextToken.Status = "Called";
         nextToken.CalledAtUtc = DateTime.UtcNow;
 
@@ -171,37 +188,28 @@ public class QueueService : IQueueService
         {
             Id = Guid.NewGuid(),
             QueueTokenId = nextToken.Id,
-            PreviousStatus = previousStatus,
+            PreviousStatus = "Waiting",
             NewStatus = "Called",
             ChangeSource = "Doctor",
-            ChangedByUserId = nextToken.Doctor?.UserId,
-            Notes = $"Summoned into {(string.IsNullOrEmpty(nextToken.Doctor?.RoomNumber) ? "Consultation Room" : nextToken.Doctor.RoomNumber)}",
+            ChangedByUserId = doctor.UserId,
+            Notes = $"Called into room {doctor.RoomNumber} by Dr. {doctor.User.FullName}",
             ChangedAtUtc = DateTime.UtcNow
         };
         await _context.TokenAuditLogs.AddAsync(audit);
 
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            throw new InvalidOperationException("This patient was modified or called by another session. Please refresh your queue.");
-        }
-
+        await _context.SaveChangesAsync();
         return MapToResponse(nextToken, 0, 0);
     }
 
     // =========================================================================
-    // 5. SKIP PATIENT (Mark Absent / Place on Hold)
+    // 5. SKIP PATIENT (Patient did not enter room)
     // =========================================================================
     public async Task<QueueTokenResponse> SkipPatientAsync(Guid tokenId, Guid doctorUserId)
     {
         var token = await _context.QueueTokens
             .Include(t => t.Patient)
             .Include(t => t.Department)
-            .Include(t => t.Doctor)
-                .ThenInclude(d => d.User)
+            .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.TriageAssessment)
             .FirstOrDefaultAsync(t => t.Id == tokenId);
 
@@ -212,7 +220,7 @@ public class QueueService : IQueueService
 
         if (token.Status != "Called" && token.Status != "Waiting")
         {
-            throw new InvalidOperationException($"Cannot skip a token with status '{token.Status}'.");
+            throw new InvalidOperationException($"Cannot skip a patient with status '{token.Status}'.");
         }
 
         var previousStatus = token.Status;
@@ -226,7 +234,7 @@ public class QueueService : IQueueService
             NewStatus = "Skipped",
             ChangeSource = "Doctor",
             ChangedByUserId = doctorUserId,
-            Notes = "Patient marked absent / placed on hold",
+            Notes = "Patient did not respond / skipped by doctor.",
             ChangedAtUtc = DateTime.UtcNow
         };
         await _context.TokenAuditLogs.AddAsync(audit);
@@ -236,15 +244,14 @@ public class QueueService : IQueueService
     }
 
     // =========================================================================
-    // 6. RE-QUEUE PATIENT (When Absent Patient Returns)
+    // 6. REQUEUE PATIENT (Patient arrived after being skipped)
     // =========================================================================
     public async Task<QueueTokenResponse> RequeuePatientAsync(Guid tokenId, Guid doctorUserId)
     {
         var token = await _context.QueueTokens
             .Include(t => t.Patient)
             .Include(t => t.Department)
-            .Include(t => t.Doctor)
-                .ThenInclude(d => d.User)
+            .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.TriageAssessment)
             .FirstOrDefaultAsync(t => t.Id == tokenId);
 
@@ -255,21 +262,20 @@ public class QueueService : IQueueService
 
         if (token.Status != "Skipped")
         {
-            throw new InvalidOperationException($"Only Skipped tokens can be re-queued. Current status is '{token.Status}'.");
+            throw new InvalidOperationException($"Cannot requeue a patient with status '{token.Status}'. Must be 'Skipped'.");
         }
 
-        var previousStatus = token.Status;
         token.Status = "Waiting";
 
         var audit = new TokenAuditLog
         {
             Id = Guid.NewGuid(),
             QueueTokenId = tokenId,
-            PreviousStatus = previousStatus,
+            PreviousStatus = "Skipped",
             NewStatus = "Waiting",
             ChangeSource = "Doctor",
             ChangedByUserId = doctorUserId,
-            Notes = "Patient returned to waiting area and re-entered priority queue",
+            Notes = "Patient returned; reinstated to waiting queue.",
             ChangedAtUtc = DateTime.UtcNow
         };
         await _context.TokenAuditLogs.AddAsync(audit);
@@ -279,15 +285,14 @@ public class QueueService : IQueueService
     }
 
     // =========================================================================
-    // 7. COMPLETE CONSULTATION (Enter Notes & Close Visit)
+    // 7. COMPLETE CONSULTATION
     // =========================================================================
     public async Task<QueueTokenResponse> CompleteConsultationAsync(Guid tokenId, Guid doctorUserId, CompleteConsultationRequest request)
     {
         var token = await _context.QueueTokens
             .Include(t => t.Patient)
             .Include(t => t.Department)
-            .Include(t => t.Doctor)
-                .ThenInclude(d => d.User)
+            .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.TriageAssessment)
             .FirstOrDefaultAsync(t => t.Id == tokenId);
 
@@ -326,7 +331,7 @@ public class QueueService : IQueueService
     }
 
     // =========================================================================
-    // 8. RECALCULATE QUEUE SCORES (Anti-Starvation Aging Engine Loop)
+    // 8. RECALCULATE QUEUE SCORES (Aging engine loop)
     // =========================================================================
     public async Task RecalculateQueueScoresAsync()
     {
@@ -357,9 +362,6 @@ public class QueueService : IQueueService
         }
     }
 
-    // =========================================================================
-    // PRIVATE HELPER: MAPPING
-    // =========================================================================
     private static QueueTokenResponse MapToResponse(QueueToken t, int patientsAhead, int avgConsultationMins) => new()
     {
         Id = t.Id,
