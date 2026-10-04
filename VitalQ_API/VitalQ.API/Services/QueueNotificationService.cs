@@ -28,9 +28,6 @@ public class QueueNotificationService : IQueueNotificationService
 
         // 2. Send to Nurse triage desk PC
         await _hubContext.Clients.Group("nurse-station").SendAsync("TokenBooked", token);
-
-        // 3. Send to Department group for backward compatibility
-        await _hubContext.Clients.Group($"dept-{token.DepartmentId}").SendAsync("QueueUpdated", token);
     }
 
     /// <summary>

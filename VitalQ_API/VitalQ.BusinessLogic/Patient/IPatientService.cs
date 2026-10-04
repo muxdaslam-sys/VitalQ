@@ -20,7 +20,10 @@ public interface IPatientService
     // 4. Patient profile by ID
     Task<PatientResponse?> GetPatientByIdAsync(Guid patientId);
 
-    // 5. Update patient profile
+    // 5. Patient profile by User account ID
+    Task<PatientResponse?> GetPatientByUserIdAsync(Guid userId);
+
+    // 6. Update patient profile
     Task<PatientResponse> UpdatePatientAsync(Guid patientId, UpdatePatientRequest request);
 
     // 6. Aggregated visit history for a patient

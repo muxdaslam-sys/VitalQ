@@ -41,15 +41,4 @@ public class QueueHub : Hub
     {
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"patient-{tokenId}");
     }
-
-    // Department group for department-level subscriptions
-    public async Task JoinDepartmentGroup(string departmentId)
-    {
-        await Groups.AddToGroupAsync(Context.ConnectionId, $"dept-{departmentId}");
-    }
-
-    public async Task LeaveDepartmentGroup(string departmentId)
-    {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"dept-{departmentId}");
-    }
 }

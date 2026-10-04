@@ -1,9 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using VitalQ.BusinessLogic.Interfaces;
-using VitalQ.DataAccess;
 using VitalQ.Entities.DTOs;
 
 namespace VitalQ.API.Controllers;
@@ -16,20 +14,17 @@ public class BookingController : ControllerBase
     private readonly IPatientService _patientService;
     private readonly INurseService _nurseService;
     private readonly IQueueNotificationService _notificationService;
-    private readonly VitalQDbContext _context;
 
     public BookingController(
         IPublicService publicService,
         IPatientService patientService,
         INurseService nurseService,
-        IQueueNotificationService notificationService,
-        VitalQDbContext context)
+        IQueueNotificationService notificationService)
     {
         _publicService = publicService;
         _patientService = patientService;
         _nurseService = nurseService;
         _notificationService = notificationService;
-        _context = context;
     }
 
     /// <summary>
@@ -67,10 +62,10 @@ public class BookingController : ControllerBase
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         Guid.TryParse(userIdStr, out var currentUserId);
 
-        // If patient ID was not provided, default to the authenticated user's own profile
+        // If patient ID was not provided, default to the authenticated user's own profile via service
         if (request.PatientId == Guid.Empty && currentUserId != Guid.Empty)
         {
-            var selfPatient = await _context.Patients.FirstOrDefaultAsync(p => p.UserId == currentUserId);
+            var selfPatient = await _patientService.GetPatientByUserIdAsync(currentUserId);
             if (selfPatient != null)
             {
                 request.PatientId = selfPatient.Id;
@@ -130,7 +125,7 @@ public class BookingController : ControllerBase
             var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (Guid.TryParse(userIdStr, out var currentUserId))
             {
-                var selfPatient = await _context.Patients.FirstOrDefaultAsync(p => p.UserId == currentUserId);
+                var selfPatient = await _patientService.GetPatientByUserIdAsync(currentUserId);
                 if (selfPatient != null) targetId = selfPatient.Id;
             }
         }
