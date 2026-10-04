@@ -64,13 +64,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// 4. Business Logic Services (BLL)
+// 4. Core Infrastructure, Notifications & Token Generator
+builder.Services.AddScoped<ITokenGenerator, TokenGenerator>();
+builder.Services.AddScoped<IQueueNotificationService, VitalQ.API.Services.QueueNotificationService>();
+
+// 5. Role-Based & Domain Services
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IBookingService, BookingService>();
-builder.Services.AddScoped<ITriageService, TriageService>();
-builder.Services.AddScoped<IQueueService, QueueService>();
-builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IPublicService, PublicService>();
 builder.Services.AddScoped<IPatientService, PatientService>();
+builder.Services.AddScoped<INurseService, NurseService>();
+builder.Services.AddScoped<IDoctorService, DoctorService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 
 // 6. SignalR & Background Aging Worker
 builder.Services.AddSignalR();

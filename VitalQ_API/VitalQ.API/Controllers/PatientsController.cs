@@ -11,10 +11,12 @@ namespace VitalQ.API.Controllers;
 public class PatientsController : ControllerBase
 {
     private readonly IPatientService _patientService;
+    private readonly INurseService _nurseService;
 
-    public PatientsController(IPatientService patientService)
+    public PatientsController(IPatientService patientService, INurseService nurseService)
     {
         _patientService = patientService;
+        _nurseService = nurseService;
     }
 
     /// <summary>
@@ -102,7 +104,7 @@ public class PatientsController : ControllerBase
     {
         try
         {
-            var result = await _patientService.WalkInRegisterAsync(request);
+            var result = await _nurseService.RegisterWalkInPatientAsync(request);
             return Ok(result);
         }
         catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
@@ -119,7 +121,7 @@ public class PatientsController : ControllerBase
     [HttpGet("search")]
     public async Task<IActionResult> Search([FromQuery] string query)
     {
-        var results = await _patientService.SearchPatientsAsync(query);
+        var results = await _nurseService.SearchPatientsAsync(query);
         return Ok(results);
     }
 

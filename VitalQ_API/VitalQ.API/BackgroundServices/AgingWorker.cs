@@ -36,8 +36,8 @@ public class AgingWorker : BackgroundService
 
                 using (var scope = _serviceProvider.CreateScope())
                 {
-                    var queueService = scope.ServiceProvider.GetRequiredService<IQueueService>();
-                    await queueService.RecalculateQueueScoresAsync();
+                    var doctorService = scope.ServiceProvider.GetRequiredService<IDoctorService>();
+                    await doctorService.RecalculateQueueScoresAsync();
                 }
 
                 // Broadcast tick to all connected clients so active queues re-sort

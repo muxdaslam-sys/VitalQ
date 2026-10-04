@@ -1,9 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using VitalQ.API.Hubs;
 using VitalQ.BusinessLogic.Interfaces;
 using VitalQ.DataAccess;
 using VitalQ.Entities.DTOs;
@@ -14,15 +12,24 @@ namespace VitalQ.API.Controllers;
 [Route("api")]
 public class BookingController : ControllerBase
 {
-    private readonly IBookingService _bookingService;
+    private readonly IPublicService _publicService;
+    private readonly IPatientService _patientService;
+    private readonly INurseService _nurseService;
+    private readonly IQueueNotificationService _notificationService;
     private readonly VitalQDbContext _context;
-    private readonly IHubContext<QueueHub> _hubContext;
 
-    public BookingController(IBookingService bookingService, VitalQDbContext context, IHubContext<QueueHub> hubContext)
+    public BookingController(
+        IPublicService publicService,
+        IPatientService patientService,
+        INurseService nurseService,
+        IQueueNotificationService notificationService,
+        VitalQDbContext context)
     {
-        _bookingService = bookingService;
+        _publicService = publicService;
+        _patientService = patientService;
+        _nurseService = nurseService;
+        _notificationService = notificationService;
         _context = context;
-        _hubContext = hubContext;
     }
 
     /// <summary>
@@ -33,7 +40,7 @@ public class BookingController : ControllerBase
     [HttpGet("departments")]
     public async Task<IActionResult> GetDepartments()
     {
-        var departments = await _bookingService.GetActiveDepartmentsAsync();
+        var departments = await _publicService.GetActiveDepartmentsAsync();
         return Ok(departments);
     }
 
@@ -45,7 +52,7 @@ public class BookingController : ControllerBase
     [HttpGet("departments/{id}/doctors")]
     public async Task<IActionResult> GetDoctorsByDepartment(Guid id)
     {
-        var doctors = await _bookingService.GetAvailableDoctorsAsync(id);
+        var doctors = await _publicService.GetAvailableDoctorsAsync(id);
         return Ok(doctors);
     }
 
@@ -57,17 +64,16 @@ public class BookingController : ControllerBase
     [HttpPost("bookings")]
     public async Task<IActionResult> BookToken([FromBody] BookTokenRequest request)
     {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        Guid.TryParse(userIdStr, out var currentUserId);
+
         // If patient ID was not provided, default to the authenticated user's own profile
-        if (request.PatientId == Guid.Empty)
+        if (request.PatientId == Guid.Empty && currentUserId != Guid.Empty)
         {
-            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (Guid.TryParse(userIdStr, out var currentUserId))
+            var selfPatient = await _context.Patients.FirstOrDefaultAsync(p => p.UserId == currentUserId);
+            if (selfPatient != null)
             {
-                var selfPatient = await _context.Patients.FirstOrDefaultAsync(p => p.UserId == currentUserId);
-                if (selfPatient != null)
-                {
-                    request.PatientId = selfPatient.Id;
-                }
+                request.PatientId = selfPatient.Id;
             }
         }
 
@@ -78,10 +84,20 @@ public class BookingController : ControllerBase
 
         try
         {
-            var token = await _bookingService.BookTokenAsync(request);
+            QueueTokenResponse token;
 
-            // Real-Time SignalR push to the Doctor's room display
-            await _hubContext.Clients.Group($"doctor-{token.DoctorId}").SendAsync("TokenBooked", token);
+            // Route to appropriate service based on caller role
+            if (User.IsInRole("Nurse") || User.IsInRole("Admin"))
+            {
+                token = await _nurseService.BookWalkInTokenAsync(request);
+            }
+            else
+            {
+                token = await _patientService.BookAppointmentAsync(request, currentUserId);
+            }
+
+            // Real-Time push to Doctor's PC room and Nurse's PC intake station
+            await _notificationService.NotifyTokenBookedAsync(token);
 
             return Ok(token);
         }
@@ -109,7 +125,6 @@ public class BookingController : ControllerBase
     {
         var targetId = patientId ?? Guid.Empty;
 
-        // If not specified in query, default to authenticated user's patient profile
         if (targetId == Guid.Empty)
         {
             var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -125,7 +140,7 @@ public class BookingController : ControllerBase
             return NotFound(new { message = "No patient profile found for current user." });
         }
 
-        var token = await _bookingService.GetPatientActiveTokenAsync(targetId);
+        var token = await _patientService.GetPatientActiveTokenAsync(targetId);
         if (token == null)
         {
             return NotFound(new { message = "No active token found for today." });
@@ -147,7 +162,7 @@ public class BookingController : ControllerBase
             return Unauthorized();
         }
 
-        var tokens = await _bookingService.GetUserActiveTokensAsync(currentUserId);
+        var tokens = await _patientService.GetMyActiveTokensAsync(currentUserId);
         return Ok(tokens);
     }
 
@@ -167,12 +182,10 @@ public class BookingController : ControllerBase
 
         try
         {
-            var token = await _bookingService.CancelTokenAsync(id, currentUserId, request?.Notes);
+            var token = await _patientService.CancelMyTokenAsync(id, currentUserId, request?.Notes);
 
-            // SignalR: notify doctor console and department TV
-            await _hubContext.Clients.Group($"doctor-{token.DoctorId}").SendAsync("QueueUpdated", token);
-            await _hubContext.Clients.Group($"dept-{token.DepartmentId}").SendAsync("QueueUpdated", token);
-            await _hubContext.Clients.Group($"patient-{token.Id}").SendAsync("QueueUpdated", token);
+            // Real-Time push to Doctor console
+            await _notificationService.NotifyQueueUpdatedAsync(token.DoctorId, token);
 
             return Ok(token);
         }
@@ -191,7 +204,7 @@ public class BookingController : ControllerBase
     }
 
     /// <summary>
-    /// 7. Public live tracker for walk-in patients with printed paper slips.
+    /// 7. Public live tracker for paper slip holders on PC or Mobile.
     /// GET /api/bookings/track/{tokenNumber}
     /// </summary>
     [AllowAnonymous]
@@ -203,7 +216,7 @@ public class BookingController : ControllerBase
             return BadRequest(new { message = "Token number is required." });
         }
 
-        var token = await _bookingService.TrackTokenAsync(tokenNumber.Trim().ToUpper());
+        var token = await _publicService.TrackTokenAsync(tokenNumber.Trim().ToUpper());
         if (token == null)
         {
             return NotFound(new { message = $"No active consultation slip found matching '{tokenNumber}' for today." });
@@ -212,4 +225,3 @@ public class BookingController : ControllerBase
         return Ok(token);
     }
 }
-

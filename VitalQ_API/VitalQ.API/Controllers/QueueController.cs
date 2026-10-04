@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
-using VitalQ.API.Hubs;
 using VitalQ.BusinessLogic.Interfaces;
 using VitalQ.Entities.DTOs;
 
@@ -13,13 +11,13 @@ namespace VitalQ.API.Controllers;
 [Route("api")]
 public class QueueController : ControllerBase
 {
-    private readonly IQueueService _queueService;
-    private readonly IHubContext<QueueHub> _hubContext;
+    private readonly IDoctorService _doctorService;
+    private readonly IQueueNotificationService _notificationService;
 
-    public QueueController(IQueueService queueService, IHubContext<QueueHub> hubContext)
+    public QueueController(IDoctorService doctorService, IQueueNotificationService notificationService)
     {
-        _queueService = queueService;
-        _hubContext = hubContext;
+        _doctorService = doctorService;
+        _notificationService = notificationService;
     }
 
     /// <summary>
@@ -35,7 +33,7 @@ public class QueueController : ControllerBase
             return Unauthorized();
         }
 
-        var doctor = await _queueService.GetDoctorByUserIdAsync(userId);
+        var doctor = await _doctorService.GetDoctorByUserIdAsync(userId);
         if (doctor == null)
         {
             return NotFound(new { message = "No doctor profile associated with this account." });
@@ -51,7 +49,7 @@ public class QueueController : ControllerBase
     [HttpGet("queue/doctor/{doctorId}")]
     public async Task<IActionResult> GetDoctorQueue(Guid doctorId)
     {
-        var queue = await _queueService.GetDoctorQueueAsync(doctorId);
+        var queue = await _doctorService.GetMyQueueAsync(doctorId);
         return Ok(queue);
     }
 
@@ -62,7 +60,7 @@ public class QueueController : ControllerBase
     [HttpGet("queue/doctor/{doctorId}/current")]
     public async Task<IActionResult> GetCurrentCalled(Guid doctorId)
     {
-        var token = await _queueService.GetCurrentCalledPatientAsync(doctorId);
+        var token = await _doctorService.GetCurrentCalledPatientAsync(doctorId);
         return Ok(token);
     }
 
@@ -75,19 +73,16 @@ public class QueueController : ControllerBase
     {
         try
         {
-            var token = await _queueService.CallNextPatientAsync(doctorId);
+            var token = await _doctorService.CallNextPatientAsync(doctorId);
             if (token == null)
             {
                 return NotFound(new { message = "No waiting patients in queue." });
             }
 
-            // Real-Time SignalR Broadcasts:
-            // 1. Notify the patient directly so their phone/tracker displays "Proceed to Room" and plays audio chime
-            await _hubContext.Clients.Group($"patient-{token.Id}").SendAsync("PatientCalled", token);
-            // 2. Notify the doctor's consultation console
-            await _hubContext.Clients.Group($"doctor-{doctorId}").SendAsync("QueueUpdated", token);
-            // 3. Notify the department waiting-room display
-            await _hubContext.Clients.Group($"dept-{token.DepartmentId}").SendAsync("QueueUpdated", token);
+            // Real-Time Notification:
+            // Pushes directly to the called Patient's Mobile/PC screen (chime audio + room number)
+            // and updates Doctor's PC console
+            await _notificationService.NotifyPatientCalledAsync(token);
 
             return Ok(token);
         }
@@ -109,12 +104,10 @@ public class QueueController : ControllerBase
 
         try
         {
-            var token = await _queueService.SkipPatientAsync(id, doctorUserId);
+            var token = await _doctorService.SkipPatientAsync(id, doctorUserId);
 
-            // SignalR Broadcasts
-            await _hubContext.Clients.Group($"doctor-{token.DoctorId}").SendAsync("QueueUpdated", token);
-            await _hubContext.Clients.Group($"dept-{token.DepartmentId}").SendAsync("QueueUpdated", token);
-            await _hubContext.Clients.Group($"patient-{token.Id}").SendAsync("QueueUpdated", token);
+            // Notify Doctor console that queue shifted
+            await _notificationService.NotifyQueueUpdatedAsync(token.DoctorId, token);
 
             return Ok(token);
         }
@@ -140,12 +133,10 @@ public class QueueController : ControllerBase
 
         try
         {
-            var token = await _queueService.RequeuePatientAsync(id, doctorUserId);
+            var token = await _doctorService.RequeuePatientAsync(id, doctorUserId);
 
-            // SignalR Broadcasts
-            await _hubContext.Clients.Group($"doctor-{token.DoctorId}").SendAsync("QueueUpdated", token);
-            await _hubContext.Clients.Group($"dept-{token.DepartmentId}").SendAsync("QueueUpdated", token);
-            await _hubContext.Clients.Group($"patient-{token.Id}").SendAsync("QueueUpdated", token);
+            // Notify Doctor console that queue shifted
+            await _notificationService.NotifyQueueUpdatedAsync(token.DoctorId, token);
 
             return Ok(token);
         }
@@ -171,12 +162,10 @@ public class QueueController : ControllerBase
 
         try
         {
-            var token = await _queueService.CompleteConsultationAsync(id, doctorUserId, request);
+            var token = await _doctorService.CompleteConsultationAsync(id, doctorUserId, request);
 
-            // SignalR Broadcasts
-            await _hubContext.Clients.Group($"doctor-{token.DoctorId}").SendAsync("QueueUpdated", token);
-            await _hubContext.Clients.Group($"dept-{token.DepartmentId}").SendAsync("QueueUpdated", token);
-            await _hubContext.Clients.Group($"patient-{token.Id}").SendAsync("ConsultationCompleted", token);
+            // Notify Doctor console that consultation finished
+            await _notificationService.NotifyQueueUpdatedAsync(token.DoctorId, token);
 
             return Ok(token);
         }
