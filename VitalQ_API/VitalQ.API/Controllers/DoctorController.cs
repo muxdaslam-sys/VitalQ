@@ -6,25 +6,28 @@ using VitalQ.Entities.DTOs;
 
 namespace VitalQ.API.Controllers;
 
-[Authorize(Roles = "Doctor,Admin,Nurse")]
+/// <summary>
+/// Dedicated Doctor Consultation Room Controller on PC.
+/// Handles priority queue viewing, calling next, skipping, requeueing, and completing consultations.
+/// </summary>
+[Authorize(Roles = "Doctor,Admin")]
 [ApiController]
-[Route("api")]
-public class QueueController : ControllerBase
+[Route("api/doctor")]
+public class DoctorController : ControllerBase
 {
     private readonly IDoctorService _doctorService;
     private readonly IQueueNotificationService _notificationService;
 
-    public QueueController(IDoctorService doctorService, IQueueNotificationService notificationService)
+    public DoctorController(IDoctorService doctorService, IQueueNotificationService notificationService)
     {
         _doctorService = doctorService;
         _notificationService = notificationService;
     }
 
     /// <summary>
-    /// Get the doctor profile for the current logged-in user (Role: Doctor, Admin).
-    /// GET /api/doctors/me
+    /// Get the doctor profile for the current logged-in user.
     /// </summary>
-    [HttpGet("doctors/me")]
+    [HttpGet("me")]
     public async Task<IActionResult> GetCurrentDoctor()
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -43,10 +46,9 @@ public class QueueController : ControllerBase
     }
 
     /// <summary>
-    /// Live priority-sorted queue for a doctor (Role: Doctor, Admin, Nurse).
-    /// GET /api/queue/doctor/{doctorId}
+    /// Live priority-sorted queue for a doctor's PC console.
     /// </summary>
-    [HttpGet("queue/doctor/{doctorId}")]
+    [HttpGet("queue/{doctorId:guid}")]
     public async Task<IActionResult> GetDoctorQueue(Guid doctorId)
     {
         var queue = await _doctorService.GetMyQueueAsync(doctorId);
@@ -54,10 +56,9 @@ public class QueueController : ControllerBase
     }
 
     /// <summary>
-    /// Gets the patient currently inside the consultation room (Role: Doctor, Admin).
-    /// GET /api/queue/doctor/{doctorId}/current
+    /// Gets the patient currently inside the consultation room.
     /// </summary>
-    [HttpGet("queue/doctor/{doctorId}/current")]
+    [HttpGet("current/{doctorId:guid}")]
     public async Task<IActionResult> GetCurrentCalled(Guid doctorId)
     {
         var token = await _doctorService.GetCurrentCalledPatientAsync(doctorId);
@@ -65,10 +66,9 @@ public class QueueController : ControllerBase
     }
 
     /// <summary>
-    /// Picks top-priority Waiting token for this doctor, moves to Called. Guarded by RowVersion (Role: Doctor, Admin).
-    /// POST /api/queue/doctor/{doctorId}/call-next
+    /// Picks top-priority Waiting token, moves to Called, and notifies patient mobile/PC screen.
     /// </summary>
-    [HttpPost("queue/doctor/{doctorId}/call-next")]
+    [HttpPost("call-next/{doctorId:guid}")]
     public async Task<IActionResult> CallNext(Guid doctorId)
     {
         try
@@ -79,9 +79,7 @@ public class QueueController : ControllerBase
                 return NotFound(new { message = "No waiting patients in queue." });
             }
 
-            // Real-Time Notification:
-            // Pushes directly to the called Patient's Mobile/PC screen (chime audio + room number)
-            // and updates Doctor's PC console
+            // Real-Time Notification: Pushes chime audio and room assignment to patient screen & doctor PC
             await _notificationService.NotifyPatientCalledAsync(token);
 
             return Ok(token);
@@ -93,10 +91,9 @@ public class QueueController : ControllerBase
     }
 
     /// <summary>
-    /// Holds an absent patient; token moves to Skipped (Role: Doctor, Admin, Nurse).
-    /// POST /api/tokens/{id}/skip
+    /// Holds an absent patient; token moves to Skipped.
     /// </summary>
-    [HttpPost("tokens/{id}/skip")]
+    [HttpPost("tokens/{id:guid}/skip")]
     public async Task<IActionResult> SkipPatient(Guid id)
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -105,10 +102,7 @@ public class QueueController : ControllerBase
         try
         {
             var token = await _doctorService.SkipPatientAsync(id, doctorUserId);
-
-            // Notify Doctor console that queue shifted
             await _notificationService.NotifyQueueUpdatedAsync(token.DoctorId, token);
-
             return Ok(token);
         }
         catch (KeyNotFoundException ex)
@@ -122,10 +116,9 @@ public class QueueController : ControllerBase
     }
 
     /// <summary>
-    /// Re-activates a skipped patient back into the Waiting queue when they return (Role: Doctor, Admin, Nurse).
-    /// POST /api/tokens/{id}/requeue
+    /// Re-activates a skipped patient back into the Waiting queue when they arrive.
     /// </summary>
-    [HttpPost("tokens/{id}/requeue")]
+    [HttpPost("tokens/{id:guid}/requeue")]
     public async Task<IActionResult> RequeuePatient(Guid id)
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -134,10 +127,7 @@ public class QueueController : ControllerBase
         try
         {
             var token = await _doctorService.RequeuePatientAsync(id, doctorUserId);
-
-            // Notify Doctor console that queue shifted
             await _notificationService.NotifyQueueUpdatedAsync(token.DoctorId, token);
-
             return Ok(token);
         }
         catch (KeyNotFoundException ex)
@@ -151,10 +141,9 @@ public class QueueController : ControllerBase
     }
 
     /// <summary>
-    /// Closes visit, stamps CompletedAtUtc, and saves ConsultationNotes (Role: Doctor, Admin).
-    /// POST /api/tokens/{id}/complete
+    /// Closes visit, stamps CompletedAtUtc, and saves ConsultationNotes.
     /// </summary>
-    [HttpPost("tokens/{id}/complete")]
+    [HttpPost("tokens/{id:guid}/complete")]
     public async Task<IActionResult> CompleteConsultation(Guid id, [FromBody] CompleteConsultationRequest request)
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -163,10 +152,7 @@ public class QueueController : ControllerBase
         try
         {
             var token = await _doctorService.CompleteConsultationAsync(id, doctorUserId, request);
-
-            // Notify Doctor console that consultation finished
             await _notificationService.NotifyQueueUpdatedAsync(token.DoctorId, token);
-
             return Ok(token);
         }
         catch (KeyNotFoundException ex)
