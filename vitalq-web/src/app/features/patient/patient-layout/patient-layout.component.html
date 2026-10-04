@@ -18,7 +18,7 @@
           </div>
         </a>
 
-        <!-- Desktop Navigation Tabs (Clean Standard Terminology) -->
+        <!-- Desktop Navigation Tabs (Clean Direct Routes) -->
         <nav class="hidden md:flex items-center gap-1.5 ml-2">
           <a routerLink="/patient" 
              routerLinkActive="bg-teal-50 text-teal-800 font-bold border-teal-200/80 shadow-xs" 
@@ -27,20 +27,20 @@
             <span>🎟️</span>
             <span>My Tokens</span>
           </a>
-          <a routerLink="/patient" 
-             [queryParams]="{ action: 'book' }"
+          <a routerLink="/patient/book" 
+             routerLinkActive="bg-teal-50 text-teal-800 font-bold border-teal-200/80 shadow-xs"
              class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent transition flex items-center gap-1.5">
             <span>📅</span>
             <span>Book Appointment</span>
           </a>
-          <a routerLink="/patient" 
-             [queryParams]="{ action: 'family' }"
+          <a routerLink="/patient/family" 
+             routerLinkActive="bg-teal-50 text-teal-800 font-bold border-teal-200/80 shadow-xs"
              class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent transition flex items-center gap-1.5">
             <span>👨‍👩‍👧</span>
             <span>Family Members</span>
           </a>
-          <a routerLink="/patient" 
-             [queryParams]="{ action: 'history' }"
+          <a routerLink="/patient/history" 
+             routerLinkActive="bg-teal-50 text-teal-800 font-bold border-teal-200/80 shadow-xs"
              class="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 border border-transparent transition flex items-center gap-1.5">
             <span>📜</span>
             <span>Visit History</span>
@@ -64,35 +64,39 @@
         </button>
       </div>
     </div>
-
-    <!-- Mobile Sub-Bar: Clean Quick Action Chips (Compact 38px height) -->
-    <div class="md:hidden border-t border-slate-100 flex items-center justify-around py-1.5 px-2 bg-slate-50 text-[11px] font-bold text-slate-600">
-      <a routerLink="/patient" 
-         routerLinkActive="text-teal-700 bg-teal-50/80 rounded-lg px-2.5 py-1 font-extrabold" 
-         [routerLinkActiveOptions]="{ exact: true }"
-         class="px-2 py-1 flex items-center gap-1">
-        🎟️ Tokens
-      </a>
-      <a routerLink="/patient" 
-         [queryParams]="{ action: 'book' }" 
-         class="px-2 py-1 flex items-center gap-1 hover:text-teal-700">
-        📅 Book
-      </a>
-      <a routerLink="/patient" 
-         [queryParams]="{ action: 'family' }" 
-         class="px-2 py-1 flex items-center gap-1 hover:text-teal-700">
-        👨‍👩‍👧 Family
-      </a>
-      <a routerLink="/patient" 
-         [queryParams]="{ action: 'history' }" 
-         class="px-2 py-1 flex items-center gap-1 hover:text-teal-700">
-        📜 History
-      </a>
-    </div>
   </header>
 
-  <!-- Main View Container: Expanded to max-w-6xl for Full Desktop Breathing Room -->
-  <main class="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+  <!-- Main View Container: Expanded to max-w-6xl with Mobile Bottom-Nav Padding -->
+  <main class="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">
     <router-outlet></router-outlet>
   </main>
+
+  <!-- Mobile Sticky Bottom Navigation Bar (Thumb Zone) -->
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg px-2 py-1.5 flex items-center justify-around text-[10px] font-bold text-slate-500">
+    <a routerLink="/patient" 
+       routerLinkActive="text-teal-700 bg-teal-50/90 rounded-xl" 
+       [routerLinkActiveOptions]="{ exact: true }"
+       class="flex-1 py-1.5 flex flex-col items-center gap-0.5 transition">
+      <span class="text-base leading-none">🎟️</span>
+      <span>Tokens</span>
+    </a>
+    <a routerLink="/patient/book" 
+       routerLinkActive="text-teal-700 bg-teal-50/90 rounded-xl" 
+       class="flex-1 py-1.5 flex flex-col items-center gap-0.5 transition">
+      <span class="text-base leading-none">📅</span>
+      <span>Book</span>
+    </a>
+    <a routerLink="/patient/family" 
+       routerLinkActive="text-teal-700 bg-teal-50/90 rounded-xl" 
+       class="flex-1 py-1.5 flex flex-col items-center gap-0.5 transition">
+      <span class="text-base leading-none">👨‍👩‍👧</span>
+      <span>Family</span>
+    </a>
+    <a routerLink="/patient/history" 
+       routerLinkActive="text-teal-700 bg-teal-50/90 rounded-xl" 
+       class="flex-1 py-1.5 flex flex-col items-center gap-0.5 transition">
+      <span class="text-base leading-none">📜</span>
+      <span>History</span>
+    </a>
+  </nav>
 </div>

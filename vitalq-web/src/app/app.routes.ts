@@ -39,7 +39,7 @@ export const routes: Routes = [
     loadComponent: () => import('./features/patient/public-tracker/public-tracker.component').then(m => m.PublicTrackerComponent)
   },
 
-  // Patient OPD Smart Hub (Clean Single URL: /patient)
+  // Patient OPD Portal (Dedicated Pages Architecture)
   {
     path: 'patient',
     loadComponent: () => import('./features/patient/patient-layout/patient-layout.component').then(m => m.PatientLayoutComponent),
@@ -48,6 +48,18 @@ export const routes: Routes = [
       {
         path: '',
         loadComponent: () => import('./features/patient/patient-dashboard/patient-dashboard.component').then(m => m.PatientDashboardComponent)
+      },
+      {
+        path: 'book',
+        loadComponent: () => import('./features/patient/patient-book/patient-book.component').then(m => m.PatientBookComponent)
+      },
+      {
+        path: 'family',
+        loadComponent: () => import('./features/patient/patient-family/patient-family.component').then(m => m.PatientFamilyComponent)
+      },
+      {
+        path: 'history',
+        loadComponent: () => import('./features/patient/patient-history/patient-history.component').then(m => m.PatientHistoryComponent)
       }
     ]
   },

@@ -1,194 +1,175 @@
-<div class="space-y-6 max-w-6xl mx-auto pb-16">
-  
-  <!-- Success Notification Toast -->
+<div class="space-y-6">
+
+  <!-- Floating Toast Notification -->
   @if (successToast()) {
-    <div class="p-4 bg-emerald-50 border border-emerald-200/80 text-emerald-900 rounded-2xl text-xs font-bold flex items-center justify-between shadow-xs animate-in fade-in">
-      <div class="flex items-center gap-2.5">
-        <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs">✓</span>
-        <span>{{ successToast() }}</span>
-      </div>
-      <button (click)="successToast.set('')" class="text-emerald-700 hover:text-emerald-900 text-base font-black">&times;</button>
+    <div class="fixed top-20 right-4 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-bold animate-in slide-in-from-top-2 duration-200">
+      <span class="text-base">✓</span>
+      <span>{{ successToast() }}</span>
     </div>
   }
 
-  <!-- Loading Skeleton -->
+  <!-- Loading State -->
   @if (loading()) {
-    <div class="py-24 text-center space-y-3 bg-white rounded-3xl border border-slate-200/80 shadow-xs">
-      <div class="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-      <p class="text-xs font-bold text-slate-700">Connecting to hospital OPD live queue...</p>
-      <p class="text-[11px] text-slate-400">Checking your live position and doctor room availability</p>
+    <div class="py-24 text-center space-y-3">
+      <div class="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <p class="text-xs font-semibold text-slate-500">Connecting to live hospital queue...</p>
     </div>
   } @else {
 
-    <!-- ========================================================================= -->
-    <!-- 2-COLUMN RESPONSIVE LAYOUT (Desktop: 7/5 Split, Mobile: Clean Single Stack) -->
-    <!-- ========================================================================= -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-      
-      <!-- ===================================================================== -->
-      <!-- LEFT COLUMN (Cols 1-7): LIVE QUEUE HUB & ACTIVE CONSULTATION TOKEN    -->
-      <!-- ===================================================================== -->
-      <div class="lg:col-span-7 space-y-6">
+    <!-- Multi-Slip Switcher (Shown when user has >1 active token today for dependents) -->
+    @if (tokens().length > 1) {
+      <div class="flex items-center gap-2 overflow-x-auto pb-1">
+        <span class="text-xs font-bold text-slate-500 whitespace-nowrap">Your Active Tokens:</span>
+        @for (token of tokens(); track token.id) {
+          <button (click)="selectSlip(token.id)"
+                  [class.bg-teal-600]="selectedTokenId() === token.id"
+                  [class.text-white]="selectedTokenId() === token.id"
+                  [class.shadow-md]="selectedTokenId() === token.id"
+                  [class.bg-white]="selectedTokenId() !== token.id"
+                  [class.text-slate-700]="selectedTokenId() !== token.id"
+                  class="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold transition flex items-center gap-2 whitespace-nowrap hover:border-teal-400">
+            <span class="font-mono">{{ token.tokenNumber }}</span>
+            <span class="text-[10px] opacity-80">({{ token.patientName }})</span>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- MAIN GRID: 12 COLS DESKTOP, STACKED MOBILE -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+      <!-- LEFT COLUMN (7 COLS): THE LIVE CONSULTATION PASS -->
+      <div class="lg:col-span-8 space-y-6">
 
         @if (selectedToken(); as currentToken) {
           
-          <!-- Multi-Token Switcher (If user has multiple appointments today) -->
-          @if (activeTokenCount() > 1) {
-            <div class="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs space-y-2.5">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-black text-slate-800 flex items-center gap-2">
-                  <span>🎟️ Today's Appointments</span>
-                  <span class="text-[10px] font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
-                    {{ activeTokenCount() }} Active
+          <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden transition-all duration-300">
+            
+            <!-- Pass Header: Calming Deep Teal Header (Turns Emerald Gradient on Doctor Summon) -->
+            <div [class.bg-gradient-to-r]="currentToken.status === 'Called'"
+                 [class.from-emerald-600]="currentToken.status === 'Called'"
+                 [class.via-teal-600]="currentToken.status === 'Called'"
+                 [class.to-teal-700]="currentToken.status === 'Called'"
+                 [class.bg-slate-900]="currentToken.status !== 'Called'"
+                 class="p-6 text-white transition-colors duration-500">
+              
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <span class="text-[11px] font-bold tracking-widest uppercase opacity-75 block">
+                    {{ currentToken.departmentName }} &bull; Today's Consultation Pass
                   </span>
-                </span>
-                <span class="text-[11px] text-teal-600 font-bold">Tap to view</span>
-              </div>
-              <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-none pt-1">
-                @for (t of tokens(); track t.id) {
-                  <button (click)="selectedTokenId.set(t.id)"
-                          [class.bg-teal-600]="selectedTokenId() === t.id"
-                          [class.text-white]="selectedTokenId() === t.id"
-                          [class.border-teal-600]="selectedTokenId() === t.id"
-                          [class.bg-slate-50]="selectedTokenId() !== t.id"
-                          [class.text-slate-800]="selectedTokenId() !== t.id"
-                          class="px-3.5 py-2.5 rounded-xl border border-slate-200 text-left text-xs font-bold transition shadow-xs shrink-0 flex items-center gap-2">
-                    <span class="font-mono">{{ t.tokenNumber }}</span>
-                    <span class="font-normal opacity-85 truncate max-w-[85px]">({{ t.patientName }})</span>
-                    <span [class]="selectedTokenId() === t.id ? 'bg-teal-700 text-white' : 'bg-slate-200 text-slate-700'" class="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold">
-                      {{ t.status }}
+                  <div class="flex items-baseline gap-3 mt-1">
+                    <span class="font-mono text-3xl sm:text-4xl font-black tracking-tight"
+                          [class.text-teal-400]="currentToken.status !== 'Called'"
+                          [class.text-white]="currentToken.status === 'Called'">
+                      {{ currentToken.tokenNumber }}
                     </span>
-                  </button>
+                    <span class="text-xs font-semibold opacity-90">
+                      for {{ currentToken.patientName }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Status Pill -->
+                <div class="text-right">
+                  <span class="inline-block px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider"
+                        [class]="currentToken.status === 'Called' ? 'bg-white text-emerald-700' : 'bg-teal-900 text-teal-300 border border-teal-500'">
+                    {{ currentToken.status }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Estimated Wait / Call Alert Banner -->
+              <div class="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-xs">
+                @if (currentToken.status === 'Called') {
+                  <div class="flex items-center gap-2 text-white font-extrabold animate-pulse">
+                    <span class="text-lg">📢</span>
+                    <span>DOCTOR IS CALLING NOW &bull; ENTER ROOM {{ currentToken.roomNumber }}</span>
+                  </div>
+                } @else if (currentToken.status === 'Waiting') {
+                  <div class="flex items-center gap-1.5 text-teal-200">
+                    <span>⏱️</span>
+                    <span>Estimated Wait: <strong>~{{ currentToken.estimatedWaitMinutes }} Minutes</strong></span>
+                  </div>
+                  <span class="text-[11px] opacity-75">
+                    {{ currentToken.patientsAhead }} {{ currentToken.patientsAhead === 1 ? 'patient' : 'patients' }} ahead in line
+                  </span>
+                } @else if (currentToken.status === 'Booked') {
+                  <div class="flex items-center gap-1.5 text-amber-200">
+                    <span>📍</span>
+                    <span>Action Required: Please visit the <strong>{{ currentToken.departmentName }} Nurse Desk</strong></span>
+                  </div>
+                } @else {
+                  <span class="text-xs opacity-75">Status: {{ currentToken.status }}</span>
                 }
               </div>
             </div>
-          }
 
-          <!-- The Digital Consultation Token Card -->
-          <div class="bg-white rounded-3xl border border-slate-200/90 shadow-md overflow-hidden transition">
-            
-            <!-- Pass Header (Deep Navy Slate Boarding Pass or Emerald When Called) -->
-            <div [class]="currentToken.status === 'Called' 
-                  ? 'bg-gradient-to-br from-emerald-600 via-teal-600 to-teal-700 text-white' 
-                  : 'bg-slate-900 text-white'"
-                 class="p-6 sm:p-7 flex justify-between items-start transition-colors duration-300">
-              <div>
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-bold text-slate-300 uppercase tracking-widest">{{ currentToken.departmentName }}</span>
-                  <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800/80 text-teal-300 font-mono font-bold border border-slate-700">
-                    {{ currentToken.departmentCode }}
-                  </span>
-                </div>
-                <h2 class="text-4xl sm:text-5xl font-mono font-black text-teal-400 tracking-tight mt-1.5">
-                  {{ currentToken.tokenNumber }}
-                </h2>
-                <p class="text-xs text-slate-200 font-semibold mt-1">
-                  Patient: <strong class="text-white">{{ currentToken.patientName }}</strong>
-                </p>
-                <p class="text-[11px] text-slate-400 mt-0.5">
-                  Official OPD Token &bull; Consultation Room {{ currentToken.roomNumber }}
-                </p>
-              </div>
+            <!-- Pass Body -->
+            <div class="p-6 sm:p-8 space-y-6">
 
-              <div class="text-right">
-                <span [class]="getStatusBadgeClass(currentToken.status)" class="px-3.5 py-1 rounded-full text-[11px] font-extrabold uppercase shadow-xs">
-                  {{ getStatusDisplay(currentToken.status) }}
-                </span>
-                <p class="text-[10px] text-slate-400 mt-2 font-mono">Booked for: {{ currentToken.bookedAtUtc | date:'shortTime' }}</p>
-              </div>
-            </div>
-
-            <!-- Pass Body: Clinical Lifecycle Stages -->
-            <div class="p-6 sm:p-7 space-y-6">
-              
-              <!-- STAGE 1: BOOKED (NEEDS NURSE VITALS CHECK) -->
+              <!-- STAGE 1: BOOKED (NEEDS NURSE TRIAGE) -->
               @if (currentToken.status === 'Booked') {
-                <div class="bg-amber-50/70 border border-amber-200 rounded-2xl p-5 space-y-2">
-                  <div class="flex items-start gap-3.5">
-                    <span class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-sm shrink-0">1</span>
-                    <div>
-                      <h4 class="text-sm font-extrabold text-amber-900">Step 1: Nurse Vitals Check Required</h4>
-                      <p class="text-xs text-amber-800/90 mt-0.5 leading-relaxed">
-                        Please walk to the <strong>Nursing Intake Counter on {{ currentToken.departmentName }} Floor</strong>. A nurse will take your basic vitals (Blood Pressure, Oxygen, Pulse) so the doctor can call you inside.
-                      </p>
-                    </div>
+                <div class="bg-amber-50/80 border border-amber-200 rounded-2xl p-5 space-y-2">
+                  <div class="flex items-center gap-2 text-amber-900 font-bold text-sm">
+                    <span>🩺</span>
+                    <h4>Step 1: Clinical Triage &amp; Vitals Intake</h4>
                   </div>
-                  <div class="border-t border-amber-200/80 pt-2.5 mt-2 flex items-center justify-between text-[11px] text-amber-900 font-semibold">
-                    <span>Clinical Triage: Pending Nurse Check</span>
-                    <span class="font-bold">Action: Go to Nurse Counter</span>
-                  </div>
+                  <p class="text-xs text-amber-800 leading-relaxed">
+                    Please report to the <strong>{{ currentToken.departmentName }} Nurse Station</strong>. The triage nurse will record your blood pressure, temperature, and pulse to assign your priority level.
+                  </p>
                 </div>
               }
 
-              <!-- STAGE 2: WAITING IN LIVE OPD QUEUE -->
+              <!-- STAGE 2: WAITING IN QUEUE WITH AGING PROGRESS -->
               @if (currentToken.status === 'Waiting') {
                 <div class="space-y-4">
-                  <!-- Live Position & Wait Metric Cards -->
-                  <div class="grid grid-cols-2 gap-3.5">
-                    <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-center">
-                      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Patients Ahead</span>
-                      <span class="text-3xl sm:text-4xl font-black text-slate-900 font-mono mt-0.5 block">
-                        {{ currentToken.patientsAhead }}
-                      </span>
-                      <span class="text-[10px] text-slate-500 font-semibold">in line before your turn</span>
-                    </div>
-
-                    <div class="bg-teal-50/70 border border-teal-200/80 rounded-2xl p-4 text-center">
-                      <span class="text-[10px] font-bold text-teal-700 uppercase tracking-wider block">Estimated Wait</span>
-                      <span class="text-3xl sm:text-4xl font-black text-teal-800 font-mono mt-0.5 block">
-                        ~{{ currentToken.estimatedWaitMinutes }}m
-                      </span>
-                      <span class="text-[10px] text-teal-600 font-semibold">recalculated live</span>
-                    </div>
-                  </div>
-
-                  <!-- Clinical Urgency Level & Fair-Wait Guarantee -->
-                  <div class="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2.5">
-                    <div class="flex items-center justify-between">
-                      <div class="flex items-center gap-2">
-                        <span class="text-xs font-bold text-slate-700">Urgency Level:</span>
-                        <span [class]="getTriageBadgeClass(currentToken.triageLevel)" class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border">
-                          {{ currentToken.triageLevel || 'Routine' }}
-                        </span>
-                      </div>
-                      <span class="text-[11px] font-mono font-bold text-slate-600">
-                        Priority: {{ currentToken.priorityScore }} pts
-                      </span>
-                    </div>
-                    
-                    <!-- Fair-Wait Priority Progress Bar -->
-                    <div>
-                      <div class="flex justify-between text-[10px] text-slate-400 font-semibold mb-1">
+                  <!-- Priority Aging Bar -->
+                  <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                    <div class="flex items-center justify-between text-xs font-bold">
+                      <span class="text-slate-600 flex items-center gap-1.5">
+                        <span>🛡️</span>
                         <span>Fair-Wait Priority Guarantee</span>
-                        <span>Increases fairly as you wait</span>
-                      </div>
-                      <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                        <div class="bg-gradient-to-r from-teal-500 to-emerald-500 h-full rounded-full transition-all duration-500"
-                             [style.width.%]="getAgingProgressPercent(currentToken.priorityScore)"></div>
-                      </div>
+                      </span>
+                      <span class="text-teal-700 font-mono">{{ getAgingProgressPercent(currentToken.priorityScore) }}%</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div class="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full transition-all duration-500"
+                           [style.width.%]="getAgingProgressPercent(currentToken.priorityScore)"></div>
+                    </div>
+                    <p class="text-[11px] text-slate-400">
+                      Your priority score dynamically increases each minute you wait, protecting you from queue starvation.
+                    </p>
+                  </div>
+
+                  <!-- Queue Position Stats -->
+                  <div class="grid grid-cols-2 gap-3">
+                    <div class="p-4 bg-teal-50/60 border border-teal-100 rounded-2xl text-center">
+                      <span class="text-2xl font-black text-teal-800 font-mono">{{ currentToken.patientsAhead }}</span>
+                      <span class="block text-[11px] font-bold text-teal-700 mt-0.5">Patients Ahead of You</span>
+                    </div>
+                    <div class="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-center">
+                      <span class="text-2xl font-black text-slate-800 font-mono">~{{ currentToken.estimatedWaitMinutes }}m</span>
+                      <span class="block text-[11px] font-bold text-slate-600 mt-0.5">Estimated Consultation Wait</span>
                     </div>
                   </div>
                 </div>
               }
 
-              <!-- STAGE 3: DOCTOR SUMMON (CALLED) -->
+              <!-- STAGE 3: DOCTOR IS CALLING PATIENT -->
               @if (currentToken.status === 'Called') {
-                <div class="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-5 space-y-3 animate-pulse">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-xl shadow-md shadow-emerald-600/30">
-                      🔔
-                    </div>
-                    <div>
-                      <h3 class="text-base font-black text-emerald-950">PLEASE ENTER CONSULTATION ROOM {{ currentToken.roomNumber }} NOW</h3>
-                      <p class="text-xs text-emerald-800 font-medium">
-                        Dr. {{ currentToken.doctorName }} is calling you inside.
-                      </p>
-                    </div>
+                <div class="bg-emerald-50 border border-emerald-300 rounded-2xl p-5 space-y-2 animate-in zoom-in-95">
+                  <div class="flex items-center gap-2.5 text-emerald-800 font-black text-base">
+                    <span class="text-2xl">🚪</span>
+                    <h4>Please Enter Consultation Room {{ currentToken.roomNumber }}</h4>
                   </div>
+                  <p class="text-xs text-emerald-700 leading-relaxed font-semibold">
+                    Dr. {{ currentToken.doctorName }} is expecting you inside Room {{ currentToken.roomNumber }}. Please proceed immediately.
+                  </p>
                 </div>
               }
 
-              <!-- STAGE 4: PATIENT ABSENT / PUT ON HOLD (SKIPPED) -->
+              <!-- STAGE 4: PATIENT ABSENT / SKIPPED -->
               @if (currentToken.status === 'Skipped') {
                 <div class="bg-rose-50 border border-rose-200 rounded-2xl p-5 space-y-2">
                   <div class="flex items-center gap-2.5 text-rose-800 font-bold text-sm">
@@ -202,23 +183,23 @@
               }
 
               <!-- Doctor Room Details & Action Buttons -->
-              <div class="border-t border-slate-100 pt-5 flex items-center justify-between text-xs">
+              <div class="border-t border-slate-100 pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
                 <div>
-                  <span class="text-slate-400 block font-medium">Consulting Doctor</span>
+                  <span class="text-slate-400 block font-medium">Consulting Specialist</span>
                   <span class="font-extrabold text-slate-900 text-sm">Dr. {{ currentToken.doctorName }}</span>
                   <span class="text-[11px] text-slate-500 block">Consultation Room {{ currentToken.roomNumber }}</span>
                 </div>
 
-                <div class="flex items-center gap-3">
-                  <button (click)="printSlip()" class="text-slate-600 hover:text-slate-900 font-bold text-xs flex items-center gap-1">
+                <div class="flex items-center gap-2.5">
+                  <button (click)="printSlip()" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs flex items-center gap-1.5 transition">
                     <span>🖨️</span>
-                    <span>Print Token Slip</span>
+                    <span>Print Slip</span>
                   </button>
 
                   @if (currentToken.status === 'Booked' || currentToken.status === 'Waiting') {
                     <button (click)="openCancelModal()" 
-                            class="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition">
-                      Cancel Appointment
+                            class="px-4 py-2 rounded-xl border border-rose-200 text-xs font-bold text-rose-700 hover:bg-rose-50 transition">
+                      Cancel Token
                     </button>
                   }
                 </div>
@@ -226,429 +207,104 @@
 
             </div>
           </div>
+
         } @else {
+
           <!-- Empty State: No Active Appointments Today -->
-          <div class="bg-white rounded-3xl border border-slate-200/90 p-8 sm:p-10 text-center space-y-4 shadow-xs">
+          <div class="bg-white rounded-3xl border border-slate-200/90 p-8 sm:p-12 text-center space-y-5 shadow-xs">
             <div class="w-16 h-16 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center text-3xl mx-auto border border-teal-100">
               🎫
             </div>
             <div>
               <h3 class="text-lg font-black text-slate-900">No Active Appointments Today</h3>
               <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
-                You do not have any pending consultation appointments for today. Book an outpatient appointment below to receive a queue token.
+                You do not have any outpatient consultation tokens active today. Book a doctor appointment to receive your queue token.
               </p>
             </div>
-            <button (click)="openBookingDrawer()" 
-                    class="px-6 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 text-white font-extrabold text-xs shadow-md shadow-teal-600/25 transition">
-              + Book Doctor Appointment
-            </button>
+            <a routerLink="/patient/book" 
+               class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 text-white font-extrabold text-xs shadow-md shadow-teal-600/25 transition">
+              <span>+</span>
+              <span>Book Doctor Appointment</span>
+            </a>
           </div>
+
         }
 
       </div>
 
-      <!-- ===================================================================== -->
-      <!-- RIGHT COLUMN (Cols 8-12): ACTIONS, FAMILY MEMBERS & VISIT HISTORY     -->
-      <!-- ===================================================================== -->
-      <div class="lg:col-span-5 space-y-6">
-
-        <!-- CARD 1: BOOK DOCTOR APPOINTMENT -->
-        <div class="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs space-y-4">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold text-lg border border-teal-100">
-              📅
-            </div>
-            <div>
-              <h3 class="text-sm font-extrabold text-slate-900">Book Doctor Appointment</h3>
-              <p class="text-[11px] text-slate-400">Select specialist & get instant queue token</p>
-            </div>
-          </div>
-          <p class="text-xs text-slate-500 leading-relaxed">
-            Choose your clinical specialty, pick an on-duty specialist, and receive your live queue token.
-          </p>
-          <button (click)="openBookingDrawer()"
-                  class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 text-white text-xs font-bold shadow-md shadow-teal-600/20 transition flex items-center justify-center gap-2">
-            <span>+ Book Doctor Appointment</span>
-            <span>&rarr;</span>
-          </button>
-        </div>
-
-        <!-- CARD 2: FAMILY MEMBERS (Manage Profiles) -->
-        <div class="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs space-y-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-lg">
-                👨‍👩‍👧
+      <!-- RIGHT COLUMN (4 COLS): CLINICAL GUIDELINES & FAST ACCESS -->
+      <div class="lg:col-span-4 space-y-5">
+        
+        <!-- FAST SHORTCUTS CARD -->
+        <div class="bg-white rounded-3xl border border-slate-200/90 p-6 space-y-4 shadow-xs">
+          <h3 class="text-sm font-extrabold text-slate-900">Quick Patient Services</h3>
+          
+          <div class="space-y-2">
+            <a routerLink="/patient/book" 
+               class="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-teal-50/60 hover:border-teal-200 flex items-center justify-between text-xs font-bold text-slate-700 hover:text-teal-900 transition group">
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg">📅</span>
+                <span>Book Appointment</span>
               </div>
-              <div>
-                <h3 class="text-sm font-extrabold text-slate-900">Family Members</h3>
-                <p class="text-[11px] text-slate-400">{{ familyMembers().length }} Linked Profiles</p>
-              </div>
-            </div>
-            <button (click)="openFamilyDrawer()" 
-                    class="text-xs font-bold text-teal-600 hover:text-teal-700 hover:underline">
-              + Add
-            </button>
-          </div>
+              <span class="text-slate-400 group-hover:text-teal-600 transition">➔</span>
+            </a>
 
-          <div class="space-y-2 pt-1">
-            @for (mem of familyMembers(); track mem.id) {
-              <div class="p-3 bg-slate-50/80 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
-                <div class="flex items-center gap-2.5">
-                  <span class="w-7 h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center text-xs">👤</span>
-                  <div>
-                    <p class="font-bold text-slate-800">{{ mem.fullName }}</p>
-                    <p class="text-[10px] text-slate-400 font-mono">Patient ID (MRN): {{ mem.medicalRecordNumber }}</p>
-                  </div>
-                </div>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600">
-                  {{ mem.gender }}
-                </span>
+            <a routerLink="/patient/family" 
+               class="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-teal-50/60 hover:border-teal-200 flex items-center justify-between text-xs font-bold text-slate-700 hover:text-teal-900 transition group">
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg">👨‍👩‍👧</span>
+                <span>Manage Family Members</span>
               </div>
-            }
+              <span class="text-slate-400 group-hover:text-teal-600 transition">➔</span>
+            </a>
+
+            <a routerLink="/patient/history" 
+               class="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-teal-50/60 hover:border-teal-200 flex items-center justify-between text-xs font-bold text-slate-700 hover:text-teal-900 transition group">
+              <div class="flex items-center gap-2.5">
+                <span class="text-lg">📜</span>
+                <span>View Past Diagnoses &amp; Notes</span>
+              </div>
+              <span class="text-slate-400 group-hover:text-teal-600 transition">➔</span>
+            </a>
           </div>
         </div>
 
-        <!-- CARD 3: VISIT HISTORY & CLINICAL NOTES -->
-        <div id="consultation-history" class="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs space-y-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 border border-teal-100 flex items-center justify-center font-bold text-lg">
-                📜
-              </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <h3 class="text-sm font-extrabold text-slate-900">Visit History</h3>
-                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                    {{ filteredVisits().length }}
-                  </span>
-                </div>
-                <p class="text-[11px] text-slate-400">Past Diagnoses &amp; Doctor Notes</p>
-              </div>
-            </div>
-
-            @if (filteredVisits().length > 3) {
-              <button (click)="showAllHistory.set(!showAllHistory())" 
-                      class="text-xs font-bold text-teal-600 hover:text-teal-700 transition">
-                {{ showAllHistory() ? 'Show Less' : 'View All (' + filteredVisits().length + ')' }}
-              </button>
-            }
+        <!-- OPD VISIT GUIDELINES CARD -->
+        <div class="bg-white rounded-3xl border border-slate-200/90 p-6 space-y-3.5 shadow-xs text-xs text-slate-600">
+          <div class="flex items-center gap-2 text-slate-900 font-extrabold">
+            <span>ℹ️</span>
+            <h4>OPD Queue Guidelines</h4>
           </div>
 
-          <!-- Family Member Filter Pills -->
-          @if (familyMembers().length > 1) {
-            <div class="flex flex-wrap gap-1.5 pt-1 border-b border-slate-100 pb-3">
-              <button (click)="historyFilterId.set(null)"
-                      [class.bg-teal-600]="historyFilterId() === null"
-                      [class.text-white]="historyFilterId() === null"
-                      [class.border-teal-600]="historyFilterId() === null"
-                      class="px-3 py-1 rounded-full border border-slate-200 text-[11px] font-bold transition text-slate-600 bg-white hover:border-teal-400">
-                All Members ({{ recentVisits().length }})
-              </button>
-              @for (mem of familyMembers(); track mem.id) {
-                <button (click)="historyFilterId.set(mem.id)"
-                        [class.bg-teal-600]="historyFilterId() === mem.id"
-                        [class.text-white]="historyFilterId() === mem.id"
-                        [class.border-teal-600]="historyFilterId() === mem.id"
-                        class="px-3 py-1 rounded-full border border-slate-200 text-[11px] font-bold transition text-slate-600 bg-white hover:border-teal-400">
-                  {{ mem.fullName }}
-                </button>
-              }
-            </div>
-          }
+          <ul class="space-y-2 text-[11px] leading-relaxed">
+            <li class="flex items-start gap-2">
+              <span class="text-teal-600 font-bold mt-0.5">&bull;</span>
+              <span><strong>Arrival:</strong> Please report to your consultation department 10–15 minutes before your estimated time.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-teal-600 font-bold mt-0.5">&bull;</span>
+              <span><strong>Summon Alert:</strong> When your token turns green, enter the doctor's room immediately.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-teal-600 font-bold mt-0.5">&bull;</span>
+              <span><strong>Missed Calls:</strong> Tokens are held for 10 minutes before moving to the next patient.</span>
+            </li>
+          </ul>
 
-          @if (visibleVisits().length === 0) {
-            <div class="p-6 text-center space-y-1 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-              <p class="text-xs font-semibold text-slate-500">No past visits on record</p>
-              <p class="text-[11px] text-slate-400">Completed consultations will appear here automatically.</p>
-            </div>
-          } @else {
-            <!-- Scrollable container if list expands -->
-            <div class="space-y-2.5 max-h-[460px] overflow-y-auto pr-1">
-              @for (v of visibleVisits(); track v.tokenId) {
-                <div [class.border-l-emerald-500]="v.status === 'Completed'"
-                     [class.border-l-rose-400]="v.status === 'Cancelled'"
-                     class="p-4 bg-slate-50/70 hover:bg-slate-50 rounded-2xl border border-slate-100 border-l-4 text-xs space-y-2 transition">
-                  
-                  <!-- Top Row: Token Number + Date/Time -->
-                  <div class="flex items-center justify-between">
-                    <span class="font-mono font-black text-teal-800 tracking-wide text-xs bg-teal-50/80 px-2 py-0.5 rounded-md border border-teal-100">
-                      {{ v.tokenNumber }}
-                    </span>
-                    <span class="text-[10px] text-slate-400 font-medium">
-                      {{ (v.completedAtUtc || v.bookedAtUtc) | date:'MMM d, y • h:mm a' }}
-                    </span>
-                  </div>
-
-                  <!-- Patient Name Pill (shown when viewing all family) -->
-                  @if (!historyFilterId() && v.patientName) {
-                    <div>
-                      <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200/80">
-                        <span>👤</span>
-                        <span>{{ v.patientName }}</span>
-                      </span>
-                    </div>
-                  }
-
-                  <!-- Doctor & Department -->
-                  <div>
-                    <p class="font-extrabold text-slate-900 text-xs">Dr. {{ v.doctorName }}</p>
-                    <p class="text-[11px] text-slate-500 font-medium">{{ v.departmentName }}</p>
-                  </div>
-
-                  <!-- Status & Clinical Triage Badges -->
-                  <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
-                    <span [class]="getStatusBadgeClass(v.status)"
-                          class="px-2.5 py-0.5 rounded-full text-[10px] font-bold">
-                      {{ getStatusDisplay(v.status) }}
-                    </span>
-                    @if (v.triageLevel) {
-                      <span [class]="getTriageBadgeClass(v.triageLevel)"
-                            class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border">
-                        Urgency: {{ v.triageLevel }}
-                      </span>
-                    }
-                  </div>
-
-                  <!-- Doctor's Advice / Consultation Notes -->
-                  @if (v.consultationNotes) {
-                    <div class="p-2.5 bg-white rounded-xl border border-slate-200/70 text-[11px] space-y-1">
-                      <span class="text-[10px] font-bold text-slate-500 block uppercase tracking-wider">Doctor's Clinical Notes</span>
-                      <p class="text-slate-700 leading-relaxed italic">"{{ v.consultationNotes }}"</p>
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-          }
+          <div class="pt-2 border-t border-slate-100 text-[11px] text-slate-400">
+            Need urgent assistance? Please approach the Central Reception Desk.
+          </div>
         </div>
 
       </div>
+
     </div>
+
   }
+
 </div>
 
-<!-- ======================================================== -->
-<!-- SLIDE-OVER SHEET 1: BOOK DOCTOR APPOINTMENT               -->
-<!-- ======================================================== -->
-@if (isBookingDrawerOpen()) {
-  <div class="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex justify-end max-sm:items-end">
-    <div class="bg-white w-full max-sm:rounded-t-3xl max-sm:max-h-[88vh] sm:max-w-md sm:h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
-      
-      <!-- Drawer Header -->
-      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50 max-sm:rounded-t-3xl">
-        <div>
-          <h3 class="text-base font-extrabold text-slate-900">Book Doctor Appointment</h3>
-          <p class="text-xs text-slate-500 mt-0.5">Follow 3 easy steps to generate your queue token</p>
-        </div>
-        <button (click)="closeBookingDrawer()" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1 rounded-lg hover:bg-slate-200/60 transition">&times;</button>
-      </div>
-
-      <!-- Drawer Body -->
-      <div class="flex-1 p-6 overflow-y-auto space-y-6">
-        @if (bookingError()) {
-          <div class="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold flex items-center gap-2">
-            <span>⚠️</span>
-            <span>{{ bookingError() }}</span>
-          </div>
-        }
-
-        <!-- 1. Select Patient -->
-        <div class="space-y-1.5">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Step 1: Select Patient</label>
-            <p class="text-[11px] text-slate-400">Choose who is seeing the doctor today.</p>
-          </div>
-          <div class="space-y-2 pt-1">
-            @for (mem of familyMembers(); track mem.id) {
-              <div (click)="bookForPatientId.set(mem.id)"
-                   [class.border-teal-600]="bookForPatientId() === mem.id"
-                   [class.bg-teal-50]="bookForPatientId() === mem.id"
-                   class="p-3.5 rounded-xl border border-slate-200 cursor-pointer flex items-center justify-between text-xs font-semibold transition hover:border-teal-400">
-                <div class="flex items-center gap-2">
-                  <span class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs">👤</span>
-                  <span>{{ mem.fullName }}</span>
-                </div>
-                <span class="text-[10px] text-slate-400 font-mono">Patient ID: {{ mem.medicalRecordNumber }}</span>
-              </div>
-            }
-          </div>
-        </div>
-
-        <!-- 2. Choose Department -->
-        <div class="space-y-1.5">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Step 2: Choose Department</label>
-            <p class="text-[11px] text-slate-400">Select the medical specialty. Floor location is shown.</p>
-          </div>
-          <select [ngModel]="bookDepartmentId()"
-                  (ngModelChange)="onDepartmentSelected($event)"
-                  class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-bold bg-white text-slate-800 focus:ring-2 focus:ring-teal-500 mt-1">
-            <option value="" disabled>-- Select Specialty Department --</option>
-            @for (d of departments(); track d.id) {
-              <option [value]="d.id">{{ d.name }} ({{ d.code }}) &bull; {{ d.locationFloor }}</option>
-            }
-          </select>
-        </div>
-
-        <!-- 3. Select Doctor -->
-        @if (bookDepartmentId()) {
-          <div class="space-y-1.5">
-            <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Step 3: Select Doctor</label>
-              <p class="text-[11px] text-slate-400">Available specialists taking patients right now.</p>
-            </div>
-            @if (loadingDoctors()) {
-              <div class="p-4 text-center text-xs text-slate-400 italic space-y-2">
-                <div class="w-5 h-5 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <p>Checking doctor availability and room assignments...</p>
-              </div>
-            } @else if (doctors().length === 0) {
-              <div class="p-3.5 text-xs text-rose-700 font-semibold bg-rose-50 rounded-xl border border-rose-200">
-                No specialists are currently available in this department. Please choose another department or check back during clinic hours.
-              </div>
-            } @else {
-              <div class="space-y-2 pt-1">
-                @for (doc of doctors(); track doc.id) {
-                  <div (click)="bookDoctorId.set(doc.id)"
-                       [class.border-teal-600]="bookDoctorId() === doc.id"
-                       [class.bg-teal-50]="bookDoctorId() === doc.id"
-                       class="p-3.5 rounded-xl border border-slate-200 cursor-pointer flex items-center justify-between text-xs transition hover:border-teal-400">
-                    <div>
-                      <p class="font-bold text-slate-800 text-sm">Dr. {{ doc.doctorName }}</p>
-                      <p class="text-[11px] text-slate-500">{{ doc.specialization }} &bull; Consultation Room {{ doc.roomNumber }}</p>
-                      <p class="text-[10px] text-slate-400 mt-0.5 font-mono">Avg visit: ~{{ doc.avgConsultationMinutes }} mins</p>
-                    </div>
-                    <span class="text-[10px] text-teal-700 bg-teal-100 font-bold px-2.5 py-1 rounded-full border border-teal-200">
-                      Available Now
-                    </span>
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        }
-      </div>
-
-      <!-- Drawer Footer -->
-      <div class="p-5 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
-        <button (click)="closeBookingDrawer()" class="px-4 py-2 border rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">
-          Cancel
-        </button>
-        <button (click)="submitBooking()"
-                [disabled]="submittingBooking() || !bookDoctorId()"
-                class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-600/20 transition disabled:opacity-50 flex items-center gap-1.5">
-          <span>{{ submittingBooking() ? 'Issuing Token...' : 'Confirm Appointment & Get Token' }}</span>
-        </button>
-      </div>
-
-    </div>
-  </div>
-}
-
-<!-- ======================================================== -->
-<!-- SLIDE-OVER SHEET 2: FAMILY MEMBERS                        -->
-<!-- ======================================================== -->
-@if (isFamilyDrawerOpen()) {
-  <div class="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex justify-end max-sm:items-end">
-    <div class="bg-white w-full max-sm:rounded-t-3xl max-sm:max-h-[88vh] sm:max-w-md sm:h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
-      
-      <!-- Drawer Header -->
-      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50 max-sm:rounded-t-3xl">
-        <div>
-          <h3 class="text-base font-extrabold text-slate-900">Family Members</h3>
-          <p class="text-xs text-slate-500 mt-0.5">Manage family profiles linked to your account</p>
-        </div>
-        <button (click)="closeFamilyDrawer()" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1 rounded-lg hover:bg-slate-200/60 transition">&times;</button>
-      </div>
-
-      <!-- Drawer Body -->
-      <div class="flex-1 p-6 overflow-y-auto space-y-6">
-        
-        <!-- Explanation Banner -->
-        <div class="p-3.5 bg-teal-50/80 border border-teal-200/70 rounded-2xl text-[11px] text-teal-950 space-y-1">
-          <div class="flex items-center gap-1.5 font-bold text-teal-900">
-            <span>ℹ️</span>
-            <span>How Family Profiles Work</span>
-          </div>
-          <p class="text-teal-900/80 leading-relaxed">
-            Family members share your phone number for login convenience, but each member receives an independent, confidential medical ID so doctor notes and diagnoses remain private.
-          </p>
-        </div>
-
-        <!-- Existing Members List -->
-        <div class="space-y-2.5">
-          <span class="text-xs font-bold text-slate-600 uppercase tracking-wider block">Registered Family Members ({{ familyMembers().length }})</span>
-          @for (mem of familyMembers(); track mem.id) {
-            <div class="p-3.5 rounded-2xl border border-slate-200 flex items-center justify-between text-xs bg-slate-50/50">
-              <div>
-                <p class="font-bold text-slate-800 text-sm">{{ mem.fullName }} ({{ mem.gender }})</p>
-                <p class="text-[11px] text-slate-500 font-mono mt-0.5">Patient ID: {{ mem.medicalRecordNumber }} &bull; DOB: {{ mem.dateOfBirth }}</p>
-              </div>
-              @if (mem.userId) {
-                <span class="text-[10px] bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded-full border border-teal-200">Account Owner</span>
-              } @else {
-                <span class="text-[10px] bg-slate-200 text-slate-800 font-bold px-2 py-0.5 rounded-full border border-slate-300">Family Dependent</span>
-              }
-            </div>
-          }
-        </div>
-
-        <!-- Add Dependent Form -->
-        <div class="pt-4 border-t border-slate-100 space-y-3">
-          <div>
-            <span class="text-xs font-bold text-slate-800 uppercase tracking-wider block">+ Register Child or Dependent</span>
-            <p class="text-[11px] text-slate-400">Enter full name and date of birth for hospital medical records.</p>
-          </div>
-          
-          @if (familyError()) {
-            <p class="text-xs text-rose-600 font-semibold p-2 bg-rose-50 border border-rose-200 rounded-lg">{{ familyError() }}</p>
-          }
-
-          <div>
-            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Full Legal Name</label>
-            <input type="text" 
-                   [ngModel]="newFamilyName()"
-                   (ngModelChange)="newFamilyName.set($event)"
-                   placeholder="e.g. Emma Davis" 
-                   class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs bg-white text-slate-800 focus:ring-2 focus:ring-teal-500">
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Date of Birth</label>
-              <input type="date" 
-                     [ngModel]="newFamilyDob()"
-                     (ngModelChange)="newFamilyDob.set($event)"
-                     class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs bg-white text-slate-800 focus:ring-2 focus:ring-teal-500">
-            </div>
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Gender</label>
-              <select [ngModel]="newFamilyGender()"
-                      (ngModelChange)="newFamilyGender.set($event)"
-                      class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs bg-white font-semibold text-slate-800 focus:ring-2 focus:ring-teal-500">
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-          </div>
-
-          <button (click)="submitAddFamily()"
-                  [disabled]="submittingFamily()"
-                  class="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-600/20 transition disabled:opacity-50 mt-2">
-            {{ submittingFamily() ? 'Creating Profile...' : 'Add Family Member' }}
-          </button>
-        </div>
-
-      </div>
-    </div>
-  </div>
-}
-
-<!-- ======================================================== -->
-<!-- MODAL: CANCEL APPOINTMENT CONFIRMATION                   -->
-<!-- ======================================================== -->
+<!-- MODAL: CANCEL APPOINTMENT CONFIRMATION -->
 @if (isCancelModalOpen()) {
   <div class="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4 animate-in zoom-in-95">
@@ -671,7 +327,7 @@
       <div class="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 space-y-1">
         <p class="font-bold">Cancellation Policy:</p>
         <p class="text-amber-800 leading-relaxed">
-          Cancelling immediately releases your queue sequence to patients waiting behind you. Once cancelled, this spot cannot be restored and you will need to book a new appointment.
+          Cancelling immediately releases your queue sequence to patients waiting behind you. Once cancelled, this spot cannot be restored.
         </p>
       </div>
 
