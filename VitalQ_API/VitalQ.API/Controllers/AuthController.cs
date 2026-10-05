@@ -17,27 +17,6 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Register a patient account (POST /api/auth/register).
-    /// </summary>
-    [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] PatientRegisterRequest request)
-    {
-        try
-        {
-            var result = await _authService.RegisterPatientAsync(request);
-            if (!string.IsNullOrEmpty(result.RefreshToken))
-            {
-                SetCookie(result.RefreshToken);
-            }
-            return Ok(result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-    }
-
-    /// <summary>
     /// User login with plain-text password (POST /api/auth/login).
     /// </summary>
     [HttpPost("login")]

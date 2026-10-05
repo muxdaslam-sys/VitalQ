@@ -136,7 +136,19 @@ public class PatientService : IPatientService
     }
 
     // =========================================================================
-    // 5. UPDATE PATIENT PROFILE
+    // 5. GET PATIENT PROFILE BY USER ID
+    // =========================================================================
+    public async Task<PatientResponse?> GetPatientByUserIdAsync(Guid userId)
+    {
+        var patient = await _context.Patients
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        return patient == null ? null : MapToResponse(patient);
+    }
+
+    // =========================================================================
+    // 6. UPDATE PATIENT PROFILE
     // =========================================================================
     public async Task<PatientResponse> UpdatePatientAsync(Guid patientId, UpdatePatientRequest request)
     {
