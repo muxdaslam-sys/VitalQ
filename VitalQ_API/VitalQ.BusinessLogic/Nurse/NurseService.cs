@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using VitalQ.BusinessLogic.Common;
 using VitalQ.BusinessLogic.Interfaces;
 using VitalQ.DataAccess;
 using VitalQ.Entities.DTOs;
@@ -34,10 +35,11 @@ public class NurseService : INurseService
 
         var q = query.Trim().ToLower();
         var todayUtc = DateTime.UtcNow.Date;
+        var tomorrowUtc = todayUtc.AddDays(1);
 
         var patients = await _context.Patients
             .AsNoTracking()
-            .Include(p => p.QueueTokens)
+            .Include(p => p.QueueTokens.Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled"))
             .Where(p => p.PhoneNumber.Contains(q) ||
                         p.MedicalRecordNumber.ToLower().Contains(q) ||
                         p.FullName.ToLower().Contains(q))
@@ -47,7 +49,6 @@ public class NurseService : INurseService
         return patients.Select(p =>
         {
             var activeToken = p.QueueTokens
-                .Where(t => t.BookedAtUtc.Date == todayUtc && t.Status != "Completed" && t.Status != "Cancelled")
                 .OrderByDescending(t => t.BookedAtUtc)
                 .FirstOrDefault();
 
@@ -102,7 +103,7 @@ public class NurseService : INurseService
         {
             Id = Guid.NewGuid(),
             UserId = linkedUserId,
-            MedicalRecordNumber = GenerateMrn(),
+            MedicalRecordNumber = MrnGenerator.Generate(),
             FullName = request.FullName.Trim(),
             PhoneNumber = phone,
             DateOfBirth = request.DateOfBirth,
@@ -202,13 +203,14 @@ public class NurseService : INurseService
     public async Task<IEnumerable<QueueTokenResponse>> GetPendingTriageQueueAsync(Guid? departmentId = null)
     {
         var todayUtc = DateTime.UtcNow.Date;
+        var tomorrowUtc = todayUtc.AddDays(1);
         var query = _context.QueueTokens
             .AsNoTracking()
             .Include(t => t.Patient)
             .Include(t => t.Department)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.TriageAssessment)
-            .Where(t => t.Status == "Booked" && t.BookedAtUtc.Date == todayUtc);
+            .Where(t => t.Status == "Booked" && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc);
 
         if (departmentId.HasValue && departmentId.Value != Guid.Empty)
         {
@@ -416,13 +418,6 @@ public class NurseService : INurseService
             throw new ArgumentException("Date of birth must be in the past.");
         if (dob < today.AddYears(-130))
             throw new ArgumentException("Please provide a valid date of birth.");
-    }
-
-    private static string GenerateMrn()
-    {
-        var year = DateTime.UtcNow.Year;
-        var randomNum = Random.Shared.Next(1000, 9999);
-        return $"MRN-{year}-{randomNum}";
     }
 
     private static QueueTokenResponse MapToTokenResponse(QueueToken t, Patient? p, Doctor? d) => new()

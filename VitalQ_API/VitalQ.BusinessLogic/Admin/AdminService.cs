@@ -208,7 +208,7 @@ public class AdminService : IAdminService
     /// <summary>
     /// Creates an Admin user account with plain text password.
     /// </summary>
-    public async Task<UserResponse> CreateAdminUserAsync(CreateUserRequest request)
+    public async Task<StaffUserResponse> CreateAdminUserAsync(CreateUserRequest request)
     {
         var usernameExists = await _context.Users.AnyAsync(u => u.Username == request.Username);
         if (usernameExists)
@@ -238,7 +238,7 @@ public class AdminService : IAdminService
         await _context.Users.AddAsync(user);
         await _context.SaveChangesAsync();
 
-        return new UserResponse
+        return new StaffUserResponse
         {
             Id = user.Id,
             Username = user.Username,
@@ -251,12 +251,12 @@ public class AdminService : IAdminService
         };
     }
 
-    public async Task<IEnumerable<UserResponse>> GetAllStaffUsersAsync()
+    public async Task<IEnumerable<StaffUserResponse>> GetAllStaffUsersAsync()
     {
         return await _context.Users
             .Where(u => u.Role == "Admin" || u.Role == "Nurse")
             .OrderBy(u => u.FullName)
-            .Select(u => new UserResponse
+            .Select(u => new StaffUserResponse
             {
                 Id = u.Id,
                 Username = u.Username,
@@ -270,7 +270,7 @@ public class AdminService : IAdminService
             .ToListAsync();
     }
 
-    public async Task<UserResponse> UpdateUserAsync(Guid id, UpdateUserRequest request)
+    public async Task<StaffUserResponse> UpdateUserAsync(Guid id, UpdateUserRequest request)
     {
         var user = await _context.Users.FindAsync(id);
         if (user == null)
@@ -292,7 +292,7 @@ public class AdminService : IAdminService
 
         await _context.SaveChangesAsync();
 
-        return new UserResponse
+        return new StaffUserResponse
         {
             Id = user.Id,
             Username = user.Username,

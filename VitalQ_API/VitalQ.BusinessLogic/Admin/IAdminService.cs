@@ -8,9 +8,9 @@ public interface IAdminService
     Task<IEnumerable<DoctorResponse>> GetAllDoctorsAsync();
     Task<DoctorResponse> UpdateDoctorAsync(Guid doctorId, UpdateDoctorRequest request);
     Task<DoctorResponse> UpdateDoctorStatusAsync(Guid doctorId, UpdateDoctorStatusRequest request);
-    Task<UserResponse> CreateAdminUserAsync(CreateUserRequest request);
-    Task<IEnumerable<UserResponse>> GetAllStaffUsersAsync();
-    Task<UserResponse> UpdateUserAsync(Guid id, UpdateUserRequest request);
+    Task<StaffUserResponse> CreateAdminUserAsync(CreateUserRequest request);
+    Task<IEnumerable<StaffUserResponse>> GetAllStaffUsersAsync();
+    Task<StaffUserResponse> UpdateUserAsync(Guid id, UpdateUserRequest request);
 
     // Department Management
     Task<DepartmentResponse> CreateDepartmentAsync(CreateDepartmentRequest request);

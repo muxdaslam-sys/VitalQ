@@ -66,18 +66,6 @@ public class BookTokenRequest
 }
 
 /// <summary>
-/// Used when changing a token status (e.g., doctor skips a patient).
-/// </summary>
-public class UpdateTokenStatusRequest
-{
-    [MaxLength(20)]
-    public string? Status { get; set; } = "Cancelled";            // "Skipped", "Cancelled", etc.
-
-    [MaxLength(500)]
-    public string? Notes { get; set; }
-}
-
-/// <summary>
 /// Optional payload when cancelling an appointment.
 /// </summary>
 public class CancelTokenRequest

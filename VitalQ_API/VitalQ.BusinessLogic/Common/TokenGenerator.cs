@@ -44,7 +44,8 @@ public class TokenGenerator : ITokenGenerator
         var scalarResult = await cmd.ExecuteScalarAsync();
         var nextNumber = Convert.ToInt32(scalarResult);
 
-        var dateStr = DateTime.UtcNow.ToString("MMdd");
+        // Format: DEPT-YYMMDD-NNN (e.g. CARD-261005-001) - 15 chars, permanent multi-year uniqueness
+        var dateStr = DateTime.UtcNow.ToString("yyMMdd");
         var code = string.IsNullOrWhiteSpace(departmentCode) ? "GEN" : departmentCode.Trim().ToUpper();
 
         return $"{code}-{dateStr}-{nextNumber:D3}";

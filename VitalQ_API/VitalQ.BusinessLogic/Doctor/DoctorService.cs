@@ -54,6 +54,7 @@ public class DoctorService : IDoctorService
     public async Task<IEnumerable<QueueTokenResponse>> GetMyQueueAsync(Guid doctorId)
     {
         var todayUtc = DateTime.UtcNow.Date;
+        var tomorrowUtc = todayUtc.AddDays(1);
 
         var tokens = await _context.QueueTokens
             .AsNoTracking()
@@ -62,7 +63,7 @@ public class DoctorService : IDoctorService
             .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.TriageAssessment)
             .Where(t => t.DoctorId == doctorId &&
-                        t.BookedAtUtc.Date == todayUtc &&
+                        t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc &&
                         (t.Status == "Called" || t.Status == "Waiting" || t.Status == "Skipped"))
             .ToListAsync();
 
@@ -106,6 +107,7 @@ public class DoctorService : IDoctorService
     public async Task<QueueTokenResponse?> GetCurrentCalledPatientAsync(Guid doctorId)
     {
         var todayUtc = DateTime.UtcNow.Date;
+        var tomorrowUtc = todayUtc.AddDays(1);
 
         var token = await _context.QueueTokens
             .AsNoTracking()
@@ -114,7 +116,7 @@ public class DoctorService : IDoctorService
             .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.TriageAssessment)
             .Where(t => t.DoctorId == doctorId &&
-                        t.BookedAtUtc.Date == todayUtc &&
+                        t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc &&
                         t.Status == "Called")
             .OrderByDescending(t => t.CalledAtUtc)
             .FirstOrDefaultAsync();
@@ -138,10 +140,11 @@ public class DoctorService : IDoctorService
         }
 
         var todayUtc = DateTime.UtcNow.Date;
+        var tomorrowUtc = todayUtc.AddDays(1);
 
         // Automatically complete or skip any existing 'Called' patient before calling next
         var currentlyCalled = await _context.QueueTokens
-            .Where(t => t.DoctorId == doctorId && t.Status == "Called" && t.BookedAtUtc.Date == todayUtc)
+            .Where(t => t.DoctorId == doctorId && t.Status == "Called" && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc)
             .ToListAsync();
 
         foreach (var active in currentlyCalled)
@@ -170,7 +173,7 @@ public class DoctorService : IDoctorService
             .Include(t => t.TriageAssessment)
             .Where(t => t.DoctorId == doctorId &&
                         t.Status == "Waiting" &&
-                        t.BookedAtUtc.Date == todayUtc)
+                        t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc)
             .OrderByDescending(t => t.PriorityScore)
             .ThenBy(t => t.BookedAtUtc)
             .FirstOrDefaultAsync();
@@ -336,9 +339,10 @@ public class DoctorService : IDoctorService
     public async Task RecalculateQueueScoresAsync()
     {
         var todayUtc = DateTime.UtcNow.Date;
+        var tomorrowUtc = todayUtc.AddDays(1);
 
         var waitingTokens = await _context.QueueTokens
-            .Where(t => t.Status == "Waiting" && t.BookedAtUtc.Date == todayUtc && t.TriagedAtUtc.HasValue)
+            .Where(t => t.Status == "Waiting" && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.TriagedAtUtc.HasValue)
             .ToListAsync();
 
         if (!waitingTokens.Any()) return;

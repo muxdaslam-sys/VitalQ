@@ -1,10 +1,6 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
+using VitalQ.BusinessLogic.Common;
 using VitalQ.BusinessLogic.Interfaces;
 using VitalQ.DataAccess;
 using VitalQ.Entities.DTOs;
@@ -19,13 +15,13 @@ namespace VitalQ.BusinessLogic.Services;
 public class PatientService : IPatientService
 {
     private readonly VitalQDbContext _context;
-    private readonly IConfiguration _config;
+    private readonly IAuthService _authService;
     private readonly ITokenGenerator _tokenGenerator;
 
-    public PatientService(VitalQDbContext context, IConfiguration config, ITokenGenerator tokenGenerator)
+    public PatientService(VitalQDbContext context, IAuthService authService, ITokenGenerator tokenGenerator)
     {
         _context = context;
-        _config = config;
+        _authService = authService;
         _tokenGenerator = tokenGenerator;
     }
 
@@ -61,7 +57,7 @@ public class PatientService : IPatientService
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
-            MedicalRecordNumber = GenerateMrn(),
+            MedicalRecordNumber = MrnGenerator.Generate(),
             FullName = request.FullName.Trim(),
             PhoneNumber = phone,
             DateOfBirth = request.DateOfBirth,
@@ -69,11 +65,14 @@ public class PatientService : IPatientService
             CreatedAtUtc = DateTime.UtcNow
         };
 
+        // Centralized JWT token generation
+        var authResponse = _authService.GenerateToken(user);
+
         await _context.Users.AddAsync(user);
         await _context.Patients.AddAsync(patient);
         await _context.SaveChangesAsync();
 
-        return CreateAuthResponse(user);
+        return authResponse;
     }
 
     // =========================================================================
@@ -93,7 +92,7 @@ public class PatientService : IPatientService
         {
             Id = Guid.NewGuid(),
             UserId = null,
-            MedicalRecordNumber = GenerateMrn(),
+            MedicalRecordNumber = MrnGenerator.Generate(),
             FullName = request.FullName.Trim(),
             PhoneNumber = parentUser.PhoneNumber,
             DateOfBirth = request.DateOfBirth,
@@ -265,11 +264,13 @@ public class PatientService : IPatientService
             throw new ArgumentException("The doctor does not belong to the selected department.");
 
         var today = DateTime.UtcNow.Date;
+        var tomorrow = today.AddDays(1);
         var alreadyBooked = await _context.QueueTokens
             .AsNoTracking()
             .AnyAsync(t => t.PatientId == patient.Id
                         && t.DoctorId == doctor.Id
                         && t.BookedAtUtc >= today
+                        && t.BookedAtUtc < tomorrow
                         && (t.Status == "Booked" || t.Status == "Waiting" || t.Status == "Called"));
 
         if (alreadyBooked)
@@ -317,6 +318,7 @@ public class PatientService : IPatientService
     public async Task<IEnumerable<QueueTokenResponse>> GetMyActiveTokensAsync(Guid currentUserId)
     {
         var today = DateTime.UtcNow.Date;
+        var tomorrow = today.AddDays(1);
 
         var user = await _context.Users.FindAsync(currentUserId);
         if (user == null) return Enumerable.Empty<QueueTokenResponse>();
@@ -337,6 +339,7 @@ public class PatientService : IPatientService
             .Include(t => t.TriageAssessment)
             .Where(t => familyPatientIds.Contains(t.PatientId)
                      && t.BookedAtUtc >= today
+                     && t.BookedAtUtc < tomorrow
                      && (t.Status == "Booked" || t.Status == "Waiting" || t.Status == "Called"))
             .OrderBy(t => t.BookedAtUtc)
             .ToListAsync();
@@ -352,6 +355,7 @@ public class PatientService : IPatientService
                     .AsNoTracking()
                     .CountAsync(t => t.DoctorId == token.DoctorId
                                   && t.BookedAtUtc >= today
+                                  && t.BookedAtUtc < tomorrow
                                   && (t.Status == "Waiting" || t.Status == "Called")
                                   && (t.PriorityScore > token.PriorityScore ||
                                      (t.PriorityScore == token.PriorityScore && t.BookedAtUtc < token.BookedAtUtc)));
@@ -377,6 +381,7 @@ public class PatientService : IPatientService
     public async Task<QueueTokenResponse?> GetPatientActiveTokenAsync(Guid patientId)
     {
         var today = DateTime.UtcNow.Date;
+        var tomorrow = today.AddDays(1);
 
         var token = await _context.QueueTokens
             .AsNoTracking()
@@ -386,6 +391,7 @@ public class PatientService : IPatientService
             .Include(t => t.TriageAssessment)
             .Where(t => t.PatientId == patientId
                      && t.BookedAtUtc >= today
+                     && t.BookedAtUtc < tomorrow
                      && (t.Status == "Booked" || t.Status == "Waiting" || t.Status == "Called"))
             .OrderByDescending(t => t.BookedAtUtc)
             .FirstOrDefaultAsync();
@@ -400,6 +406,7 @@ public class PatientService : IPatientService
                 .AsNoTracking()
                 .CountAsync(t => t.DoctorId == token.DoctorId
                               && t.BookedAtUtc >= today
+                              && t.BookedAtUtc < tomorrow
                               && (t.Status == "Waiting" || t.Status == "Called")
                               && (t.PriorityScore > token.PriorityScore ||
                                  (t.PriorityScore == token.PriorityScore && t.BookedAtUtc < token.BookedAtUtc)));
@@ -480,53 +487,6 @@ public class PatientService : IPatientService
         return MapToTokenResponse(token, token.Patient, token.Doctor);
     }
 
-    // Helpers
-    private AuthResponse CreateAuthResponse(User user)
-    {
-        var jwtSection = _config.GetSection("Jwt");
-        var secret = jwtSection["Secret"] ?? "VitalQ_Very_Secret_Key_At_Least_32_Chars_Long_12345";
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.FullName),
-            new Claim(ClaimTypes.Role, user.Role),
-            new Claim("username", user.Username)
-        };
-
-        var tokenDescriptor = new SecurityTokenDescriptor
-        {
-            Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddMinutes(double.Parse(jwtSection["ExpiryMinutes"] ?? "15")),
-            Issuer = jwtSection["Issuer"] ?? "VitalQ.API",
-            Audience = jwtSection["Audience"] ?? "VitalQ.Client",
-            SigningCredentials = creds
-        };
-
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var securityToken = tokenHandler.CreateToken(tokenDescriptor);
-        var accessToken = tokenHandler.WriteToken(securityToken);
-
-        return new AuthResponse
-        {
-            AccessToken = accessToken,
-            RefreshToken = Guid.NewGuid().ToString("N"),
-            ExpiresAtUtc = tokenDescriptor.Expires.Value,
-            User = new UserResponse
-            {
-                Id = user.Id,
-                Username = user.Username,
-                FullName = user.FullName,
-                PhoneNumber = user.PhoneNumber,
-                Role = user.Role,
-                IsActive = user.IsActive,
-                CreatedAtUtc = user.CreatedAtUtc
-            }
-        };
-    }
-
     private static string NormalizePhone(string rawPhone)
     {
         if (string.IsNullOrWhiteSpace(rawPhone))
@@ -544,13 +504,6 @@ public class PatientService : IPatientService
             throw new ArgumentException("Date of birth must be in the past.");
         if (dob < today.AddYears(-130))
             throw new ArgumentException("Please provide a valid date of birth.");
-    }
-
-    private static string GenerateMrn()
-    {
-        var year = DateTime.UtcNow.Year;
-        var randomNum = Random.Shared.Next(1000, 9999);
-        return $"MRN-{year}-{randomNum}";
     }
 
     private static PatientResponse MapToResponse(Patient p) => new()
