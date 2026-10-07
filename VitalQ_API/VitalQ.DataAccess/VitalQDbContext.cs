@@ -97,6 +97,10 @@ public partial class VitalQDbContext : DbContext
 
             entity.HasIndex(e => e.MedicalRecordNumber, "UQ__Patients__8E549ED0439BE140").IsUnique();
 
+            entity.HasIndex(e => e.FullName, "IX_Patients_FullName");
+
+            entity.HasIndex(e => e.CreatedAtUtc, "IX_Patients_CreatedAtUtc");
+
             entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
             entity.Property(e => e.CreatedAtUtc).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.FullName).HasMaxLength(100);

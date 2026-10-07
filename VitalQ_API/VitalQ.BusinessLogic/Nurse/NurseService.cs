@@ -33,16 +33,45 @@ public class NurseService : INurseService
             return Enumerable.Empty<PatientSearchResult>();
         }
 
-        var q = query.Trim().ToLower();
+        var q = query.Trim();
         var todayUtc = DateTime.UtcNow.Date;
         var tomorrowUtc = todayUtc.AddDays(1);
 
-        var patients = await _context.Patients
+        var patientQuery = _context.Patients
             .AsNoTracking()
+            .AsQueryable();
+
+        // 1. If searching by Token Number (e.g. "CARD-261005-001" or "CARD-")
+        if (q.Contains('-') && !q.StartsWith("MRN", StringComparison.OrdinalIgnoreCase))
+        {
+            var matchedPatientIds = await _context.QueueTokens
+                .AsNoTracking()
+                .Where(t => t.TokenNumber.StartsWith(q) && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc)
+                .Select(t => t.PatientId)
+                .Distinct()
+                .Take(15)
+                .ToListAsync();
+
+            patientQuery = patientQuery.Where(p => matchedPatientIds.Contains(p.Id));
+        }
+        // 2. If searching by MRN (e.g. "MRN-261005-7A3F")
+        else if (q.StartsWith("MRN", StringComparison.OrdinalIgnoreCase))
+        {
+            patientQuery = patientQuery.Where(p => p.MedicalRecordNumber.StartsWith(q));
+        }
+        // 3. If searching by Phone (digits only)
+        else if (q.All(char.IsDigit))
+        {
+            patientQuery = patientQuery.Where(p => p.PhoneNumber.StartsWith(q));
+        }
+        // 4. If searching by Name
+        else
+        {
+            patientQuery = patientQuery.Where(p => p.FullName.StartsWith(q) || p.FullName.Contains(q));
+        }
+
+        var patients = await patientQuery
             .Include(p => p.QueueTokens.Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled"))
-            .Where(p => p.PhoneNumber.Contains(q) ||
-                        p.MedicalRecordNumber.ToLower().Contains(q) ||
-                        p.FullName.ToLower().Contains(q))
             .Take(15)
             .ToListAsync();
 

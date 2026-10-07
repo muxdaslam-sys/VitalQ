@@ -52,6 +52,9 @@ public class PatientDetailResponse
     public bool IsRegisteredAppUser { get; set; }
     public DateTime CreatedAtUtc { get; set; }
 
+    /// <summary>Total consultation bookings completed by this patient</summary>
+    public int TotalCompletedBookings { get; set; }
+
     public List<PatientVisitHistoryDto> Visits { get; set; } = new();
 }
 

@@ -22,7 +22,7 @@ public interface IAdminService
     Task<IEnumerable<NursingStationResponse>> GetAllNursingStationsAsync(Guid? departmentId = null);
     Task<NursingStationResponse> UpdateNursingStationAsync(Guid id, UpdateNursingStationRequest request);
 
-    // Patient Directory & Visit History
-    Task<IEnumerable<PatientDetailResponse>> GetPatientDirectoryAsync();
+    // Patient Directory & Visit History (Limited to 50, optional search)
+    Task<IEnumerable<PatientDetailResponse>> GetPatientDirectoryAsync(string? search = null);
     Task<PatientDetailResponse?> GetPatientDetailsByIdAsync(Guid patientId);
 }
