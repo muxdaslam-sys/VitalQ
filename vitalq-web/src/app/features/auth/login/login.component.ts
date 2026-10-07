@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -12,10 +12,21 @@ import { LoginRequest } from '../../../shared/models/auth.model';
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private auth = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+
+  ngOnInit(): void {
+    // PREVENT REDUNDANT RE-AUTHENTICATION:
+    // If a clinician or patient returns to the login URL while their session is still active,
+    // seamlessly route them directly to their portal rather than prompting for credentials.
+    if (this.auth.isAuthenticated()) {
+      const returnUrl = this.route.snapshot.queryParams['returnUrl'];
+      const target = returnUrl || this.auth.getRoleDefaultRoute(this.auth.userRole() || '');
+      this.router.navigateByUrl(target);
+    }
+  }
 
   // Mode Switcher: 'staff' vs 'patient'
   activeMode = signal<'staff' | 'patient'>('staff');

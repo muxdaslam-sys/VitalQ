@@ -4,28 +4,48 @@
  * ============================================================================
  * 
  * PURPOSE:
- * Manages user authentication, token storage, silent background refresh, and
- * role-based route navigation across all clinical portals.
+ * Manages user authentication, token storage, concurrent-safe token refresh,
+ * session revocation, and role-based route navigation.
  * 
- * REACTIVITY ARCHITECTURE:
- * - Angular Signals: Exposes `currentUser` and `accessToken` as signals so any
- *   component or layout reacts instantaneously when login status changes.
- * - Computed Signals: Derives `isAuthenticated` and `userRole` with zero overhead.
- * - Security: Uses `withCredentials: true` so refresh tokens are transported via
- *   secure HttpOnly cookies while the short-lived access token is stored in memory.
+ * HIGH-CONCURRENCY ARCHITECTURE (10K+ USERS):
+ * 1. Mutex Deduplication (`shareReplay`):
+ *    When a 60-minute JWT expires, multiple parallel clinical API requests
+ *    (e.g., patient list, vitals, department status) may fail with 401 at the
+ *    exact same millisecond. Without a mutex, the client fires multiple refresh
+ *    requests, causing token-rotation race conditions that log the user out.
+ *    `refreshInProgress$` ensures exactly ONE refresh request hits the network,
+ *    and all other waiting requests safely subscribe to that single result.
+ * 
+ * 2. Centralized Session Invalidation:
+ *    If the 7-day refresh token has genuinely expired or been revoked, cleanup
+ *    and redirection to `/login` happens here ONCE, preventing multiple parallel
+ *    logout bursts from individual failed requests.
+ * 
+ * 3. Reactive State Signals:
+ *    Angular 19 Signals (`currentUser`, `accessToken`, `isAuthenticated`, `userRole`)
+ *    provide zero-overhead, glitch-free UI reactivity across all hospital portals.
  * ============================================================================
  */
 
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap, catchError, of, throwError } from 'rxjs';
+import { Router } from '@angular/router';
+import { Observable, tap, catchError, of, throwError, shareReplay, finalize } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest, UserResponse } from '../../shared/models/auth.model';
+
+import { SignalRService } from './signalr.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   /** Injected Angular HTTP client for authentication endpoints */
   private http = inject(HttpClient);
+
+  /** Injected Router for centralized session teardown navigation */
+  private router = inject(Router);
+
+  /** Injected SignalR service for clean WebSocket disconnection upon session termination */
+  private signalR = inject(SignalRService);
 
   /** Base URL for authentication controller (e.g. http://localhost:5089/api/auth) */
   private authUrl = environment.apiUrl + '/auth';
@@ -46,6 +66,18 @@ export class AuthService {
   /** Computed hospital role string ('Admin' | 'Doctor' | 'Nurse' | 'Patient') */
   userRole = computed(() => this.currentUser()?.role || null);
 
+  // --------------------------------------------------------------------------
+  // CONCURRENCY MUTEX STATE
+  // --------------------------------------------------------------------------
+
+  /**
+   * Mutex lock observable:
+   * Holds the active refresh HTTP stream. Multiple parallel calls share this single
+   * observable via `shareReplay({ bufferSize: 1, refCount: true })`.
+   * Reset to `null` via `finalize` once all subscribers receive the refreshed token.
+   */
+  private refreshInProgress$: Observable<AuthResponse> | null = null;
+
   /**
    * Authenticates user credentials against the backend API.
    * Endpoint: POST /api/auth/login
@@ -54,7 +86,7 @@ export class AuthService {
    * @param credentials Username/Phone and Password payload.
    */
   login(credentials: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(this.authUrl + '/login', credentials, { withCredentials: true }).pipe(
+    return this.http.post<AuthResponse>(`${this.authUrl}/login`, credentials, { withCredentials: true }).pipe(
       tap(res => {
         this.setSession(res);
       })
@@ -62,20 +94,38 @@ export class AuthService {
   }
 
   /**
-   * Transparently exchanges an expired access token using the HttpOnly refresh cookie.
-   * Endpoint: POST /api/auth/refresh
-   * Invoked automatically by `jwtInterceptor` upon receiving a 401 Unauthorized error.
+   * Concurrency-Safe Silent Token Refresh:
+   * Exchanges the HttpOnly cookie for a fresh 60-minute JWT Bearer token.
+   * 
+   * HIGH-PERFORMANCE BEHAVIOR:
+   * - If a refresh is ALREADY in flight, subsequent calls attach to `refreshInProgress$`.
+   * - If the refresh fails (session expired/revoked), centrally purges tokens and redirects to `/login`.
+   * - Releasing the mutex in `finalize()` guarantees subsequent refreshes 60 minutes later create a new stream.
    */
   refreshToken(): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(this.authUrl + '/refresh', {}, { withCredentials: true }).pipe(
+    // If a refresh request is already pending, deduplicate and reuse it
+    if (this.refreshInProgress$) {
+      return this.refreshInProgress$;
+    }
+
+    this.refreshInProgress$ = this.http.post<AuthResponse>(`${this.authUrl}/refresh`, {}, { withCredentials: true }).pipe(
       tap(res => {
         this.setSession(res);
       }),
       catchError(err => {
+        // Centralized single session cleanup & redirect (prevents duplicate logout bursts)
         this.clearSession();
+        this.router.navigate(['/login']);
         return throwError(() => err);
-      })
+      }),
+      finalize(() => {
+        // Unlock mutex once the request completes and emissions finish
+        this.refreshInProgress$ = null;
+      }),
+      shareReplay({ bufferSize: 1, refCount: true })
     );
+
+    return this.refreshInProgress$;
   }
 
   /**
@@ -83,10 +133,17 @@ export class AuthService {
    * Endpoint: POST /api/auth/logout
    */
   logout(): Observable<any> {
-    return this.http.post(this.authUrl + '/logout', {}, { withCredentials: true }).pipe(
-      tap(() => this.clearSession()),
+    // Teardown real-time WebSocket connection to prevent channel leakage on shared clinical workstations
+    this.signalR.stopConnection();
+
+    return this.http.post(`${this.authUrl}/logout`, {}, { withCredentials: true }).pipe(
+      tap(() => {
+        this.clearSession();
+        this.router.navigate(['/login']);
+      }),
       catchError(() => {
         this.clearSession();
+        this.router.navigate(['/login']);
         return of(null);
       })
     );
