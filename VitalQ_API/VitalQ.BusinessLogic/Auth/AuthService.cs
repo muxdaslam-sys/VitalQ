@@ -67,10 +67,25 @@ public class AuthService : IAuthService
         return response;
     }
 
-    // 3. LOGOUT
+    // 3. LOGOUT (Session Invalidation)
     public async Task<bool> RevokeRefreshTokenAsync(Guid userId)
     {
         var user = await _context.Users.FindAsync(userId);
+        if (user == null) return false;
+
+        user.RefreshToken = null;
+        user.RefreshTokenExpiryTime = null;
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>
+    /// Revokes refresh token directly using the token string from the HttpOnly cookie.
+    /// Uses the IX_Users_RefreshToken filtered B-tree index for O(1) instantaneous lookup.
+    /// </summary>
+    public async Task<bool> RevokeByRefreshTokenAsync(string refreshToken)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
         if (user == null) return false;
 
         user.RefreshToken = null;
