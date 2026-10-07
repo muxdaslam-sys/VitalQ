@@ -19,19 +19,21 @@
  * ============================================================================
  */
 
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../../core/services/admin.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { NursingStationResponse, DepartmentResponse, CreateNursingStationRequest, UpdateNursingStationRequest } from '../../../shared/models/admin.model';
+import { TeleportToBodyDirective } from '../../../shared/directives/teleport.directive';
 
 @Component({
   selector: 'app-nursing-stations',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TeleportToBodyDirective],
   templateUrl: './nursing-stations.component.html',
-  styleUrl: './nursing-stations.component.css'
+  styleUrl: './nursing-stations.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NursingStationsComponent implements OnInit {
   // --------------------------------------------------------------------------

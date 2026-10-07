@@ -139,10 +139,10 @@
     </div>
   </div>
 
-  <!-- Add Department Modal (Top-Anchored 3-Zone Enterprise Layout, z-[100]) -->
+  <!-- Add Department Modal (Centered High-Performance Enterprise Modal) -->
   @if (showModal()) {
-    <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-start justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
-      <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden mt-6 sm:mt-10 mb-8 animate-in fade-in zoom-in-95 duration-150">
+    <div teleportToBody class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+      <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn">
         <!-- 1. High-Contrast Header Bar -->
         <div class="px-6 py-4 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
           <div class="flex items-center gap-2.5">
@@ -188,10 +188,10 @@
     </div>
   }
 
-  <!-- Edit Department Modal (Top-Anchored 3-Zone Enterprise Layout, z-[100]) -->
+  <!-- Edit Department Modal (Centered High-Performance Enterprise Modal) -->
   @if (editingDeptId()) {
-    <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-start justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
-      <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden mt-6 sm:mt-10 mb-8 animate-in fade-in zoom-in-95 duration-150">
+    <div teleportToBody class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+      <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn">
         <!-- 1. High-Contrast Header Bar -->
         <div class="px-6 py-4 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
           <div class="flex items-center gap-2.5">
