@@ -92,6 +92,7 @@ public class AdminService : IAdminService
     public async Task<IEnumerable<DoctorResponse>> GetAllDoctorsAsync()
     {
         return await _context.Doctors
+            .AsNoTracking()
             .Include(d => d.User)
             .Include(d => d.Department)
             .Select(d => new DoctorResponse
@@ -208,7 +209,7 @@ public class AdminService : IAdminService
     /// <summary>
     /// Creates an Admin user account with plain text password.
     /// </summary>
-    public async Task<UserResponse> CreateAdminUserAsync(CreateUserRequest request)
+    public async Task<StaffUserResponse> CreateAdminUserAsync(CreateUserRequest request)
     {
         var usernameExists = await _context.Users.AnyAsync(u => u.Username == request.Username);
         if (usernameExists)
@@ -238,7 +239,7 @@ public class AdminService : IAdminService
         await _context.Users.AddAsync(user);
         await _context.SaveChangesAsync();
 
-        return new UserResponse
+        return new StaffUserResponse
         {
             Id = user.Id,
             Username = user.Username,
@@ -251,12 +252,13 @@ public class AdminService : IAdminService
         };
     }
 
-    public async Task<IEnumerable<UserResponse>> GetAllStaffUsersAsync()
+    public async Task<IEnumerable<StaffUserResponse>> GetAllStaffUsersAsync()
     {
         return await _context.Users
+            .AsNoTracking()
             .Where(u => u.Role == "Admin" || u.Role == "Nurse")
             .OrderBy(u => u.FullName)
-            .Select(u => new UserResponse
+            .Select(u => new StaffUserResponse
             {
                 Id = u.Id,
                 Username = u.Username,
@@ -270,7 +272,7 @@ public class AdminService : IAdminService
             .ToListAsync();
     }
 
-    public async Task<UserResponse> UpdateUserAsync(Guid id, UpdateUserRequest request)
+    public async Task<StaffUserResponse> UpdateUserAsync(Guid id, UpdateUserRequest request)
     {
         var user = await _context.Users.FindAsync(id);
         if (user == null)
@@ -292,7 +294,7 @@ public class AdminService : IAdminService
 
         await _context.SaveChangesAsync();
 
-        return new UserResponse
+        return new StaffUserResponse
         {
             Id = user.Id,
             Username = user.Username,
@@ -350,6 +352,7 @@ public class AdminService : IAdminService
     public async Task<IEnumerable<DepartmentResponse>> GetAllDepartmentsAsync()
     {
         return await _context.Departments
+            .AsNoTracking()
             .OrderBy(d => d.Name)
             .Select(d => new DepartmentResponse
             {
@@ -436,6 +439,7 @@ public class AdminService : IAdminService
     public async Task<IEnumerable<NursingStationResponse>> GetAllNursingStationsAsync(Guid? departmentId = null)
     {
         var query = _context.NursingStations
+            .AsNoTracking()
             .Include(s => s.Department)
             .AsQueryable();
 
@@ -503,90 +507,108 @@ public class AdminService : IAdminService
     // PATIENT DIRECTORY & VISIT HISTORY
     // ==========================================
 
-    public async Task<IEnumerable<PatientDetailResponse>> GetPatientDirectoryAsync()
+    public async Task<IEnumerable<PatientDetailResponse>> GetPatientDirectoryAsync(string? search = null)
     {
-        var patients = await _context.Patients
-            .Include(p => p.QueueTokens)
-                .ThenInclude(t => t.Department)
-            .Include(p => p.QueueTokens)
-                .ThenInclude(t => t.Doctor)
-                    .ThenInclude(d => d.User)
-            .Include(p => p.QueueTokens)
-                .ThenInclude(t => t.TriageAssessment)
-            .OrderByDescending(p => p.CreatedAtUtc)
-            .ToListAsync();
+        var query = _context.Patients
+            .AsNoTracking()
+            .AsQueryable();
 
-        return patients.Select(p => new PatientDetailResponse
+        // 1. High-Performance B-Tree Index Routed Search (MRN, Phone, or Name)
+        if (!string.IsNullOrWhiteSpace(search))
         {
-            Id = p.Id,
-            MedicalRecordNumber = p.MedicalRecordNumber,
-            FullName = p.FullName,
-            PhoneNumber = p.PhoneNumber,
-            DateOfBirth = p.DateOfBirth,
-            Gender = p.Gender,
-            IsRegisteredAppUser = p.UserId.HasValue,
-            CreatedAtUtc = p.CreatedAtUtc,
-            Visits = p.QueueTokens
-                .OrderByDescending(t => t.BookedAtUtc)
-                .Select(t => new PatientVisitHistoryDto
-                {
-                    TokenId = t.Id,
-                    TokenNumber = t.TokenNumber,
-                    DepartmentName = t.Department.Name,
-                    DoctorName = t.Doctor.User.FullName,
-                    Status = t.Status,
-                    TriageLevel = t.TriageAssessment != null ? t.TriageAssessment.TriageLevel : null,
-                    BookedAtUtc = t.BookedAtUtc,
-                    TriagedAtUtc = t.TriagedAtUtc,
-                    CalledAtUtc = t.CalledAtUtc,
-                    CompletedAtUtc = t.CompletedAtUtc,
-                    ConsultationNotes = t.ConsultationNotes
-                })
-                .ToList()
-        });
+            var term = search.Trim();
+
+            // A. MRN Search (e.g. "MRN-261005-7A3F") -> Direct Index Seek on UQ_MedicalRecordNumber
+            if (term.StartsWith("MRN", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(p => p.MedicalRecordNumber.StartsWith(term));
+            }
+            // B. Phone Number Search (e.g. "9876543210") -> Direct Index Seek on IX_Patients_PhoneNumber
+            else if (term.All(char.IsDigit))
+            {
+                query = query.Where(p => p.PhoneNumber.StartsWith(term));
+            }
+            // C. Patient Name Search (e.g. "Sarah") -> Direct Index Seek on IX_Patients_FullName
+            else
+            {
+                query = query.Where(p => p.FullName.StartsWith(term) || p.FullName.Contains(term));
+            }
+        }
+
+        // 2. Limit strictly to 50 recent records for optimal performance
+        return await query
+            .OrderByDescending(p => p.CreatedAtUtc)
+            .Take(50)
+            .Select(p => new PatientDetailResponse
+            {
+                Id = p.Id,
+                MedicalRecordNumber = p.MedicalRecordNumber,
+                FullName = p.FullName,
+                PhoneNumber = p.PhoneNumber,
+                DateOfBirth = p.DateOfBirth,
+                Gender = p.Gender,
+                IsRegisteredAppUser = p.UserId.HasValue,
+                CreatedAtUtc = p.CreatedAtUtc,
+                TotalCompletedBookings = p.QueueTokens.Count(t => t.Status == "Completed"),
+                Visits = p.QueueTokens
+                    .OrderByDescending(t => t.BookedAtUtc)
+                    .Select(t => new PatientVisitHistoryDto
+                    {
+                        TokenId = t.Id,
+                        TokenNumber = t.TokenNumber,
+                        PatientId = t.PatientId,
+                        PatientName = p.FullName,
+                        DepartmentName = t.Department.Name,
+                        DoctorName = t.Doctor.User.FullName,
+                        Status = t.Status,
+                        TriageLevel = t.TriageAssessment != null ? t.TriageAssessment.TriageLevel : null,
+                        BookedAtUtc = t.BookedAtUtc,
+                        TriagedAtUtc = t.TriagedAtUtc,
+                        CalledAtUtc = t.CalledAtUtc,
+                        CompletedAtUtc = t.CompletedAtUtc,
+                        ConsultationNotes = t.ConsultationNotes
+                    })
+                    .ToList()
+            })
+            .ToListAsync();
     }
 
     public async Task<PatientDetailResponse?> GetPatientDetailsByIdAsync(Guid patientId)
     {
-        var patient = await _context.Patients
-            .Include(p => p.QueueTokens)
-                .ThenInclude(t => t.Department)
-            .Include(p => p.QueueTokens)
-                .ThenInclude(t => t.Doctor)
-                    .ThenInclude(d => d.User)
-            .Include(p => p.QueueTokens)
-                .ThenInclude(t => t.TriageAssessment)
-            .FirstOrDefaultAsync(p => p.Id == patientId);
-
-        if (patient == null) return null;
-
-        return new PatientDetailResponse
-        {
-            Id = patient.Id,
-            MedicalRecordNumber = patient.MedicalRecordNumber,
-            FullName = patient.FullName,
-            PhoneNumber = patient.PhoneNumber,
-            DateOfBirth = patient.DateOfBirth,
-            Gender = patient.Gender,
-            IsRegisteredAppUser = patient.UserId.HasValue,
-            CreatedAtUtc = patient.CreatedAtUtc,
-            Visits = patient.QueueTokens
-                .OrderByDescending(t => t.BookedAtUtc)
-                .Select(t => new PatientVisitHistoryDto
-                {
-                    TokenId = t.Id,
-                    TokenNumber = t.TokenNumber,
-                    DepartmentName = t.Department.Name,
-                    DoctorName = t.Doctor.User.FullName,
-                    Status = t.Status,
-                    TriageLevel = t.TriageAssessment != null ? t.TriageAssessment.TriageLevel : null,
-                    BookedAtUtc = t.BookedAtUtc,
-                    TriagedAtUtc = t.TriagedAtUtc,
-                    CalledAtUtc = t.CalledAtUtc,
-                    CompletedAtUtc = t.CompletedAtUtc,
-                    ConsultationNotes = t.ConsultationNotes
-                })
-                .ToList()
-        };
+        return await _context.Patients
+            .AsNoTracking()
+            .Where(p => p.Id == patientId)
+            .Select(p => new PatientDetailResponse
+            {
+                Id = p.Id,
+                MedicalRecordNumber = p.MedicalRecordNumber,
+                FullName = p.FullName,
+                PhoneNumber = p.PhoneNumber,
+                DateOfBirth = p.DateOfBirth,
+                Gender = p.Gender,
+                IsRegisteredAppUser = p.UserId.HasValue,
+                CreatedAtUtc = p.CreatedAtUtc,
+                TotalCompletedBookings = p.QueueTokens.Count(t => t.Status == "Completed"),
+                Visits = p.QueueTokens
+                    .OrderByDescending(t => t.BookedAtUtc)
+                    .Select(t => new PatientVisitHistoryDto
+                    {
+                        TokenId = t.Id,
+                        TokenNumber = t.TokenNumber,
+                        PatientId = t.PatientId,
+                        PatientName = p.FullName,
+                        DepartmentName = t.Department.Name,
+                        DoctorName = t.Doctor.User.FullName,
+                        Status = t.Status,
+                        TriageLevel = t.TriageAssessment != null ? t.TriageAssessment.TriageLevel : null,
+                        BookedAtUtc = t.BookedAtUtc,
+                        TriagedAtUtc = t.TriagedAtUtc,
+                        CalledAtUtc = t.CalledAtUtc,
+                        CompletedAtUtc = t.CompletedAtUtc,
+                        ConsultationNotes = t.ConsultationNotes
+                    })
+                    .ToList()
+            })
+            .FirstOrDefaultAsync();
     }
 }

@@ -14,7 +14,7 @@
   }
 
   <!-- Sidebar (Desktop Static + Mobile Slide-In Drawer) -->
-  <aside class="w-64 bg-slate-950 text-slate-200 flex flex-col shadow-2xl border-r border-slate-800 shrink-0 z-50 fixed lg:static inset-y-0 left-0 transform transition-transform duration-300 lg:translate-x-0"
+  <aside class="w-64 bg-slate-950 text-slate-200 flex flex-col shadow-2xl border-r border-slate-800 shrink-0 z-40 lg:z-0 fixed lg:static inset-y-0 left-0 transform transition-transform duration-300 lg:translate-x-0"
          [class.-translate-x-full]="!isMobileDrawerOpen()"
          [class.translate-x-0]="isMobileDrawerOpen()">
 
@@ -132,9 +132,9 @@
   </aside>
 
   <!-- Workspace Shell -->
-  <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+  <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative z-20">
     <!-- Operational Topbar Header (Lower z-index than modal overlays in main) -->
-    <header class="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-8 flex items-center justify-between shadow-xs shrink-0 z-20">
+    <header class="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-8 flex items-center justify-between shadow-xs shrink-0 z-10">
       <div class="flex items-center gap-3">
         <button (click)="toggleDrawer()" 
                 title="Toggle Navigation Menu"
@@ -168,8 +168,8 @@
       </div>
     </header>
 
-    <!-- Main Workspace with elevated stacking context for modal backdrops -->
-    <main class="relative z-30 flex-1 overflow-y-auto bg-slate-50/70">
+    <!-- Main Workspace (Elevated to z-50 to ensure modal backdrops overlay topbar and sidebar) -->
+    <main class="relative z-50 flex-1 overflow-y-auto bg-slate-50/70">
       <router-outlet></router-outlet>
     </main>
   </div>

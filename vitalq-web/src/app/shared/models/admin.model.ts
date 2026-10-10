@@ -129,5 +129,6 @@ export interface PatientDetailResponse {
   gender: string;
   isRegisteredAppUser: boolean;
   createdAtUtc: string;
+  totalCompletedBookings: number;
   visits: PatientVisitHistoryDto[];
 }

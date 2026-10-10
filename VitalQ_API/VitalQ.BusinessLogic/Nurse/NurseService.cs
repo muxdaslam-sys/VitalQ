@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using VitalQ.BusinessLogic.Common;
 using VitalQ.BusinessLogic.Interfaces;
 using VitalQ.DataAccess;
 using VitalQ.Entities.DTOs;
@@ -32,22 +33,51 @@ public class NurseService : INurseService
             return Enumerable.Empty<PatientSearchResult>();
         }
 
-        var q = query.Trim().ToLower();
+        var q = query.Trim();
         var todayUtc = DateTime.UtcNow.Date;
+        var tomorrowUtc = todayUtc.AddDays(1);
 
-        var patients = await _context.Patients
+        var patientQuery = _context.Patients
             .AsNoTracking()
-            .Include(p => p.QueueTokens)
-            .Where(p => p.PhoneNumber.Contains(q) ||
-                        p.MedicalRecordNumber.ToLower().Contains(q) ||
-                        p.FullName.ToLower().Contains(q))
+            .AsQueryable();
+
+        // 1. If searching by Token Number (e.g. "CARD-261005-001" or "CARD-")
+        if (q.Contains('-') && !q.StartsWith("MRN", StringComparison.OrdinalIgnoreCase))
+        {
+            var matchedPatientIds = await _context.QueueTokens
+                .AsNoTracking()
+                .Where(t => t.TokenNumber.StartsWith(q) && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc)
+                .Select(t => t.PatientId)
+                .Distinct()
+                .Take(15)
+                .ToListAsync();
+
+            patientQuery = patientQuery.Where(p => matchedPatientIds.Contains(p.Id));
+        }
+        // 2. If searching by MRN (e.g. "MRN-261005-7A3F")
+        else if (q.StartsWith("MRN", StringComparison.OrdinalIgnoreCase))
+        {
+            patientQuery = patientQuery.Where(p => p.MedicalRecordNumber.StartsWith(q));
+        }
+        // 3. If searching by Phone (digits only)
+        else if (q.All(char.IsDigit))
+        {
+            patientQuery = patientQuery.Where(p => p.PhoneNumber.StartsWith(q));
+        }
+        // 4. If searching by Name
+        else
+        {
+            patientQuery = patientQuery.Where(p => p.FullName.StartsWith(q) || p.FullName.Contains(q));
+        }
+
+        var patients = await patientQuery
+            .Include(p => p.QueueTokens.Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled"))
             .Take(15)
             .ToListAsync();
 
         return patients.Select(p =>
         {
             var activeToken = p.QueueTokens
-                .Where(t => t.BookedAtUtc.Date == todayUtc && t.Status != "Completed" && t.Status != "Cancelled")
                 .OrderByDescending(t => t.BookedAtUtc)
                 .FirstOrDefault();
 
@@ -102,7 +132,7 @@ public class NurseService : INurseService
         {
             Id = Guid.NewGuid(),
             UserId = linkedUserId,
-            MedicalRecordNumber = GenerateMrn(),
+            MedicalRecordNumber = MrnGenerator.Generate(),
             FullName = request.FullName.Trim(),
             PhoneNumber = phone,
             DateOfBirth = request.DateOfBirth,
@@ -202,13 +232,14 @@ public class NurseService : INurseService
     public async Task<IEnumerable<QueueTokenResponse>> GetPendingTriageQueueAsync(Guid? departmentId = null)
     {
         var todayUtc = DateTime.UtcNow.Date;
+        var tomorrowUtc = todayUtc.AddDays(1);
         var query = _context.QueueTokens
             .AsNoTracking()
             .Include(t => t.Patient)
             .Include(t => t.Department)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.TriageAssessment)
-            .Where(t => t.Status == "Booked" && t.BookedAtUtc.Date == todayUtc);
+            .Where(t => t.Status == "Booked" && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc);
 
         if (departmentId.HasValue && departmentId.Value != Guid.Empty)
         {
@@ -416,13 +447,6 @@ public class NurseService : INurseService
             throw new ArgumentException("Date of birth must be in the past.");
         if (dob < today.AddYears(-130))
             throw new ArgumentException("Please provide a valid date of birth.");
-    }
-
-    private static string GenerateMrn()
-    {
-        var year = DateTime.UtcNow.Year;
-        var randomNum = Random.Shared.Next(1000, 9999);
-        return $"MRN-{year}-{randomNum}";
     }
 
     private static QueueTokenResponse MapToTokenResponse(QueueToken t, Patient? p, Doctor? d) => new()

@@ -13,12 +13,20 @@ public class UserResponse
 {
     public Guid Id { get; set; }
     public string Username { get; set; } = null!;
-    public string Password { get; set; } = null!;
     public string FullName { get; set; } = null!;
     public string PhoneNumber { get; set; } = null!;
     public string Role { get; set; } = null!;              // "Admin", "Doctor", "Nurse", "Patient"
     public bool IsActive { get; set; }
     public DateTime CreatedAtUtc { get; set; }
+}
+
+/// <summary>
+/// Returned exclusively to Admin when viewing or creating staff accounts (Nurses, Admins).
+/// Allows Admin to look up credentials if staff forgets password.
+/// </summary>
+public class StaffUserResponse : UserResponse
+{
+    public string Password { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -35,31 +43,6 @@ public class AuthResponse
 // ==========================================
 // 2. DATA SENT FROM CLIENTS (REQUESTS)
 // ==========================================
-
-/// <summary>
-/// Patient registration from mobile phone. (POST /api/auth/register)
-/// Creates both a User record and a Patient profile record.
-/// </summary>
-public class PatientRegisterRequest
-{
-    [Required, MaxLength(50)]
-    public string Username { get; set; } = null!;
-
-    [Required, MinLength(6)]
-    public string Password { get; set; } = null!;
-
-    [Required, MaxLength(100)]
-    public string FullName { get; set; } = null!;
-
-    [Required, MaxLength(20), Phone]
-    public string PhoneNumber { get; set; } = null!;
-
-    [Required]
-    public DateOnly DateOfBirth { get; set; }
-
-    [Required, MaxLength(10)]
-    public string Gender { get; set; } = null!;            // "Male", "Female", "Other"
-}
 
 /// <summary>
 /// Login credentials. (POST /api/auth/login)
@@ -109,6 +92,5 @@ public class UpdateUserRequest
     public string Role { get; set; } = null!;
 
     public string? Password { get; set; }
-
     public bool IsActive { get; set; }
 }

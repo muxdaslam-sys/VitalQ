@@ -1,6 +1,6 @@
 <!-- ========================================================================= -->
-<!-- VITALQ PATIENT DIRECTORY & CLINICAL HISTORY                               -->
-<!-- Lifetime patient registrations, MRNs, and consultation records            -->
+<!-- VITALQ PATIENT DIRECTORY & CLINICAL RECORDS                                -->
+<!-- Displays up to 50 patients with server-side search and booking details     -->
 <!-- ========================================================================= -->
 <div class="p-6 sm:p-8 space-y-6 max-w-7xl mx-auto">
   
@@ -8,79 +8,105 @@
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
       <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">Patients</h2>
-      <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Historical records of registered outpatients, triage evaluations, and doctor consultations</p>
+      <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Directory of registered outpatients, lifetime booking totals, and consultation history</p>
     </div>
     <div class="flex items-center gap-2 text-xs font-bold text-slate-500 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-xs whitespace-nowrap">
-      <span>Total Registered:</span>
-      <span class="text-teal-700 font-mono text-sm">{{ patients().length }} Patients</span>
+      <span>Showing:</span>
+      <span class="text-teal-700 font-mono text-sm">{{ patients().length }} Patients (Max 50)</span>
     </div>
   </div>
 
-  <!-- Standardized Search & Multi-Filter Toolbar -->
+  <!-- Search & Filter Toolbar -->
   <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3.5">
+    
+    <!-- 300ms Debounced Search with Clear Button -->
     <div class="relative flex-1 max-w-md">
       <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
       </div>
-      <input type="text" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" 
-             placeholder="Search by MRN (e.g. MRN-), patient name, or phone number..."
-             class="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50/50">
+      <input type="text" [ngModel]="searchQuery()" (ngModelChange)="onSearchInput($event)" 
+             placeholder="Search by MRN, patient name, or phone number..."
+             class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-slate-50/50">
+      
+      <!-- Subtle Loading Spinner or Clear (✖) Button -->
+      @if (isLoading()) {
+        <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-teal-600">
+          <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+        </div>
+      } @else if (searchQuery()) {
+        <button (click)="clearSearch()" title="Clear search"
+                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      }
     </div>
 
     <!-- Gender Filter Chips -->
     <div class="flex items-center gap-1.5 self-start md:self-auto">
       <button (click)="selectedGender.set('all')"
-              class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap"
+              class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap"
               [ngClass]="selectedGender() === 'all' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
         All ({{ patients().length }})
       </button>
       <button (click)="selectedGender.set('Male')"
-              class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap"
+              class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap"
               [ngClass]="selectedGender() === 'Male' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
         Male
       </button>
       <button (click)="selectedGender.set('Female')"
-              class="px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap"
+              class="px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap"
               [ngClass]="selectedGender() === 'Female' ? 'bg-pink-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
         Female
       </button>
     </div>
   </div>
 
-  <!-- Optimized Responsive Data Table (Full Width, Locked Proportions, No Awkward Multiline Wrapping) -->
+  <!-- Patient Table (Click Any Row to View Details) -->
   <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse text-sm min-w-[1100px] table-fixed">
+      <table class="w-full text-left border-collapse text-sm min-w-[1000px] table-fixed">
         <colgroup>
-          <col class="w-[18%]">
-          <col class="w-[24%]">
+          <col class="w-[20%]">
+          <col class="w-[25%]">
           <col class="w-[15%]">
           <col class="w-[10%]">
-          <col class="w-[13%]">
-          <col class="w-[10%]">
-          <col class="w-[10%]">
+          <col class="w-[15%]">
+          <col class="w-[15%]">
         </colgroup>
         <thead>
-          <tr class="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider backdrop-blur-xs">
+          <tr class="bg-slate-100/90 border-b border-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider">
             <th class="py-3.5 px-4 whitespace-nowrap">MRN Code</th>
             <th class="py-3.5 px-4 whitespace-nowrap">Patient Name</th>
             <th class="py-3.5 px-4 whitespace-nowrap">Phone Number</th>
             <th class="py-3.5 px-4 whitespace-nowrap text-center">Gender</th>
-            <th class="py-3.5 px-4 whitespace-nowrap">Registered Date</th>
-            <th class="py-3.5 px-4 whitespace-nowrap text-center">Consults</th>
+            <th class="py-3.5 px-4 whitespace-nowrap text-center">Completed Visits</th>
             <th class="py-3.5 px-4 whitespace-nowrap text-right">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
           @for (p of filteredPatients(); track p.id) {
-            <tr class="odd:bg-white even:bg-slate-50/50 hover:bg-teal-50/30 transition">
-              <!-- MRN Code -->
+            <!-- Entire Row is Clickable -->
+            <tr (click)="selectPatient(p)" 
+                class="cursor-pointer odd:bg-white even:bg-slate-50/50 hover:bg-teal-50/60 transition group">
+              
+              <!-- MRN Code with Copy Button -->
               <td class="py-3.5 px-4 whitespace-nowrap">
-                <span class="font-mono font-bold text-xs bg-teal-50 text-teal-700 px-2.5 py-1 rounded-lg border border-teal-200 inline-block">
-                  {{ p.medicalRecordNumber }}
-                </span>
+                <div class="inline-flex items-center gap-1.5 bg-teal-50 text-teal-800 px-2.5 py-1 rounded-lg border border-teal-200">
+                  <span class="font-mono font-bold text-xs">{{ p.medicalRecordNumber }}</span>
+                  <button (click)="copyMrn(p.medicalRecordNumber, $event)" title="Copy MRN" 
+                          class="text-teal-500 hover:text-teal-800 transition p-0.5 rounded">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                </div>
               </td>
 
               <!-- Patient Name -->
@@ -90,7 +116,7 @@
                     {{ p.fullName.substring(0, 1).toUpperCase() }}
                   </div>
                   <div class="min-w-0">
-                    <p class="font-bold text-slate-900 leading-tight truncate max-w-[200px]" [title]="p.fullName">{{ p.fullName }}</p>
+                    <p class="font-bold text-slate-900 leading-tight truncate group-hover:text-teal-700 transition">{{ p.fullName }}</p>
                     <p class="text-xs text-slate-400 mt-0.5">DOB: {{ p.dateOfBirth | date:'mediumDate' }}</p>
                   </div>
                 </div>
@@ -107,33 +133,34 @@
                 </span>
               </td>
 
-              <!-- Registered Date -->
-              <td class="py-3.5 px-4 text-slate-500 text-xs whitespace-nowrap">{{ p.createdAtUtc | date:'mediumDate' }}</td>
-
-              <!-- Total Consults -->
+              <!-- Total Bookings Completed -->
               <td class="py-3.5 px-4 text-center whitespace-nowrap">
-                <span class="font-mono font-bold text-xs px-2.5 py-0.5 rounded-full"
-                      [ngClass]="p.visits.length > 0 ? 'bg-slate-100 text-slate-800' : 'bg-slate-50 text-slate-400'">
-                  {{ p.visits.length }} {{ p.visits.length === 1 ? 'visit' : 'visits' }}
+                <span class="font-mono font-bold text-xs px-2.5 py-1 rounded-full inline-block"
+                      [ngClass]="p.totalCompletedBookings > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-500'">
+                  {{ p.totalCompletedBookings }} Completed
                 </span>
               </td>
 
-              <!-- Actions -->
-              <td class="py-3.5 px-4 text-right whitespace-nowrap shrink-0">
-                <button (click)="openHistory(p)" 
-                        class="px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-xs transition inline-flex items-center gap-1.5 shadow-2xs whitespace-nowrap shrink-0">
-                  <span>📋</span>
-                  <span>View Visits</span>
+              <!-- Action Button -->
+              <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                <button (click)="$event.stopPropagation(); selectPatient(p)" 
+                        class="px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-xs transition inline-flex items-center gap-1.5 shadow-2xs">
+                  <span>📋 View Details</span>
                 </button>
               </td>
             </tr>
           } @empty {
             <tr>
-              <td colspan="7" class="py-14 text-center">
-                <div class="max-w-xs mx-auto text-center space-y-2">
-                  <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center text-xl">👥</div>
+              <td colspan="6" class="py-12 text-center text-slate-400">
+                <div class="max-w-xs mx-auto space-y-2">
+                  <div class="text-2xl">👥</div>
                   <p class="font-bold text-slate-700 text-sm">No patients found</p>
-                  <p class="text-xs text-slate-400">No patient records match your current search query or gender filter.</p>
+                  <p class="text-xs text-slate-400">No records match your query "{{ searchQuery() }}".</p>
+                  @if (searchQuery()) {
+                    <button (click)="clearSearch()" class="mt-2 text-xs font-bold text-teal-600 hover:underline">
+                      Reset Search
+                    </button>
+                  }
                 </div>
               </td>
             </tr>
@@ -143,67 +170,146 @@
     </div>
   </div>
 
-  <!-- Visit History Modal (Top-Anchored 3-Zone Enterprise Layout, z-[100]) -->
+  <!-- PATIENT FULL DETAILS & BOOKING HISTORY MODAL (Centered High-Performance Enterprise Modal) -->
   @if (selectedPatient()) {
-    <div class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-start justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
-      <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden mt-6 sm:mt-10 mb-8 max-h-[85vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
-        <!-- 1. High-Contrast Header Bar -->
+    <div teleportToBody class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+      <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[85vh] flex flex-col animate-fadeIn">
+        
+        <!-- Modal Header -->
         <div class="px-6 py-4 bg-slate-100 border-b border-slate-200 flex items-center justify-between shrink-0">
-          <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center text-base shadow-xs">👤</div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-teal-600 text-white font-bold flex items-center justify-center text-sm shadow-xs">
+              {{ selectedPatient()?.fullName?.substring(0, 1)?.toUpperCase() }}
+            </div>
             <div>
               <div class="flex items-center gap-2">
                 <h3 class="text-base font-bold text-slate-900 leading-tight">{{ selectedPatient()?.fullName }}</h3>
                 <span class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700">{{ selectedPatient()?.gender }}</span>
               </div>
-              <p class="text-xs text-slate-500 font-mono mt-0.5">{{ selectedPatient()?.medicalRecordNumber }} · {{ selectedPatient()?.phoneNumber }}</p>
+              <div class="flex items-center gap-2 text-xs text-slate-500 font-mono mt-0.5">
+                <span>{{ selectedPatient()?.medicalRecordNumber }}</span>
+                <span>•</span>
+                <span>{{ selectedPatient()?.phoneNumber }}</span>
+              </div>
             </div>
           </div>
-          <button (click)="closeHistory()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition font-bold text-lg">&times;</button>
+          <button (click)="closeDetails()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center font-bold text-lg transition">&times;</button>
         </div>
 
-        <!-- 2. Scrollable Body -->
-        <div class="p-5 sm:p-6 overflow-y-auto space-y-3.5 flex-1">
-          @for (v of selectedPatient()?.visits; track v.tokenId) {
-            <div class="p-4 border rounded-2xl bg-slate-50/80 border-slate-200 space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="font-mono font-bold text-xs bg-teal-100 text-teal-800 px-2.5 py-0.5 rounded-lg border border-teal-200">{{ v.tokenNumber }}</span>
-                <span class="text-xs text-slate-500">{{ v.bookedAtUtc | date:'medium' }}</span>
-              </div>
-              <p class="text-xs text-slate-700"><strong>Attending Doctor:</strong> {{ v.doctorName }} ({{ v.departmentName }})</p>
-              
-              @if (v.triageLevel) {
-                <p class="text-xs">
-                  <strong>CTAS Triage:</strong> 
-                  <span class="font-bold ml-1 px-2 py-0.5 rounded-full text-[11px]" [ngClass]="{
-                    'bg-rose-100 text-rose-700 border border-rose-200': v.triageLevel === 'Red',
-                    'bg-amber-100 text-amber-700 border border-amber-200': v.triageLevel === 'Yellow',
-                    'bg-emerald-100 text-emerald-700 border border-emerald-200': v.triageLevel === 'Green'
-                  }">{{ v.triageLevel }}</span>
-                </p>
-              }
+        <!-- Scrollable Modal Body -->
+        <div class="p-6 overflow-y-auto space-y-4 flex-1">
+          
+          <!-- Demographics Summary Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
+            <div>
+              <p class="text-slate-400 font-medium">Age</p>
+              <p class="font-bold text-slate-800 mt-0.5 text-sm">{{ calculateAge(selectedPatient()!.dateOfBirth) }} yrs</p>
+            </div>
+            <div>
+              <p class="text-slate-400 font-medium">Date of Birth</p>
+              <p class="font-bold text-slate-800 mt-0.5">{{ selectedPatient()?.dateOfBirth | date:'mediumDate' }}</p>
+            </div>
+            <div>
+              <p class="text-slate-400 font-medium">Registered Date</p>
+              <p class="font-bold text-slate-800 mt-0.5">{{ selectedPatient()?.createdAtUtc | date:'mediumDate' }}</p>
+            </div>
+            <div>
+              <p class="text-slate-400 font-medium">Account Origin</p>
+              <span class="font-bold text-xs mt-0.5 inline-block" [ngClass]="selectedPatient()?.isRegisteredAppUser ? 'text-teal-700' : 'text-slate-600'">
+                {{ selectedPatient()?.isRegisteredAppUser ? '📱 Mobile App User' : '🏢 Desk Walk-In' }}
+              </span>
+            </div>
+          </div>
 
-              @if (v.consultationNotes) {
-                <div class="mt-2 text-xs bg-white p-3 rounded-xl border border-slate-200">
-                  <p class="font-bold text-slate-700 mb-0.5">Consultation Notes:</p>
-                  <p class="text-slate-600 italic leading-relaxed">{{ v.consultationNotes }}</p>
+          <!-- Total Bookings Completed Highlight Card -->
+          <div class="p-4 rounded-2xl bg-teal-50 border border-teal-200 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center text-lg">
+                ✅
+              </div>
+              <div>
+                <p class="text-xs font-bold text-teal-900">Total Bookings Completed</p>
+                <p class="text-[11px] text-teal-700">Finished clinical consultations</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="font-mono font-extrabold text-lg text-teal-900 px-3 py-1 bg-white rounded-xl border border-teal-200 inline-block shadow-2xs">
+                {{ selectedPatient()?.totalCompletedBookings }} Completed
+              </span>
+              <p class="text-[10px] text-teal-700 mt-1">out of {{ selectedPatient()?.visits?.length || 0 }} total bookings</p>
+            </div>
+          </div>
+
+          <!-- Chronological Booking History -->
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+              Booking History ({{ selectedPatient()?.visits?.length || 0 }})
+            </h4>
+
+            <div class="space-y-3">
+              @for (v of selectedPatient()?.visits; track v.tokenId) {
+                <div class="p-4 border rounded-2xl bg-white border-slate-200 space-y-2 shadow-2xs">
+                  <div class="flex items-center justify-between">
+                    <span class="font-mono font-bold text-xs bg-teal-100 text-teal-800 px-2.5 py-0.5 rounded-lg border border-teal-200">
+                      {{ v.tokenNumber }}
+                    </span>
+                    
+                    <!-- Color-Coded Status Badge -->
+                    <span class="text-xs font-bold px-2.5 py-0.5 rounded-full"
+                          [ngClass]="{
+                            'bg-emerald-100 text-emerald-800 border border-emerald-200': v.status === 'Completed',
+                            'bg-blue-100 text-blue-800 border border-blue-200': v.status === 'Waiting' || v.status === 'Called',
+                            'bg-slate-100 text-slate-700 border border-slate-200': v.status === 'Booked',
+                            'bg-rose-100 text-rose-800 border border-rose-200': v.status === 'Cancelled' || v.status === 'Skipped'
+                          }">
+                      {{ v.status }}
+                    </span>
+                  </div>
+
+                  <div class="text-xs text-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                    <span><strong>Attending Doctor:</strong> {{ v.doctorName }} ({{ v.departmentName }})</span>
+                    <span class="text-slate-400 font-mono">{{ v.bookedAtUtc | date:'medium' }}</span>
+                  </div>
+
+                  <!-- CTAS Triage Level (if evaluated) -->
+                  @if (v.triageLevel) {
+                    <p class="text-xs text-slate-600">
+                      <strong>CTAS Urgency:</strong>
+                      <span class="ml-1 font-bold px-2 py-0.5 rounded-full text-[11px]" [ngClass]="{
+                        'bg-rose-100 text-rose-700': v.triageLevel === 'Red',
+                        'bg-amber-100 text-amber-700': v.triageLevel === 'Yellow',
+                        'bg-emerald-100 text-emerald-700': v.triageLevel === 'Green'
+                      }">{{ v.triageLevel }}</span>
+                    </p>
+                  }
+
+                  <!-- Doctor Consultation Notes -->
+                  @if (v.consultationNotes) {
+                    <div class="mt-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
+                      <p class="font-bold text-slate-700 mb-0.5">Doctor Consultation Notes:</p>
+                      <p class="text-slate-600 italic leading-relaxed">{{ v.consultationNotes }}</p>
+                    </div>
+                  }
+                </div>
+              } @empty {
+                <div class="py-8 text-center text-slate-400 text-xs">
+                  No past consultation visits recorded for this patient.
                 </div>
               }
             </div>
-          } @empty {
-            <div class="py-12 text-center text-slate-400 text-xs">
-              No recorded consultation visits for this patient yet.
-            </div>
-          }
+          </div>
+
         </div>
 
-        <!-- 3. Anchored Action Footer Bar -->
-        <div class="px-6 py-3.5 bg-slate-100/80 border-t border-slate-200 flex justify-end shrink-0">
-          <button (click)="closeHistory()" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition">
+        <!-- Modal Footer -->
+        <div class="px-6 py-3.5 bg-slate-100 border-t border-slate-200 flex justify-end shrink-0">
+          <button (click)="closeDetails()" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition">
             Close
           </button>
         </div>
+
       </div>
     </div>
   }
+
 </div>

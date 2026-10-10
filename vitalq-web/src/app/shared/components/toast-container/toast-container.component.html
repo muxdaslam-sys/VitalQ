@@ -1,35 +1,35 @@
 <div class="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0">
   @for (toast of toastService.toasts(); track toast.id) {
-    <div class="pointer-events-auto flex items-start gap-3.5 p-4 rounded-2xl shadow-xl border bg-white/95 backdrop-blur-md transition-all duration-200 animate-in slide-in-from-top-3 fade-in"
+    <div class="pointer-events-auto flex items-start gap-3.5 p-4 rounded-2xl shadow-xl border backdrop-blur-md transition-all duration-200 animate-fadeIn"
          [ngClass]="{
-           'border-emerald-200 shadow-emerald-950/5 ring-1 ring-emerald-500/20': toast.type === 'success',
-           'border-rose-200 shadow-rose-950/5 ring-1 ring-rose-500/20': toast.type === 'error',
-           'border-amber-200 shadow-amber-950/5 ring-1 ring-amber-500/20': toast.type === 'warning',
-           'border-sky-200 shadow-sky-950/5 ring-1 ring-sky-500/20': toast.type === 'info'
+           'bg-emerald-50/95 border-emerald-300 text-emerald-950 border-l-4 border-l-emerald-600 shadow-emerald-950/10': toast.type === 'success',
+           'bg-rose-50/95 border-rose-300 text-rose-950 border-l-4 border-l-rose-600 shadow-rose-950/10': toast.type === 'error',
+           'bg-amber-50/95 border-amber-300 text-amber-950 border-l-4 border-l-amber-500 shadow-amber-950/10': toast.type === 'warning',
+           'bg-sky-50/95 border-sky-300 text-sky-950 border-l-4 border-l-sky-600 shadow-sky-950/10': toast.type === 'info'
          }">
       
-      <!-- Icon Container with Vibrant Clinical Tint -->
+      <!-- Icon Container with Solid Vibrant Clinical Badge -->
       <div class="shrink-0 mt-0.5">
         @if (toast.type === 'success') {
-          <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200/80 flex items-center justify-center text-sm font-bold shadow-xs">
+          <div class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
             </svg>
           </div>
         } @else if (toast.type === 'error') {
-          <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 border border-rose-200/80 flex items-center justify-center text-sm font-bold shadow-xs">
+          <div class="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
         } @else if (toast.type === 'warning') {
-          <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/80 flex items-center justify-center text-sm font-bold shadow-xs">
+          <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center text-sm font-bold shadow-sm">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
         } @else {
-          <div class="w-8 h-8 rounded-xl bg-sky-50 text-sky-600 border border-sky-200/80 flex items-center justify-center text-sm font-bold shadow-xs">
+          <div class="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -37,18 +37,36 @@
         }
       </div>
 
-      <!-- Text Details (High Contrast & Clear Hierarchy) -->
+      <!-- Text Details (High Contrast Standard Typography) -->
       <div class="flex-1 text-xs min-w-0">
         @if (toast.title) {
-          <p class="font-bold text-slate-900 tracking-tight mb-0.5 leading-snug">{{ toast.title }}</p>
+          <p class="font-extrabold tracking-tight mb-0.5 leading-snug"
+             [ngClass]="{
+               'text-emerald-950': toast.type === 'success',
+               'text-rose-950': toast.type === 'error',
+               'text-amber-950': toast.type === 'warning',
+               'text-sky-950': toast.type === 'info'
+             }">{{ toast.title }}</p>
         }
-        <p class="text-slate-600 font-medium leading-relaxed break-words">{{ toast.message }}</p>
+        <p class="font-medium leading-relaxed break-words"
+           [ngClass]="{
+             'text-emerald-800': toast.type === 'success',
+             'text-rose-800': toast.type === 'error',
+             'text-amber-800': toast.type === 'warning',
+             'text-sky-800': toast.type === 'info'
+           }">{{ toast.message }}</p>
       </div>
 
       <!-- Dismiss Cross Button -->
       <button (click)="toastService.remove(toast.id)" 
               title="Dismiss Notification" 
-              class="shrink-0 text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition">
+              class="shrink-0 p-1 rounded-lg transition"
+              [ngClass]="{
+                'text-emerald-600 hover:text-emerald-950 hover:bg-emerald-100/70': toast.type === 'success',
+                'text-rose-600 hover:text-rose-950 hover:bg-rose-100/70': toast.type === 'error',
+                'text-amber-600 hover:text-amber-950 hover:bg-amber-100/70': toast.type === 'warning',
+                'text-sky-600 hover:text-sky-950 hover:bg-sky-100/70': toast.type === 'info'
+              }">
         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
         </svg>

@@ -15,14 +15,27 @@ public class AuthService : IAuthService
 {
     private readonly VitalQDbContext _context;
     private readonly IConfiguration _config;
+    private readonly SymmetricSecurityKey _key;
+    private readonly SigningCredentials _creds;
+    private readonly int _durationInMinutes;
+    private readonly string _issuer;
+    private readonly string _audience;
 
     public AuthService(VitalQDbContext context, IConfiguration config)
     {
         _context = context;
         _config = config;
+
+        // Pre-cache key and signing credentials once on startup for maximum throughput
+        var keyString = _config["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured.");
+        _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyString));
+        _creds = new SigningCredentials(_key, SecurityAlgorithms.HmacSha256);
+        _durationInMinutes = int.Parse(_config["Jwt:DurationInMinutes"] ?? "15");
+        _issuer = _config["Jwt:Issuer"] ?? "VitalQ";
+        _audience = _config["Jwt:Audience"] ?? "VitalQ";
     }
 
-    // 1. LOGIN (Plain-text password check)
+    // 1. LOGIN
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u =>
@@ -32,75 +45,13 @@ public class AuthService : IAuthService
 
         if (user == null) return null;
 
-        var accessToken = CreateJwtToken(user);
-        var refreshToken = Guid.NewGuid().ToString();
-
-        user.RefreshToken = refreshToken;
-        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+        var response = GenerateToken(user);
         await _context.SaveChangesAsync();
 
-        return new AuthResponse
-        {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            ExpiresAtUtc = DateTime.UtcNow.AddMinutes(int.Parse(_config["Jwt:DurationInMinutes"] ?? "15")),
-            User = MapUser(user)
-        };
+        return response;
     }
 
-    // 2. REGISTER PATIENT
-    public async Task<AuthResponse> RegisterPatientAsync(PatientRegisterRequest request)
-    {
-        if (await _context.Users.AnyAsync(u => u.Username == request.Username))
-            throw new InvalidOperationException($"Username '{request.Username}' is already taken.");
-
-        if (await _context.Users.AnyAsync(u => u.PhoneNumber == request.PhoneNumber))
-            throw new InvalidOperationException($"Phone number '{request.PhoneNumber}' is already registered.");
-
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            Username = request.Username,
-            Password = request.Password, // Plain text as requested
-            FullName = request.FullName,
-            PhoneNumber = request.PhoneNumber,
-            Role = "Patient",
-            IsActive = true,
-            CreatedAtUtc = DateTime.UtcNow
-        };
-
-        var patient = new Patient
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            MedicalRecordNumber = $"MRN-{DateTime.UtcNow:yyyyMMdd}-{DateTime.UtcNow:HHmmss}01",
-            FullName = request.FullName,
-            PhoneNumber = request.PhoneNumber,
-            DateOfBirth = request.DateOfBirth,
-            Gender = request.Gender,
-            CreatedAtUtc = DateTime.UtcNow
-        };
-
-        var accessToken = CreateJwtToken(user);
-        var refreshToken = Guid.NewGuid().ToString();
-
-        user.RefreshToken = refreshToken;
-        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
-
-        _context.Users.Add(user);
-        _context.Patients.Add(patient);
-        await _context.SaveChangesAsync();
-
-        return new AuthResponse
-        {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            ExpiresAtUtc = DateTime.UtcNow.AddMinutes(int.Parse(_config["Jwt:DurationInMinutes"] ?? "15")),
-            User = MapUser(user)
-        };
-    }
-
-    // 3. REFRESH TOKEN (Token Rotation)
+    // 2. REFRESH TOKEN (Rotation)
     public async Task<AuthResponse?> RefreshTokenAsync(string refreshToken)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u =>
@@ -110,23 +61,13 @@ public class AuthService : IAuthService
 
         if (user == null) return null;
 
-        var newAccessToken = CreateJwtToken(user);
-        var newRefreshToken = Guid.NewGuid().ToString();
-
-        user.RefreshToken = newRefreshToken;
-        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+        var response = GenerateToken(user);
         await _context.SaveChangesAsync();
 
-        return new AuthResponse
-        {
-            AccessToken = newAccessToken,
-            RefreshToken = newRefreshToken,
-            ExpiresAtUtc = DateTime.UtcNow.AddMinutes(int.Parse(_config["Jwt:DurationInMinutes"] ?? "15")),
-            User = MapUser(user)
-        };
+        return response;
     }
 
-    // 4. REVOKE TOKEN (Logout)
+    // 3. LOGOUT (Session Invalidation)
     public async Task<bool> RevokeRefreshTokenAsync(Guid userId)
     {
         var user = await _context.Users.FindAsync(userId);
@@ -138,12 +79,42 @@ public class AuthService : IAuthService
         return true;
     }
 
+    /// <summary>
+    /// Revokes refresh token directly using the token string from the HttpOnly cookie.
+    /// Uses the IX_Users_RefreshToken filtered B-tree index for O(1) instantaneous lookup.
+    /// </summary>
+    public async Task<bool> RevokeByRefreshTokenAsync(string refreshToken)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
+        if (user == null) return false;
+
+        user.RefreshToken = null;
+        user.RefreshTokenExpiryTime = null;
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    // 4. CENTRAL JWT GENERATOR (Single source of truth across the entire system)
+    public AuthResponse GenerateToken(User user)
+    {
+        var accessToken = CreateJwtToken(user);
+        var refreshToken = Guid.NewGuid().ToString("N");
+
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
+
+        return new AuthResponse
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            ExpiresAtUtc = DateTime.UtcNow.AddMinutes(_durationInMinutes),
+            User = MapUser(user)
+        };
+    }
+
     // --- PRIVATE HELPERS ---
     private string CreateJwtToken(User user)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
-        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -153,11 +124,11 @@ public class AuthService : IAuthService
         };
 
         var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"],
-            audience: _config["Jwt:Audience"],
+            issuer: _issuer,
+            audience: _audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(int.Parse(_config["Jwt:DurationInMinutes"] ?? "15")),
-            signingCredentials: creds
+            expires: DateTime.UtcNow.AddMinutes(_durationInMinutes),
+            signingCredentials: _creds
         );
 
         return new JwtSecurityTokenHandler().WriteToken(token);

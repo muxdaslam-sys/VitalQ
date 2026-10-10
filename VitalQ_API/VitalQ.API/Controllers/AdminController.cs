@@ -275,12 +275,12 @@ public class AdminController : ControllerBase
     // ==========================================
 
     /// <summary>
-    /// Browse all registered and walk-in patients with their visit histories (GET /api/admin/patients)
+    /// Browse registered patients (up to 50), with optional database-wide search by MRN, Name, or Phone (GET /api/admin/patients?search=...)
     /// </summary>
     [HttpGet("patients")]
-    public async Task<IActionResult> GetPatients()
+    public async Task<IActionResult> GetPatients([FromQuery] string? search = null)
     {
-        var patients = await _adminService.GetPatientDirectoryAsync();
+        var patients = await _adminService.GetPatientDirectoryAsync(search);
         return Ok(patients);
     }
 

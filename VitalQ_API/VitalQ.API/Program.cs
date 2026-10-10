@@ -1,5 +1,7 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -19,16 +21,35 @@ builder.Services.AddDbContextPool<VitalQDbContext>(options =>
 // 1.1 In-Memory Caching for hospital metadata
 builder.Services.AddMemoryCache();
 
-// 2. CORS (Allows Angular http://localhost:4200 to send cookies and connect via WebSockets)
+// 2. DYNAMIC CORS (Production-Ready: configurable origins with localhost fallback)
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[] { "http://localhost:4200", "http://127.0.0.1:4200" };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularApp", policy =>
     {
-        policy.WithOrigins("http://localhost:4200", "http://127.0.0.1:4200")
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials(); // REQUIRED for HttpOnly cookies and SignalR
     });
+});
+
+// 2.1 NATIVE RATE LIMITING (DDoS & Brute-Force Shield for Login Endpoint)
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("LoginLimiter", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 10, // Max 10 login attempts per minute per IP
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
 });
 
 // 3. JWT Authentication Setup
@@ -125,8 +146,23 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// 8.1 Global Production Exception Shield (prevents raw SQL/stack trace leakage to clients)
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            message = "An unexpected server error occurred. Please contact Clinical IT Support (Ext: 4400)."
+        });
+    });
+});
+
 // 9. Middleware Pipeline Order
 app.UseCors("AngularApp");
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

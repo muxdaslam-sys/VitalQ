@@ -8,9 +8,9 @@ public interface IAdminService
     Task<IEnumerable<DoctorResponse>> GetAllDoctorsAsync();
     Task<DoctorResponse> UpdateDoctorAsync(Guid doctorId, UpdateDoctorRequest request);
     Task<DoctorResponse> UpdateDoctorStatusAsync(Guid doctorId, UpdateDoctorStatusRequest request);
-    Task<UserResponse> CreateAdminUserAsync(CreateUserRequest request);
-    Task<IEnumerable<UserResponse>> GetAllStaffUsersAsync();
-    Task<UserResponse> UpdateUserAsync(Guid id, UpdateUserRequest request);
+    Task<StaffUserResponse> CreateAdminUserAsync(CreateUserRequest request);
+    Task<IEnumerable<StaffUserResponse>> GetAllStaffUsersAsync();
+    Task<StaffUserResponse> UpdateUserAsync(Guid id, UpdateUserRequest request);
 
     // Department Management
     Task<DepartmentResponse> CreateDepartmentAsync(CreateDepartmentRequest request);
@@ -22,7 +22,7 @@ public interface IAdminService
     Task<IEnumerable<NursingStationResponse>> GetAllNursingStationsAsync(Guid? departmentId = null);
     Task<NursingStationResponse> UpdateNursingStationAsync(Guid id, UpdateNursingStationRequest request);
 
-    // Patient Directory & Visit History
-    Task<IEnumerable<PatientDetailResponse>> GetPatientDirectoryAsync();
+    // Patient Directory & Visit History (Limited to 50, optional search)
+    Task<IEnumerable<PatientDetailResponse>> GetPatientDirectoryAsync(string? search = null);
     Task<PatientDetailResponse?> GetPatientDetailsByIdAsync(Guid patientId);
 }

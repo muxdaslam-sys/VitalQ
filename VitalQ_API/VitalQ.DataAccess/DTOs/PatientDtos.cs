@@ -52,6 +52,9 @@ public class PatientDetailResponse
     public bool IsRegisteredAppUser { get; set; }
     public DateTime CreatedAtUtc { get; set; }
 
+    /// <summary>Total consultation bookings completed by this patient</summary>
+    public int TotalCompletedBookings { get; set; }
+
     public List<PatientVisitHistoryDto> Visits { get; set; } = new();
 }
 
@@ -79,29 +82,6 @@ public class PatientVisitHistoryDto
 // ==========================================
 // 2. DATA SENT FROM CLIENTS (REQUESTS)
 // ==========================================
-
-/// <summary>
-/// Create patient profile.
-/// </summary>
-public class CreatePatientRequest
-{
-    public Guid? UserId { get; set; }
-
-    [MaxLength(30)]
-    public string? MedicalRecordNumber { get; set; }
-
-    [Required, MaxLength(100)]
-    public string FullName { get; set; } = null!;
-
-    [Required, MaxLength(20), Phone]
-    public string PhoneNumber { get; set; } = null!;
-
-    [Required]
-    public DateOnly DateOfBirth { get; set; }
-
-    [Required, MaxLength(10)]
-    public string Gender { get; set; } = null!;
-}
 
 /// <summary>
 /// Update patient profile.

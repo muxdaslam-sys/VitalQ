@@ -20,19 +20,21 @@
  * ============================================================================
  */
 
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../../core/services/admin.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { DoctorResponse, DepartmentResponse, CreateDoctorRequest, UpdateDoctorRequest } from '../../../shared/models/admin.model';
+import { TeleportToBodyDirective } from '../../../shared/directives/teleport.directive';
 
 @Component({
   selector: 'app-doctors',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TeleportToBodyDirective],
   templateUrl: './doctors.component.html',
-  styleUrl: './doctors.component.css'
+  styleUrl: './doctors.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DoctorsComponent implements OnInit {
   // --------------------------------------------------------------------------

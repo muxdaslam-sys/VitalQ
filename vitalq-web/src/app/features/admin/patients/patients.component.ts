@@ -1,35 +1,37 @@
-﻿/**
+/**
  * ============================================================================
- * COMPONENT: PatientsComponent (Outpatient Directory & Clinical History)
+ * COMPONENT: PatientsComponent (Outpatient Directory & Booking History)
  * ============================================================================
  * 
- * PURPOSE:
- * Allows Hospital Administrators to:
- * 1. Browse complete patient registration records and Medical Record Numbers (MRN).
- * 2. Search patients by MRN, full name, or phone number.
- * 3. Inspect individual patient consultation visits, assigned triage levels (Red/Yellow/Green),
- *    consulting doctors, and consultation notes.
- * 
- * ARCHITECTURAL DESIGN:
- * - Angular 19 Signals for clean, high-performance reactivity.
- * - Reactive computed filtering for instantaneous searching.
- * - In-app ToastService for non-blocking notifications.
+ * FEATURES:
+ * 1. Displays up to 50 patients from the database.
+ * 2. Real-time 300ms debounced search by MRN, Name, or Phone Number across the DB.
+ * 3. Quick Clear Search (✖) button.
+ * 4. Gender category filter chips ('All', 'Male', 'Female').
+ * 5. Click ANY patient row to view full details, total completed bookings, and past bookings.
+ * 6. One-click "Copy MRN" to clipboard with toast notification.
+ * 7. Automatic calculation of patient age from Date of Birth.
  * ============================================================================
  */
 
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AdminService } from '../../../core/services/admin.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { PatientDetailResponse } from '../../../shared/models/admin.model';
+import { TeleportToBodyDirective } from '../../../shared/directives/teleport.directive';
 
 @Component({
   selector: 'app-patients',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TeleportToBodyDirective],
   templateUrl: './patients.component.html',
-  styleUrl: './patients.component.css'
+  styleUrl: './patients.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PatientsComponent implements OnInit {
   // --------------------------------------------------------------------------
@@ -39,81 +41,109 @@ export class PatientsComponent implements OnInit {
   private toast = inject(ToastService);
 
   // --------------------------------------------------------------------------
-  // 2. COMPONENT STATE (SIGNALS)
+  // 2. SEARCH DEBOUNCE STREAM
   // --------------------------------------------------------------------------
+  private searchSubject = new Subject<string>();
 
-  /** Master list of patient records retrieved from database */
+  // --------------------------------------------------------------------------
+  // 3. COMPONENT STATE (SIGNALS)
+  // --------------------------------------------------------------------------
   patients = signal<PatientDetailResponse[]>([]);
-
-  /** Query string typed in search box */
   searchQuery = signal('');
-
-  /** Selected gender filter ('all', 'Male', 'Female', 'Other') */
-  selectedGender = signal<'all' | 'Male' | 'Female' | 'Other'>('all');
-
-  /** Patient whose clinical visit history is currently open in modal dialog */
+  selectedGender = signal<'all' | 'Male' | 'Female'>('all');
   selectedPatient = signal<PatientDetailResponse | null>(null);
+  isLoading = signal(false);
+
+  constructor() {
+    // 300ms debounce to prevent hammering the server while the user types
+    this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntilDestroyed()
+    ).subscribe(term => {
+      this.loadPatients(term);
+    });
+  }
 
   // --------------------------------------------------------------------------
-  // 3. COMPUTED REACTIVE FILTER
+  // 4. COMPUTED GENDER FILTER
   // --------------------------------------------------------------------------
   filteredPatients = computed(() => {
-    let list = this.patients();
-    const query = this.searchQuery().trim().toLowerCase();
+    const list = this.patients();
     const gender = this.selectedGender();
-
-    // 1. Text Search Filter (MRN, Name, Phone Number)
-    if (query) {
-      list = list.filter(p =>
-        p.fullName.toLowerCase().includes(query) ||
-        p.phoneNumber.includes(query) ||
-        p.medicalRecordNumber.toLowerCase().includes(query)
-      );
-    }
-
-    // 2. Gender Category Filter
-    if (gender !== 'all') {
-      list = list.filter(p => p.gender.toLowerCase() === gender.toLowerCase());
-    }
-
-    return list;
+    if (gender === 'all') return list;
+    return list.filter(p => p.gender.toLowerCase() === gender.toLowerCase());
   });
 
   // --------------------------------------------------------------------------
-  // 4. LIFECYCLE HOOKS & DATA LOADING
+  // 5. LIFECYCLE HOOKS & DATA LOADING
   // --------------------------------------------------------------------------
   ngOnInit(): void {
     this.loadPatients();
   }
 
   /**
-   * Fetches latest patient records from backend API.
+   * Loads up to 50 patients from the backend API.
+   * If query is supplied, searches across MRN, Full Name, and Phone Number.
    */
-  loadPatients(): void {
-    this.adminService.getPatients().subscribe({
-      next: p => this.patients.set(p),
+  loadPatients(query?: string): void {
+    this.isLoading.set(true);
+    this.adminService.getPatients(query).subscribe({
+      next: p => {
+        this.patients.set(p);
+        this.isLoading.set(false);
+      },
       error: () => {
         this.patients.set([]);
-        this.toast.error('Failed to load patient directory from server.');
+        this.isLoading.set(false);
+        this.toast.error('Failed to load patient directory.');
       }
     });
   }
 
   // --------------------------------------------------------------------------
-  // 5. USER ACTIONS & MODAL CONTROLS
+  // 6. USER ACTIONS & SEARCH CONTROLS
   // --------------------------------------------------------------------------
 
-  /**
-   * Opens the visit history modal for a selected patient.
-   */
-  openHistory(p: PatientDetailResponse): void {
+  /** Called on every keystroke in search box; debounced by 300ms */
+  onSearchInput(value: string): void {
+    this.searchQuery.set(value);
+    this.searchSubject.next(value);
+  }
+
+  /** Clears search and reloads latest 50 patients */
+  clearSearch(): void {
+    this.searchQuery.set('');
+    this.loadPatients();
+  }
+
+  /** Opens full profile and booking history modal for clicked patient */
+  selectPatient(p: PatientDetailResponse): void {
     this.selectedPatient.set(p);
   }
 
-  /**
-   * Closes the visit history modal.
-   */
-  closeHistory(): void {
+  /** Closes patient details modal */
+  closeDetails(): void {
     this.selectedPatient.set(null);
+  }
+
+  /** Copies Medical Record Number to clipboard */
+  copyMrn(mrn: string, event: MouseEvent): void {
+    event.stopPropagation(); // Prevents triggering row click
+    navigator.clipboard.writeText(mrn);
+    this.toast.success(`Copied MRN: ${mrn}`);
+  }
+
+  /** Calculates patient's age in years from Date of Birth */
+  calculateAge(dobString: string): number {
+    if (!dobString) return 0;
+    const dob = new Date(dobString);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    return Math.max(0, age);
   }
 }

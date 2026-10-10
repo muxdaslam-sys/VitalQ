@@ -74,9 +74,12 @@ export class AdminService {
     return this.http.put<NursingStationResponse>(this.baseUrl + '/nursing-stations/' + id, req);
   }
 
-  // Patient Directory
-  getPatients(): Observable<PatientDetailResponse[]> {
-    return this.http.get<PatientDetailResponse[]>(this.baseUrl + '/patients');
+  // Patient Directory (Limit 50 with optional server-side search by MRN, Name, Phone)
+  getPatients(search?: string): Observable<PatientDetailResponse[]> {
+    const url = search?.trim()
+      ? `${this.baseUrl}/patients?search=${encodeURIComponent(search.trim())}`
+      : `${this.baseUrl}/patients`;
+    return this.http.get<PatientDetailResponse[]>(url);
   }
 
   getPatientById(id: string): Observable<PatientDetailResponse> {
