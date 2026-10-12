@@ -4,11 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { LoginRequest } from '../../../shared/models/auth.model';
+import { SelfRegisterRequest } from '../../../shared/models/patient.model';
+import { TeleportToBodyDirective } from '../../../shared/directives/teleport.directive';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TeleportToBodyDirective],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css'
 })
@@ -46,6 +48,15 @@ export class LoginComponent implements OnInit {
   quickTokenInput = signal('');
   quickTokenError = signal<string | null>(null);
 
+  // Online Patient Self-Registration
+  showRegisterModal = signal(false);
+  registerFullName = signal('');
+  registerPhone = signal('');
+  registerDob = signal('');
+  registerGender = signal('Male');
+  registerLoading = signal(false);
+  registerError = signal<string | null>(null);
+
   switchMode(mode: 'staff' | 'patient') {
     this.activeMode.set(mode);
     this.errorMessage.set(null);
@@ -68,6 +79,17 @@ export class LoginComponent implements OnInit {
     }
   }
 
+  toggleRegisterModal(open: boolean) {
+    this.showRegisterModal.set(open);
+    this.registerError.set(null);
+    if (!open) {
+      this.registerFullName.set('');
+      this.registerPhone.set('');
+      this.registerDob.set('');
+      this.registerGender.set('Male');
+    }
+  }
+
   checkCapsLock(event: KeyboardEvent) {
     if (event.getModifierState) {
       this.capsLockOn.set(event.getModifierState('CapsLock'));
@@ -83,6 +105,41 @@ export class LoginComponent implements OnInit {
     this.showQuickTokenModal.set(false);
     // Navigate to public live display with token query
     this.router.navigate(['/track'], { queryParams: { token: token.toUpperCase() } });
+  }
+
+  onRegisterSubmit() {
+    const fullName = this.registerFullName().trim();
+    const phone = this.registerPhone().trim();
+    const dob = this.registerDob();
+    const gender = this.registerGender();
+
+    if (!fullName || !phone || !dob) {
+      this.registerError.set('Please provide your full legal name, phone number, and date of birth.');
+      return;
+    }
+
+    this.registerLoading.set(true);
+    this.registerError.set(null);
+
+    const payload: SelfRegisterRequest = {
+      fullName,
+      phoneNumber: phone,
+      dateOfBirth: dob,
+      gender
+    };
+
+    this.auth.selfRegister(payload).subscribe({
+      next: (res) => {
+        this.registerLoading.set(false);
+        this.showRegisterModal.set(false);
+        const target = this.auth.getRoleDefaultRoute(res.user.role);
+        this.router.navigate([target]);
+      },
+      error: (err) => {
+        this.registerLoading.set(false);
+        this.registerError.set(err.error?.message || 'Registration failed. Please check your details or visit the hospital reception counter.');
+      }
+    });
   }
 
   onSubmit() {
