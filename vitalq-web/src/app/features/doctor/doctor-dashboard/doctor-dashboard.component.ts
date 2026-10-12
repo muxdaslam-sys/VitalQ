@@ -8,7 +8,8 @@ import { AuthService } from '../../../core/services/auth.service';
 import { QueueService } from '../../../core/services/queue.service';
 import { SignalRService } from '../../../core/services/signalr.service';
 import { TriageService } from '../../../core/services/triage.service';
-import { Doctor, QueueToken, CompleteConsultationRequest, TriageAssessment } from '../../../shared/models';
+import { Doctor, QueueToken, CompleteConsultationRequest } from '../../../shared/models/queue.model';
+import { TriageAssessment } from '../../../shared/models/triage.model';
 import { environment } from '../../../../environments/environment';
 
 export type DoctorProfile = Doctor;
