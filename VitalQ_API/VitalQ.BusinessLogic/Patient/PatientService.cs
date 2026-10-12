@@ -517,6 +517,7 @@ public class PatientService : IPatientService
         }
 
         token.Status = "Cancelled";
+        token.CompletedAtUtc = DateTime.UtcNow;
         token.ConsultationNotes = string.IsNullOrWhiteSpace(reason)
             ? "Cancelled by patient"
             : $"Cancelled by patient: {reason.Trim()}";
@@ -531,13 +532,14 @@ public class PatientService : IPatientService
     #region 3. Consultation & Clinical History
 
     /// <summary>
-    /// Retrieves past completed outpatient encounters for an individual patient.
+    /// Retrieves past outpatient encounters (Completed, Cancelled, Expired, Skipped) for an individual patient.
     /// </summary>
     public async Task<IEnumerable<PatientVisitHistoryDto>> GetPatientVisitHistoryAsync(Guid patientId)
     {
         return await _context.QueueTokens
             .AsNoTracking()
-            .Where(t => t.PatientId == patientId && t.Status == "Completed")
+            .Where(t => t.PatientId == patientId && 
+                       (t.Status == "Completed" || t.Status == "Cancelled" || t.Status == "Expired" || t.Status == "Skipped"))
             .OrderByDescending(t => t.BookedAtUtc)
             .Select(t => new PatientVisitHistoryDto
             {
@@ -559,7 +561,7 @@ public class PatientService : IPatientService
     }
 
     /// <summary>
-    /// BATCH QUERY: Retrieves past visit history for all family members in a single SQL query.
+    /// BATCH QUERY: Retrieves past visit history (Completed, Cancelled, Expired, Skipped) for all family members in a single SQL query.
     /// 100% thread-safe and eliminates parallel DbContext crashes.
     /// </summary>
     public async Task<IEnumerable<PatientVisitHistoryDto>> GetFamilyVisitHistoryAsync(IEnumerable<Guid> patientIds)
@@ -569,7 +571,8 @@ public class PatientService : IPatientService
 
         return await _context.QueueTokens
             .AsNoTracking()
-            .Where(t => idsList.Contains(t.PatientId) && t.Status == "Completed")
+            .Where(t => idsList.Contains(t.PatientId) && 
+                       (t.Status == "Completed" || t.Status == "Cancelled" || t.Status == "Expired" || t.Status == "Skipped"))
             .OrderByDescending(t => t.BookedAtUtc)
             .Select(t => new PatientVisitHistoryDto
             {

@@ -269,7 +269,7 @@ public class DoctorService : IDoctorService
     // =========================================================================
     // 8. RECALCULATE QUEUE SCORES (Aging engine loop)
     // =========================================================================
-    public async Task RecalculateQueueScoresAsync()
+    public async Task<bool> RecalculateQueueScoresAsync()
     {
         var todayUtc = DateTime.UtcNow.Date;
         var tomorrowUtc = todayUtc.AddDays(1);
@@ -278,7 +278,7 @@ public class DoctorService : IDoctorService
             .Where(t => t.Status == "Waiting" && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.TriagedAtUtc.HasValue)
             .ToListAsync();
 
-        if (!waitingTokens.Any()) return;
+        if (!waitingTokens.Any()) return false;
 
         var now = DateTime.UtcNow;
         bool hasChanges = false;
@@ -297,6 +297,23 @@ public class DoctorService : IDoctorService
         {
             await _context.SaveChangesAsync();
         }
+
+        return hasChanges;
+    }
+
+    // =========================================================================
+    // 9. EXPIRE STALE TOKENS (Auto-sweeps unvisited tokens from previous days)
+    // =========================================================================
+    public async Task<int> ExpireStaleTokensAsync()
+    {
+        var todayUtc = DateTime.UtcNow.Date;
+
+        return await _context.QueueTokens
+            .Where(t => t.BookedAtUtc < todayUtc && (t.Status == "Booked" || t.Status == "Waiting" || t.Status == "Called" || t.Status == "Skipped"))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.Status, "Expired")
+                .SetProperty(t => t.CompletedAtUtc, t => t.BookedAtUtc)
+                .SetProperty(t => t.ConsultationNotes, "Expired — Patient did not attend on scheduled date."));
     }
 
     private static QueueTokenResponse MapToResponse(QueueToken t, int patientsAhead, int avgConsultationMins) => new()
