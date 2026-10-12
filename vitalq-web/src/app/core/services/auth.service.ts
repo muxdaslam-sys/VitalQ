@@ -33,6 +33,7 @@ import { Router } from '@angular/router';
 import { Observable, tap, catchError, of, throwError, shareReplay, finalize } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest, UserResponse } from '../../shared/models/auth.model';
+import { SelfRegisterRequest } from '../../shared/models/patient.model';
 
 import { SignalRService } from './signalr.service';
 
@@ -87,6 +88,21 @@ export class AuthService {
    */
   login(credentials: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.authUrl}/login`, credentials, { withCredentials: true }).pipe(
+      tap(res => {
+        this.setSession(res);
+      })
+    );
+  }
+
+  /**
+   * Registers a first-time online patient with their phone and DOB.
+   * Endpoint: POST /api/patient/self-register
+   * Creates an official patient chart, permanent MRN, user identity, and establishes a JWT session.
+   * 
+   * @param request Self-registration payload with FullName, PhoneNumber, DateOfBirth, Gender.
+   */
+  selfRegister(request: SelfRegisterRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/patient/self-register`, request, { withCredentials: true }).pipe(
       tap(res => {
         this.setSession(res);
       })

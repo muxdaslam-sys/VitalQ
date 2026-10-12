@@ -29,6 +29,9 @@ public interface IDoctorService
     // 7. Complete consultation with notes and diagnosis
     Task<QueueTokenResponse> CompleteConsultationAsync(Guid tokenId, Guid doctorUserId, CompleteConsultationRequest request);
 
-    // 8. Background engine recalculation for priority aging
-    Task RecalculateQueueScoresAsync();
+    // 8. Background engine recalculation for priority aging (returns true if any scores changed)
+    Task<bool> RecalculateQueueScoresAsync();
+
+    // 9. Auto-sweep unvisited stale tokens from previous days
+    Task<int> ExpireStaleTokensAsync();
 }

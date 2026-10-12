@@ -15,12 +15,10 @@ namespace VitalQ.BusinessLogic.Services;
 public class NurseService : INurseService
 {
     private readonly VitalQDbContext _context;
-    private readonly ITokenGenerator _tokenGenerator;
 
-    public NurseService(VitalQDbContext context, ITokenGenerator tokenGenerator)
+    public NurseService(VitalQDbContext context)
     {
         _context = context;
-        _tokenGenerator = tokenGenerator;
     }
 
     // =========================================================================
@@ -193,7 +191,7 @@ public class NurseService : INurseService
         }
 
         // Atomic Token Sequence
-        var tokenNumber = await _tokenGenerator.GenerateTokenNumberAsync(doctor.DepartmentId, doctor.Department.Code);
+        var tokenNumber = await TokenGenerator.GenerateAsync(_context, doctor.DepartmentId, doctor.Department.Code);
 
         var queueToken = new QueueToken
         {
@@ -208,19 +206,7 @@ public class NurseService : INurseService
             BookedAtUtc = DateTime.UtcNow
         };
 
-        var auditLog = new TokenAuditLog
-        {
-            Id = Guid.NewGuid(),
-            QueueTokenId = queueToken.Id,
-            PreviousStatus = "None",
-            NewStatus = "Booked",
-            ChangeSource = "Nurse",
-            ChangedAtUtc = DateTime.UtcNow,
-            Notes = $"Walk-in token {tokenNumber} booked at desk for {patient.FullName}"
-        };
-
         await _context.QueueTokens.AddAsync(queueToken);
-        await _context.TokenAuditLogs.AddAsync(auditLog);
         await _context.SaveChangesAsync();
 
         return MapToTokenResponse(queueToken, patient, doctor);
@@ -329,26 +315,11 @@ public class NurseService : INurseService
         assessment.AssessedAtUtc = DateTime.UtcNow;
 
         // Transition token to 'Waiting' in doctor's queue
-        var previousStatus = token.Status;
         token.Status = "Waiting";
         token.BaseWeight = baseWeight;
         token.PriorityScore = baseWeight;
         token.TriagedAtUtc = DateTime.UtcNow;
 
-        // Audit Trail
-        var audit = new TokenAuditLog
-        {
-            Id = Guid.NewGuid(),
-            QueueTokenId = tokenId,
-            PreviousStatus = previousStatus,
-            NewStatus = "Waiting",
-            ChangeSource = "Nurse",
-            ChangedByUserId = nurseUserId,
-            Notes = $"Clinical Triage: {triageLevel} (Base Weight: {baseWeight}). Vitals: BP {request.SystolicBp}/{request.DiastolicBp}, SpO2 {request.SpO2}%, HR {request.HeartRate}, Temp {request.Temperature}°C, Pain {request.PainScale}/10." +
-                    (request.IsManualOverride ? $" Manual Override Reason: {request.OverrideReason}" : ""),
-            ChangedAtUtc = DateTime.UtcNow
-        };
-        await _context.TokenAuditLogs.AddAsync(audit);
         await _context.SaveChangesAsync();
 
         // Calculate position ahead

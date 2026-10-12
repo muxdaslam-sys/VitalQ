@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -11,7 +11,8 @@ import { PatientVisitHistory, PatientProfile } from '../../../shared/models/pati
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './patient-history.component.html',
-  styleUrls: ['./patient-history.component.css']
+  styleUrls: ['./patient-history.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PatientHistoryComponent implements OnInit {
   private patientService = inject(PatientService);
@@ -71,6 +72,7 @@ export class PatientHistoryComponent implements OnInit {
     switch (status) {
       case 'Completed': return 'Visit Completed';
       case 'Cancelled': return 'Cancelled';
+      case 'Expired': return 'Expired (Did not attend)';
       case 'Skipped': return 'On Hold / Missed';
       default: return status;
     }
@@ -82,6 +84,8 @@ export class PatientHistoryComponent implements OnInit {
         return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
       case 'Cancelled':
         return 'bg-rose-50 text-rose-700 border border-rose-200';
+      case 'Expired':
+        return 'bg-slate-100 text-slate-700 border border-slate-300';
       case 'Skipped':
         return 'bg-amber-50 text-amber-800 border border-amber-200';
       default:

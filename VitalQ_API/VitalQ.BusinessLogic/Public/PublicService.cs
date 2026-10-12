@@ -89,6 +89,7 @@ public class PublicService : IPublicService
         if (string.IsNullOrWhiteSpace(tokenNumber)) return null;
 
         var today = DateTime.UtcNow.Date;
+        var tomorrow = today.AddDays(1);
         var token = await _context.QueueTokens
             .AsNoTracking()
             .Include(t => t.Patient)
@@ -96,7 +97,7 @@ public class PublicService : IPublicService
             .Include(t => t.Doctor).ThenInclude(d => d.Department)
             .Include(t => t.Department)
             .Include(t => t.TriageAssessment)
-            .FirstOrDefaultAsync(t => t.TokenNumber == tokenNumber.Trim() && t.BookedAtUtc >= today);
+            .FirstOrDefaultAsync(t => t.TokenNumber == tokenNumber.Trim() && t.BookedAtUtc >= today && t.BookedAtUtc < tomorrow);
 
         if (token == null) return null;
 
@@ -109,6 +110,7 @@ public class PublicService : IPublicService
                 .AsNoTracking()
                 .CountAsync(t => t.DoctorId == token.DoctorId
                               && t.BookedAtUtc >= today
+                              && t.BookedAtUtc < tomorrow
                               && (t.Status == "Waiting" || t.Status == "Called")
                               && (t.PriorityScore > token.PriorityScore ||
                                  (t.PriorityScore == token.PriorityScore && t.BookedAtUtc < token.BookedAtUtc)));

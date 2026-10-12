@@ -32,7 +32,7 @@ export interface QueueToken {
   doctorId: string;
   doctorName: string;
   roomNumber: string;
-  status: 'Booked' | 'Waiting' | 'Called' | 'Skipped' | 'Completed' | 'Cancelled';
+  status: 'Booked' | 'Waiting' | 'Called' | 'Skipped' | 'Completed' | 'Cancelled' | 'Expired';
   priorityScore: number;
   baseWeight: number;
   triageLevel?: string;

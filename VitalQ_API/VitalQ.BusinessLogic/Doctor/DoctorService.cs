@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using VitalQ.BusinessLogic.Common;
 using VitalQ.BusinessLogic.Interfaces;
 using VitalQ.DataAccess;
 using VitalQ.Entities.DTOs;
@@ -151,18 +152,6 @@ public class DoctorService : IDoctorService
         {
             active.Status = "Completed";
             active.CompletedAtUtc = DateTime.UtcNow;
-
-            await _context.TokenAuditLogs.AddAsync(new TokenAuditLog
-            {
-                Id = Guid.NewGuid(),
-                QueueTokenId = active.Id,
-                PreviousStatus = "Called",
-                NewStatus = "Completed",
-                ChangeSource = "Doctor",
-                ChangedByUserId = doctor.UserId,
-                Notes = "Automatically completed upon calling next patient.",
-                ChangedAtUtc = DateTime.UtcNow
-            });
         }
 
         // Pick top-priority waiting patient
@@ -186,19 +175,6 @@ public class DoctorService : IDoctorService
 
         nextToken.Status = "Called";
         nextToken.CalledAtUtc = DateTime.UtcNow;
-
-        var audit = new TokenAuditLog
-        {
-            Id = Guid.NewGuid(),
-            QueueTokenId = nextToken.Id,
-            PreviousStatus = "Waiting",
-            NewStatus = "Called",
-            ChangeSource = "Doctor",
-            ChangedByUserId = doctor.UserId,
-            Notes = $"Called into room {doctor.RoomNumber} by Dr. {doctor.User.FullName}",
-            ChangedAtUtc = DateTime.UtcNow
-        };
-        await _context.TokenAuditLogs.AddAsync(audit);
 
         await _context.SaveChangesAsync();
         return MapToResponse(nextToken, 0, 0);
@@ -226,21 +202,7 @@ public class DoctorService : IDoctorService
             throw new InvalidOperationException($"Cannot skip a patient with status '{token.Status}'.");
         }
 
-        var previousStatus = token.Status;
         token.Status = "Skipped";
-
-        var audit = new TokenAuditLog
-        {
-            Id = Guid.NewGuid(),
-            QueueTokenId = tokenId,
-            PreviousStatus = previousStatus,
-            NewStatus = "Skipped",
-            ChangeSource = "Doctor",
-            ChangedByUserId = doctorUserId,
-            Notes = "Patient did not respond / skipped by doctor.",
-            ChangedAtUtc = DateTime.UtcNow
-        };
-        await _context.TokenAuditLogs.AddAsync(audit);
 
         await _context.SaveChangesAsync();
         return MapToResponse(token, 0, 0);
@@ -270,19 +232,6 @@ public class DoctorService : IDoctorService
 
         token.Status = "Waiting";
 
-        var audit = new TokenAuditLog
-        {
-            Id = Guid.NewGuid(),
-            QueueTokenId = tokenId,
-            PreviousStatus = "Skipped",
-            NewStatus = "Waiting",
-            ChangeSource = "Doctor",
-            ChangedByUserId = doctorUserId,
-            Notes = "Patient returned; reinstated to waiting queue.",
-            ChangedAtUtc = DateTime.UtcNow
-        };
-        await _context.TokenAuditLogs.AddAsync(audit);
-
         await _context.SaveChangesAsync();
         return MapToResponse(token, 0, 0);
     }
@@ -309,25 +258,9 @@ public class DoctorService : IDoctorService
             throw new InvalidOperationException($"Cannot complete consultation for token with status '{token.Status}'.");
         }
 
-        var previousStatus = token.Status;
         token.Status = "Completed";
         token.CompletedAtUtc = DateTime.UtcNow;
         token.ConsultationNotes = request.ConsultationNotes?.Trim();
-
-        var audit = new TokenAuditLog
-        {
-            Id = Guid.NewGuid(),
-            QueueTokenId = tokenId,
-            PreviousStatus = previousStatus,
-            NewStatus = "Completed",
-            ChangeSource = "Doctor",
-            ChangedByUserId = doctorUserId,
-            Notes = string.IsNullOrWhiteSpace(request.ConsultationNotes)
-                ? "Consultation completed"
-                : $"Consultation completed. Notes: {request.ConsultationNotes.Trim()}",
-            ChangedAtUtc = DateTime.UtcNow
-        };
-        await _context.TokenAuditLogs.AddAsync(audit);
 
         await _context.SaveChangesAsync();
         return MapToResponse(token, 0, 0);
@@ -336,7 +269,7 @@ public class DoctorService : IDoctorService
     // =========================================================================
     // 8. RECALCULATE QUEUE SCORES (Aging engine loop)
     // =========================================================================
-    public async Task RecalculateQueueScoresAsync()
+    public async Task<bool> RecalculateQueueScoresAsync()
     {
         var todayUtc = DateTime.UtcNow.Date;
         var tomorrowUtc = todayUtc.AddDays(1);
@@ -345,7 +278,7 @@ public class DoctorService : IDoctorService
             .Where(t => t.Status == "Waiting" && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.TriagedAtUtc.HasValue)
             .ToListAsync();
 
-        if (!waitingTokens.Any()) return;
+        if (!waitingTokens.Any()) return false;
 
         var now = DateTime.UtcNow;
         bool hasChanges = false;
@@ -364,6 +297,23 @@ public class DoctorService : IDoctorService
         {
             await _context.SaveChangesAsync();
         }
+
+        return hasChanges;
+    }
+
+    // =========================================================================
+    // 9. EXPIRE STALE TOKENS (Auto-sweeps unvisited tokens from previous days)
+    // =========================================================================
+    public async Task<int> ExpireStaleTokensAsync()
+    {
+        var todayUtc = DateTime.UtcNow.Date;
+
+        return await _context.QueueTokens
+            .Where(t => t.BookedAtUtc < todayUtc && (t.Status == "Booked" || t.Status == "Waiting" || t.Status == "Called" || t.Status == "Skipped"))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(t => t.Status, "Expired")
+                .SetProperty(t => t.CompletedAtUtc, t => t.BookedAtUtc)
+                .SetProperty(t => t.ConsultationNotes, "Expired — Patient did not attend on scheduled date."));
     }
 
     private static QueueTokenResponse MapToResponse(QueueToken t, int patientsAhead, int avgConsultationMins) => new()

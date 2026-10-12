@@ -22,8 +22,6 @@ public partial class VitalQDbContext : DbContext
 
     public virtual DbSet<QueueToken> QueueTokens { get; set; }
 
-    public virtual DbSet<TokenAuditLog> TokenAuditLogs { get; set; }
-
     public virtual DbSet<TriageAssessment> TriageAssessments { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
@@ -146,28 +144,6 @@ public partial class VitalQDbContext : DbContext
                 .HasForeignKey(d => d.PatientId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__QueueToke__Patie__59FA5E80");
-        });
-
-        modelBuilder.Entity<TokenAuditLog>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__TokenAud__3214EC070A7592BB");
-
-            entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
-            entity.Property(e => e.ChangeSource)
-                .HasMaxLength(20)
-                .HasDefaultValue("User");
-            entity.Property(e => e.ChangedAtUtc).HasDefaultValueSql("(sysutcdatetime())");
-            entity.Property(e => e.NewStatus).HasMaxLength(20);
-            entity.Property(e => e.Notes).HasMaxLength(255);
-            entity.Property(e => e.PreviousStatus).HasMaxLength(20);
-
-            entity.HasOne(d => d.ChangedByUser).WithMany(p => p.TokenAuditLogs)
-                .HasForeignKey(d => d.ChangedByUserId)
-                .HasConstraintName("FK__TokenAudi__Chang__6D0D32F4");
-
-            entity.HasOne(d => d.QueueToken).WithMany(p => p.TokenAuditLogs)
-                .HasForeignKey(d => d.QueueTokenId)
-                .HasConstraintName("FK__TokenAudi__Queue__6C190EBB");
         });
 
         modelBuilder.Entity<TriageAssessment>(entity =>

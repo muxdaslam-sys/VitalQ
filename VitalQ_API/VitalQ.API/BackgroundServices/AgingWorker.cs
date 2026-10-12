@@ -37,11 +37,19 @@ public class AgingWorker : BackgroundService
                 using (var scope = _serviceProvider.CreateScope())
                 {
                     var doctorService = scope.ServiceProvider.GetRequiredService<IDoctorService>();
-                    await doctorService.RecalculateQueueScoresAsync();
-                }
 
-                // Broadcast tick to all connected clients so active queues re-sort
-                await _hubContext.Clients.All.SendAsync("QueueScoresRecalculated", DateTime.UtcNow, cancellationToken: stoppingToken);
+                    // 1. Auto-sweep stale unvisited tokens from previous days
+                    await doctorService.ExpireStaleTokensAsync();
+
+                    // 2. Recalculate priority scores for waiting patients
+                    var hasChanges = await doctorService.RecalculateQueueScoresAsync();
+
+                    // 3. Only broadcast SignalR if scores actually changed (prevents broadcast spam)
+                    if (hasChanges)
+                    {
+                        await _hubContext.Clients.All.SendAsync("QueueScoresRecalculated", DateTime.UtcNow, cancellationToken: stoppingToken);
+                    }
+                }
             }
             catch (OperationCanceledException)
             {

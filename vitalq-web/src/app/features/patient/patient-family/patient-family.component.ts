@@ -1,17 +1,19 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { PatientService } from '../../../core/services/patient.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { PatientProfile } from '../../../shared/models/patient.model';
+import { TeleportToBodyDirective } from '../../../shared/directives/teleport.directive';
 
 @Component({
   selector: 'app-patient-family',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TeleportToBodyDirective],
   templateUrl: './patient-family.component.html',
-  styleUrls: ['./patient-family.component.css']
+  styleUrls: ['./patient-family.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PatientFamilyComponent implements OnInit {
   private patientService = inject(PatientService);
@@ -56,6 +58,14 @@ export class PatientFamilyComponent implements OnInit {
     this.isAddModalOpen.set(false);
   }
 
+  getInitials(name: string): string {
+    const parts = (name || '').trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return (parts[0] || 'P').substring(0, 2).toUpperCase();
+  }
+
   submitAddFamily(): void {
     if (!this.newName().trim()) {
       this.errorMessage.set('Please enter a full name.');
@@ -89,6 +99,6 @@ export class PatientFamilyComponent implements OnInit {
   }
 
   bookForMember(memberId: string): void {
-    this.router.navigate(['/patient/book']);
+    this.router.navigate(['/patient/book'], { queryParams: { patientId: memberId } });
   }
 }

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -8,13 +8,15 @@ import { SignalRService } from '../../../core/services/signalr.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { QueueToken } from '../../../shared/models/queue.model';
+import { TeleportToBodyDirective } from '../../../shared/directives/teleport.directive';
 
 @Component({
   selector: 'app-patient-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, TeleportToBodyDirective],
   templateUrl: './patient-dashboard.component.html',
-  styleUrls: ['./patient-dashboard.component.css']
+  styleUrls: ['./patient-dashboard.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PatientDashboardComponent implements OnInit, OnDestroy {
   // Expose Math for template calculations
@@ -35,10 +37,10 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
   cancelReason = signal<string>('');
   cancelling = signal<boolean>(false);
   cancelError = signal<string>('');
-  successToast = signal<string>('');
 
   private subs: Subscription[] = [];
   private previousCalledIds = new Set<string>();
+  private joinedTokenIds = new Set<string>();
 
   // Computed Derivations
   selectedToken = computed(() => {
@@ -57,6 +59,8 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
+    this.joinedTokenIds.forEach(id => this.signalR.leaveTokenGroup(id));
+    this.joinedTokenIds.clear();
   }
 
   private initHeartbeatPoller(): void {
@@ -76,6 +80,7 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
         }
         this.loading.set(false);
         this.checkCalledTokens(tokens);
+        this.syncTokenGroups(tokens);
       },
       error: () => this.loading.set(false)
     });
@@ -86,12 +91,15 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
       next: (data) => {
         this.tokens.set(data);
         this.checkCalledTokens(data);
+        this.syncTokenGroups(data);
       }
     });
   }
 
   initSignalR(): void {
     this.signalR.startConnection().then(() => {
+      this.syncTokenGroups(this.tokens());
+
       const sub1 = this.signalR.onPatientCalled$.subscribe((calledToken) => {
         this.playHospitalChime();
         this.selectedTokenId.set(calledToken.id);
@@ -107,6 +115,27 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
       });
 
       this.subs.push(sub1, sub2, sub3);
+    });
+  }
+
+  private syncTokenGroups(tokenList: QueueToken[]): void {
+    if (!this.signalR.isConnected) return;
+    const currentIds = new Set(tokenList.map(t => t.id));
+
+    // Join any newly loaded active tokens
+    tokenList.forEach(t => {
+      if (!this.joinedTokenIds.has(t.id)) {
+        this.signalR.joinTokenGroup(t.id);
+        this.joinedTokenIds.add(t.id);
+      }
+    });
+
+    // Leave any removed or completed tokens
+    this.joinedTokenIds.forEach(id => {
+      if (!currentIds.has(id)) {
+        this.signalR.leaveTokenGroup(id);
+        this.joinedTokenIds.delete(id);
+      }
     });
   }
 
@@ -187,8 +216,7 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
   }
 
   showToast(msg: string): void {
-    this.successToast.set(msg);
-    setTimeout(() => this.successToast.set(''), 4000);
+    this.toast.success(msg);
   }
 
   getAgingProgressPercent(score: number): number {
@@ -203,6 +231,7 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
       case 'Skipped': return 'On Hold (Missed Call)';
       case 'Completed': return 'Visit Completed';
       case 'Cancelled': return 'Cancelled';
+      case 'Expired': return 'Expired';
       default: return status;
     }
   }
@@ -214,6 +243,7 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
       case 'Called': return 'bg-emerald-50 text-emerald-800 border border-emerald-300 animate-pulse font-extrabold';
       case 'Completed': return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
       case 'Cancelled': return 'bg-rose-50 text-rose-700 border border-rose-200';
+      case 'Expired': return 'bg-slate-100 text-slate-700 border border-slate-300';
       case 'Skipped': return 'bg-amber-50 text-amber-800 border border-amber-200';
       default: return 'bg-slate-100 text-slate-700 border border-slate-200';
     }

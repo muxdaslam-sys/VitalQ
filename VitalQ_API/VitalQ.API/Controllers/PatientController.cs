@@ -1,14 +1,24 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using VitalQ.BusinessLogic.Interfaces;
 using VitalQ.Entities.DTOs;
 
 namespace VitalQ.API.Controllers;
 
 /// <summary>
-/// Dedicated Patient Portal Controller on Mobile and PC browser.
-/// Handles online self-registration, family profiles, appointment booking, active tokens, and visit history.
+/// CONTROLLER: Dedicated Patient Outpatient Portal API
+/// Route: /api/patient
+/// 
+/// PURPOSE:
+/// Serves all HTTP requests from the patient's mobile phone browser and PC desktop portal.
+/// Powers:
+/// 1. Self-Registration (/api/patient/self-register)
+/// 2. Family Members Management (/api/patient/family)
+/// 3. Booking Doctor Appointments (/api/patient/bookings)
+/// 4. Live Queue Tracking & ETA (/api/patient/bookings/active)
+/// 5. Consultation & Diagnosis History (/api/patient/history)
 /// </summary>
 [ApiController]
 [Route("api/patient")]
@@ -24,7 +34,9 @@ public class PatientController : ControllerBase
     }
 
     /// <summary>
-    /// Online self-registration with Phone + Date of Birth.
+    /// ENDPOINT: POST /api/patient/self-register
+    /// Online patient self-registration using Phone Number and Date of Birth.
+    /// Sets an HttpOnly refresh token cookie and returns JWT access token for immediate login.
     /// </summary>
     [AllowAnonymous]
     [HttpPost("self-register")]
@@ -35,6 +47,7 @@ public class PatientController : ControllerBase
             var result = await _patientService.SelfRegisterAsync(request);
             if (!string.IsNullOrEmpty(result.RefreshToken))
             {
+                // Set secure HttpOnly cookie for silent background token rotation
                 Response.Cookies.Append("refreshToken", result.RefreshToken, new CookieOptions
                 {
                     HttpOnly = true,
@@ -45,14 +58,27 @@ public class PatientController : ControllerBase
             }
             return Ok(result);
         }
-        catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+        catch (InvalidOperationException ex)
         {
+            // E.g., Account with this phone already exists
+            return Conflict(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            // E.g., Invalid DOB or malformed phone number
             return BadRequest(new { message = ex.Message });
+        }
+        catch (DbUpdateException)
+        {
+            // Database unique constraint violation fallback
+            return Conflict(new { message = "An account with this phone number already exists." });
         }
     }
 
     /// <summary>
-    /// List all family profiles registered under the user's phone number.
+    /// ENDPOINT: GET /api/patient/family
+    /// Returns all patient profiles registered under the user's family mobile number.
+    /// Used by the booking wizard to pick which family member is visiting the clinic.
     /// </summary>
     [Authorize(Roles = "Patient")]
     [HttpGet("family")]
@@ -69,7 +95,8 @@ public class PatientController : ControllerBase
     }
 
     /// <summary>
-    /// Add a child, spouse, or parent dependent under the user's family account.
+    /// ENDPOINT: POST /api/patient/family
+    /// Adds a child, spouse, or elderly parent dependent under the logged-in user's account.
     /// </summary>
     [Authorize(Roles = "Patient")]
     [HttpPost("family")]
@@ -86,6 +113,10 @@ public class PatientController : ControllerBase
             var result = await _patientService.AddFamilyMemberAsync(currentUserId, request);
             return Ok(result);
         }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
@@ -93,7 +124,12 @@ public class PatientController : ControllerBase
     }
 
     /// <summary>
-    /// View past completed visits and doctor diagnosis notes for the current user and family.
+    /// ENDPOINT: GET /api/patient/history
+    /// Retrieves past completed outpatient encounters and doctor advice for the user and their family.
+    /// 
+    /// OPTIMIZATION NOTE:
+    /// Uses a single indexed batch query. Eliminates Task.WhenAll to guarantee 100% thread safety
+    /// and prevent DbContext concurrency exceptions.
     /// </summary>
     [Authorize(Roles = "Patient")]
     [HttpGet("history")]
@@ -105,21 +141,17 @@ public class PatientController : ControllerBase
 
         var family = await _patientService.GetMyFamilyMembersAsync(currentUserId);
         if (!family.Any())
-            return NotFound(new { message = "No patient profiles found for this account." });
+            return Ok(Enumerable.Empty<PatientVisitHistoryDto>());
 
-        var historyTasks = family.Select(member => _patientService.GetPatientVisitHistoryAsync(member.Id));
-        var results = await Task.WhenAll(historyTasks);
-
-        var combined = results
-            .SelectMany(h => h)
-            .OrderByDescending(h => h.BookedAtUtc)
-            .ToList();
+        var familyIds = family.Select(m => m.Id);
+        var combined = await _patientService.GetFamilyVisitHistoryAsync(familyIds);
 
         return Ok(combined);
     }
 
     /// <summary>
-    /// View past visit history for a specific patient ID.
+    /// ENDPOINT: GET /api/patient/history/{patientId}
+    /// Retrieves past visit history for a specific individual patient ID.
     /// </summary>
     [Authorize(Roles = "Patient,Nurse,Doctor,Admin")]
     [HttpGet("history/{patientId:guid}")]
@@ -130,7 +162,9 @@ public class PatientController : ControllerBase
     }
 
     /// <summary>
-    /// Book an appointment slot online (generates atomic concurrency-safe token).
+    /// ENDPOINT: POST /api/patient/bookings
+    /// Books an outpatient consultation slot for today and generates an atomic token.
+    /// Broadcasts SignalR "TokenBooked" event to the Doctor's room and Nurse desk.
     /// </summary>
     [Authorize(Roles = "Patient,Nurse,Admin")]
     [HttpPost("bookings")]
@@ -139,7 +173,7 @@ public class PatientController : ControllerBase
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         Guid.TryParse(userIdStr, out var currentUserId);
 
-        // If patient ID not passed, default to caller's profile
+        // If patient ID not passed, default to caller's self profile
         if (request.PatientId == Guid.Empty && currentUserId != Guid.Empty)
         {
             var selfPatient = await _patientService.GetPatientByUserIdAsync(currentUserId);
@@ -157,7 +191,10 @@ public class PatientController : ControllerBase
         try
         {
             var token = await _patientService.BookAppointmentAsync(request, currentUserId);
+            
+            // Push real-time notification to doctor PC and nurse triage desk
             await _notificationService.NotifyTokenBookedAsync(token);
+            
             return Ok(token);
         }
         catch (KeyNotFoundException ex)
@@ -175,7 +212,9 @@ public class PatientController : ControllerBase
     }
 
     /// <summary>
-    /// All active queue tokens today for the authenticated user and family dependents.
+    /// ENDPOINT: GET /api/patient/bookings/active
+    /// Returns all active queue tokens today for the authenticated user and family dependents.
+    /// Shows live queue position ("patients ahead") and calculated estimated wait time.
     /// </summary>
     [Authorize(Roles = "Patient,Admin")]
     [HttpGet("bookings/active")]
@@ -192,7 +231,8 @@ public class PatientController : ControllerBase
     }
 
     /// <summary>
-    /// Active queue token today for a specific patient ID.
+    /// ENDPOINT: GET /api/patient/bookings/active/{patientId}
+    /// Returns active consultation token today for a specific patient ID.
     /// </summary>
     [Authorize(Roles = "Patient,Admin")]
     [HttpGet("bookings/active/{patientId:guid}")]
@@ -222,7 +262,8 @@ public class PatientController : ControllerBase
     }
 
     /// <summary>
-    /// Cancel an active booking.
+    /// ENDPOINT: POST /api/patient/bookings/{id}/cancel
+    /// Cancels an active appointment booking and notifies waiting room clients via SignalR.
     /// </summary>
     [Authorize(Roles = "Patient,Admin")]
     [HttpPost("bookings/{id:guid}/cancel")]
@@ -237,7 +278,10 @@ public class PatientController : ControllerBase
         try
         {
             var token = await _patientService.CancelMyTokenAsync(id, currentUserId, request?.Notes);
+            
+            // Notify doctor PC console so the live queue counter refreshes immediately
             await _notificationService.NotifyQueueUpdatedAsync(token.DoctorId, token);
+            
             return Ok(token);
         }
         catch (KeyNotFoundException ex)
@@ -255,7 +299,8 @@ public class PatientController : ControllerBase
     }
 
     /// <summary>
-    /// Get patient profile by ID.
+    /// ENDPOINT: GET /api/patient/profile/{id}
+    /// Retrieves a patient demographic profile by ID.
     /// </summary>
     [Authorize(Roles = "Patient,Nurse,Admin,Doctor")]
     [HttpGet("profile/{id:guid}")]
@@ -270,7 +315,8 @@ public class PatientController : ControllerBase
     }
 
     /// <summary>
-    /// Update patient profile.
+    /// ENDPOINT: PUT /api/patient/profile/{id}
+    /// Updates patient demographic details.
     /// </summary>
     [Authorize(Roles = "Patient,Nurse,Admin")]
     [HttpPut("profile/{id:guid}")]

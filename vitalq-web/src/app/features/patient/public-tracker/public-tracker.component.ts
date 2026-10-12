@@ -16,7 +16,7 @@
  * ============================================================================
  */
 
-import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -29,7 +29,8 @@ import { QueueToken } from '../../../shared/models/queue.model';
   selector: 'app-public-tracker',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
-  templateUrl: './public-tracker.component.html'
+  templateUrl: './public-tracker.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PublicTrackerComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
@@ -48,6 +49,7 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
 
   /** Cleanup registry for active subscriptions */
   private subs: Subscription[] = [];
+  private currentJoinedTokenId: string | null = null;
 
   // --------------------------------------------------------------------------
   // LIFECYCLE HOOKS
@@ -69,6 +71,10 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
+    if (this.currentJoinedTokenId) {
+      this.signalR.leaveTokenGroup(this.currentJoinedTokenId);
+      this.currentJoinedTokenId = null;
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -89,11 +95,22 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
         this.token.set(data);
         this.isLoading.set(false);
         this.checkIfCalled(data);
+
+        // Join the targeted SignalR room for this specific token
+        if (this.currentJoinedTokenId && this.currentJoinedTokenId !== data.id) {
+          this.signalR.leaveTokenGroup(this.currentJoinedTokenId);
+        }
+        this.currentJoinedTokenId = data.id;
+        this.signalR.joinTokenGroup(data.id);
       },
       error: (err) => {
         this.token.set(null);
         this.isLoading.set(false);
         this.errorMessage.set(err.error?.message || `No active token found matching "${tokenNumber}" for today.`);
+        if (this.currentJoinedTokenId) {
+          this.signalR.leaveTokenGroup(this.currentJoinedTokenId);
+          this.currentJoinedTokenId = null;
+        }
       }
     });
   }
@@ -103,6 +120,11 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
   // --------------------------------------------------------------------------
   private initSignalR(): void {
     this.signalR.startConnection().then(() => {
+      if (this.token()) {
+        this.currentJoinedTokenId = this.token()!.id;
+        this.signalR.joinTokenGroup(this.token()!.id);
+      }
+
       // Refresh token if doctor calls patient or queue moves
       const callSub = this.signalR.onPatientCalled$.subscribe(calledToken => {
         if (this.token() && this.token()!.id === calledToken.id) {
