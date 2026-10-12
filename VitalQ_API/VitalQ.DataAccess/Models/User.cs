@@ -29,7 +29,5 @@ public partial class User
 
     public virtual Patient? Patient { get; set; }
 
-    public virtual ICollection<TokenAuditLog> TokenAuditLogs { get; set; } = new List<TokenAuditLog>();
-
     public virtual ICollection<TriageAssessment> TriageAssessments { get; set; } = new List<TriageAssessment>();
 }

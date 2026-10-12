@@ -39,7 +39,5 @@ public partial class QueueToken
 
     public virtual Patient Patient { get; set; } = null!;
 
-    public virtual ICollection<TokenAuditLog> TokenAuditLogs { get; set; } = new List<TokenAuditLog>();
-
     public virtual TriageAssessment? TriageAssessment { get; set; }
 }
