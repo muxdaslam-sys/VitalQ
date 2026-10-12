@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -11,7 +11,8 @@ import { PatientProfile } from '../../../shared/models/patient.model';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './patient-family.component.html',
-  styleUrls: ['./patient-family.component.css']
+  styleUrls: ['./patient-family.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PatientFamilyComponent implements OnInit {
   private patientService = inject(PatientService);
@@ -89,6 +90,6 @@ export class PatientFamilyComponent implements OnInit {
   }
 
   bookForMember(memberId: string): void {
-    this.router.navigate(['/patient/book']);
+    this.router.navigate(['/patient/book'], { queryParams: { patientId: memberId } });
   }
 }

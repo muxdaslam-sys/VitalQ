@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -11,7 +11,8 @@ import { PatientVisitHistory, PatientProfile } from '../../../shared/models/pati
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './patient-history.component.html',
-  styleUrls: ['./patient-history.component.css']
+  styleUrls: ['./patient-history.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PatientHistoryComponent implements OnInit {
   private patientService = inject(PatientService);

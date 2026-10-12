@@ -30,3 +30,17 @@ export interface PatientVisitHistory {
   completedAtUtc?: string;
   consultationNotes?: string;
 }
+
+export interface UpdatePatientRequest {
+  fullName: string;
+  phoneNumber: string;
+  dateOfBirth: string;
+  gender: string;
+}
+
+export interface SelfRegisterRequest {
+  fullName: string;
+  phoneNumber: string;
+  dateOfBirth: string;
+  gender?: string;
+}

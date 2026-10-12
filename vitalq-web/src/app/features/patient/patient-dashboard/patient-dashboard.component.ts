@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -14,7 +14,8 @@ import { QueueToken } from '../../../shared/models/queue.model';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './patient-dashboard.component.html',
-  styleUrls: ['./patient-dashboard.component.css']
+  styleUrls: ['./patient-dashboard.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PatientDashboardComponent implements OnInit, OnDestroy {
   // Expose Math for template calculations
@@ -39,6 +40,7 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
 
   private subs: Subscription[] = [];
   private previousCalledIds = new Set<string>();
+  private joinedTokenIds = new Set<string>();
 
   // Computed Derivations
   selectedToken = computed(() => {
@@ -57,6 +59,8 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
+    this.joinedTokenIds.forEach(id => this.signalR.leaveTokenGroup(id));
+    this.joinedTokenIds.clear();
   }
 
   private initHeartbeatPoller(): void {
@@ -76,6 +80,7 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
         }
         this.loading.set(false);
         this.checkCalledTokens(tokens);
+        this.syncTokenGroups(tokens);
       },
       error: () => this.loading.set(false)
     });
@@ -86,12 +91,15 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
       next: (data) => {
         this.tokens.set(data);
         this.checkCalledTokens(data);
+        this.syncTokenGroups(data);
       }
     });
   }
 
   initSignalR(): void {
     this.signalR.startConnection().then(() => {
+      this.syncTokenGroups(this.tokens());
+
       const sub1 = this.signalR.onPatientCalled$.subscribe((calledToken) => {
         this.playHospitalChime();
         this.selectedTokenId.set(calledToken.id);
@@ -107,6 +115,27 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
       });
 
       this.subs.push(sub1, sub2, sub3);
+    });
+  }
+
+  private syncTokenGroups(tokenList: QueueToken[]): void {
+    if (!this.signalR.isConnected) return;
+    const currentIds = new Set(tokenList.map(t => t.id));
+
+    // Join any newly loaded active tokens
+    tokenList.forEach(t => {
+      if (!this.joinedTokenIds.has(t.id)) {
+        this.signalR.joinTokenGroup(t.id);
+        this.joinedTokenIds.add(t.id);
+      }
+    });
+
+    // Leave any removed or completed tokens
+    this.joinedTokenIds.forEach(id => {
+      if (!currentIds.has(id)) {
+        this.signalR.leaveTokenGroup(id);
+        this.joinedTokenIds.delete(id);
+      }
     });
   }
 

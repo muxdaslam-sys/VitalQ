@@ -34,80 +34,80 @@ export class BookingService {
 
   /**
    * Retrieves all active clinical departments in the hospital.
-   * Endpoint: GET /api/departments
+   * Endpoint: GET /api/public/departments
    * Used in the booking wizard to populate the specialty picker (e.g. Cardiology, Pediatrics).
    */
   getDepartments(): Observable<Department[]> {
-    return this.http.get<Department[]>(`${this.api}/departments`);
+    return this.http.get<Department[]>(`${this.api}/public/departments`);
   }
 
   /**
    * Retrieves all doctors assigned to a specific department.
-   * Endpoint: GET /api/departments/{deptId}/doctors
+   * Endpoint: GET /api/public/departments/{deptId}/doctors
    * Used to display on-duty specialists, their room numbers, and average consultation times.
    * 
    * @param deptId Unique GUID identifier of the clinical department.
    */
   getDoctorsByDepartment(deptId: string): Observable<Doctor[]> {
-    return this.http.get<Doctor[]>(`${this.api}/departments/${deptId}/doctors`);
+    return this.http.get<Doctor[]>(`${this.api}/public/departments/${deptId}/doctors`);
   }
 
   /**
    * Books a new consultation slot and generates a collision-free daily sequence slip.
-   * Endpoint: POST /api/bookings
+   * Endpoint: POST /api/patient/bookings
    * The backend row-locks the department counter to prevent duplicate token numbers.
    * 
    * @param request Booking payload containing PatientId, DepartmentId, and DoctorId.
    */
   bookToken(request: BookTokenRequest): Observable<QueueToken> {
-    return this.http.post<QueueToken>(`${this.api}/bookings`, request);
+    return this.http.post<QueueToken>(`${this.api}/patient/bookings`, request);
   }
 
   /**
-   * Retrieves the primary active token for a specific patient.
-   * Endpoint: GET /api/bookings/my-token?patientId={patientId}
+   * Retrieves the active token for a specific patient.
+   * Endpoint: GET /api/patient/bookings/active/{patientId}
    * 
-   * @param patientId Optional GUID of a dependent profile; if omitted, defaults to primary user.
+   * @param patientId Optional GUID of a dependent profile; if omitted, fetches first active token.
    */
   getMyActiveToken(patientId?: string): Observable<QueueToken> {
-    const url = patientId ? `${this.api}/bookings/my-token?patientId=${patientId}` : `${this.api}/bookings/my-token`;
+    const url = patientId 
+      ? `${this.api}/patient/bookings/active/${patientId}` 
+      : `${this.api}/patient/bookings/active`;
     return this.http.get<QueueToken>(url);
   }
 
   /**
    * Retrieves all consultation slips registered under the logged-in user's phone for today.
-   * Endpoint: GET /api/bookings/my-tokens
-   * Enables the multi-slip switcher on the Patient Dashboard when a parent books for multiple children.
+   * Endpoint: GET /api/patient/bookings/active
+   * Enables multi-slip tracking on the Patient Dashboard when a parent books for multiple children.
    */
   getMyTokens(): Observable<QueueToken[]> {
-    return this.http.get<QueueToken[]>(`${this.api}/bookings/my-tokens`);
+    return this.http.get<QueueToken[]>(`${this.api}/patient/bookings/active`);
   }
 
   /**
    * Cancels an active consultation slip and releases the queue spot to waiting patients.
-   * Endpoint: POST /api/bookings/{tokenId}/cancel
-   * The backend validates patient ownership, writes a cancellation audit log, and triggers
-   * a SignalR QueueUpdated broadcast so all other waiting patients' wait times decrease.
+   * Endpoint: POST /api/patient/bookings/{tokenId}/cancel
+   * The backend validates patient ownership and triggers real-time queue position recalculation.
    * 
    * @param tokenId Unique GUID identifier of the QueueToken to cancel.
    * @param reason Optional patient-provided explanation for cancelling.
    */
   cancelToken(tokenId: string, reason?: string): Observable<QueueToken> {
-    return this.http.post<QueueToken>(`${this.api}/bookings/${tokenId}/cancel`, {
-      status: 'Cancelled',
+    return this.http.post<QueueToken>(`${this.api}/patient/bookings/${tokenId}/cancel`, {
       notes: reason?.trim() || ''
     });
   }
 
   /**
    * Public anonymous tracker for walk-in patients holding a physical paper slip.
-   * Endpoint: GET /api/bookings/track/{tokenNumber}
+   * Endpoint: GET /api/public/track/{tokenNumber}
    * Returns current queue position, doctor, room number, and wait estimation without login.
    * 
    * @param tokenNumber Serial code printed on physical slip (e.g. 'CARD-104')
    */
   trackToken(tokenNumber: string): Observable<QueueToken> {
     const cleanToken = encodeURIComponent(tokenNumber.trim().toUpperCase());
-    return this.http.get<QueueToken>(`${this.api}/bookings/track/${cleanToken}`);
+    return this.http.get<QueueToken>(`${this.api}/public/track/${cleanToken}`);
   }
 }

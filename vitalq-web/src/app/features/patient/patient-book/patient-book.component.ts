@@ -1,6 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { BookingService } from '../../../core/services/booking.service';
 import { PatientService } from '../../../core/services/patient.service';
 import { ToastService } from '../../../core/services/toast.service';
@@ -12,13 +12,15 @@ import { PatientProfile } from '../../../shared/models/patient.model';
   standalone: true,
   imports: [CommonModule, RouterLink],
   templateUrl: './patient-book.component.html',
-  styleUrls: ['./patient-book.component.css']
+  styleUrls: ['./patient-book.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PatientBookComponent implements OnInit {
   private bookingService = inject(BookingService);
   private patientService = inject(PatientService);
   private toast = inject(ToastService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   // Wizard Step (1: Patient, 2: Department, 3: Doctor & Confirm)
   currentStep = signal<number>(1);
@@ -40,12 +42,26 @@ export class PatientBookComponent implements OnInit {
   submitting = signal<boolean>(false);
   errorMessage = signal<string>('');
 
+  // Computed Derivations
+  selectedPatient = computed(() => this.familyMembers().find(p => p.id === this.selectedPatientId()));
+  selectedDepartment = computed(() => this.departments().find(d => d.id === this.selectedDepartmentId()));
+  selectedDoctor = computed(() => this.doctors().find(d => d.id === this.selectedDoctorId()));
+
   ngOnInit(): void {
     this.loadInitialData();
   }
 
   private loadInitialData(): void {
-    // 1. Load family members
+    // 1. Check deep-linked patientId from family page
+    this.route.queryParams.subscribe(params => {
+      const pid = params['patientId'];
+      if (pid) {
+        this.selectedPatientId.set(pid);
+        this.currentStep.set(2);
+      }
+    });
+
+    // 2. Load family members
     this.patientService.getMyFamily().subscribe({
       next: (members) => {
         this.familyMembers.set(members);
@@ -57,7 +73,7 @@ export class PatientBookComponent implements OnInit {
       error: () => this.loadingFamily.set(false)
     });
 
-    // 2. Load active departments
+    // 3. Load active departments
     this.bookingService.getDepartments().subscribe({
       next: (depts) => {
         this.departments.set(depts.filter(d => d.isActive));
@@ -131,14 +147,14 @@ export class PatientBookComponent implements OnInit {
   }
 
   getSelectedPatient(): PatientProfile | undefined {
-    return this.familyMembers().find(p => p.id === this.selectedPatientId());
+    return this.selectedPatient();
   }
 
   getSelectedDepartment(): Department | undefined {
-    return this.departments().find(d => d.id === this.selectedDepartmentId());
+    return this.selectedDepartment();
   }
 
   getSelectedDoctor(): Doctor | undefined {
-    return this.doctors().find(d => d.id === this.selectedDoctorId());
+    return this.selectedDoctor();
   }
 }

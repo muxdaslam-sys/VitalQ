@@ -16,7 +16,7 @@
  * ============================================================================
  */
 
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
@@ -27,7 +27,8 @@ import { ToastContainerComponent } from '../../../shared/components/toast-contai
   standalone: true,
   imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet, ToastContainerComponent],
   templateUrl: './patient-layout.component.html',
-  styleUrl: './patient-layout.component.css'
+  styleUrl: './patient-layout.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PatientLayoutComponent {
   /** Injected singleton AuthService providing current user profile and session methods */
