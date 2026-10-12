@@ -8,6 +8,7 @@ using Microsoft.OpenApi.Models;
 using VitalQ.API.BackgroundServices;
 using VitalQ.API.Hubs;
 using VitalQ.API.Services;
+using VitalQ.BusinessLogic.Common;
 using VitalQ.BusinessLogic.Interfaces;
 using VitalQ.BusinessLogic.Services;
 using VitalQ.DataAccess;
@@ -86,8 +87,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// 4. Core Infrastructure, Notifications & Token Generator
-builder.Services.AddScoped<ITokenGenerator, TokenGenerator>();
+// 4. Core Infrastructure & SignalR Notifications
 builder.Services.AddScoped<IQueueNotificationService, QueueNotificationService>();
 
 // 5. Role-Based & Domain Services
