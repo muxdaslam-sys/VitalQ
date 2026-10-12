@@ -8,11 +8,12 @@ import { SignalRService } from '../../../core/services/signalr.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { QueueToken } from '../../../shared/models/queue.model';
+import { TeleportToBodyDirective } from '../../../shared/directives/teleport.directive';
 
 @Component({
   selector: 'app-patient-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, TeleportToBodyDirective],
   templateUrl: './patient-dashboard.component.html',
   styleUrls: ['./patient-dashboard.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -36,7 +37,6 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
   cancelReason = signal<string>('');
   cancelling = signal<boolean>(false);
   cancelError = signal<string>('');
-  successToast = signal<string>('');
 
   private subs: Subscription[] = [];
   private previousCalledIds = new Set<string>();
@@ -216,8 +216,7 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
   }
 
   showToast(msg: string): void {
-    this.successToast.set(msg);
-    setTimeout(() => this.successToast.set(''), 4000);
+    this.toast.success(msg);
   }
 
   getAgingProgressPercent(score: number): number {
@@ -232,6 +231,7 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
       case 'Skipped': return 'On Hold (Missed Call)';
       case 'Completed': return 'Visit Completed';
       case 'Cancelled': return 'Cancelled';
+      case 'Expired': return 'Expired';
       default: return status;
     }
   }
@@ -243,6 +243,7 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
       case 'Called': return 'bg-emerald-50 text-emerald-800 border border-emerald-300 animate-pulse font-extrabold';
       case 'Completed': return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
       case 'Cancelled': return 'bg-rose-50 text-rose-700 border border-rose-200';
+      case 'Expired': return 'bg-slate-100 text-slate-700 border border-slate-300';
       case 'Skipped': return 'bg-amber-50 text-amber-800 border border-amber-200';
       default: return 'bg-slate-100 text-slate-700 border border-slate-200';
     }

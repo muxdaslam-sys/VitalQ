@@ -72,6 +72,7 @@ export class PatientHistoryComponent implements OnInit {
     switch (status) {
       case 'Completed': return 'Visit Completed';
       case 'Cancelled': return 'Cancelled';
+      case 'Expired': return 'Expired (Did not attend)';
       case 'Skipped': return 'On Hold / Missed';
       default: return status;
     }
@@ -83,6 +84,8 @@ export class PatientHistoryComponent implements OnInit {
         return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
       case 'Cancelled':
         return 'bg-rose-50 text-rose-700 border border-rose-200';
+      case 'Expired':
+        return 'bg-slate-100 text-slate-700 border border-slate-300';
       case 'Skipped':
         return 'bg-amber-50 text-amber-800 border border-amber-200';
       default:
