@@ -7,7 +7,7 @@ import { Subscription } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { QueueService } from '../../../core/services/queue.service';
 import { SignalRService } from '../../../core/services/signalr.service';
-import { TriageService } from '../../../core/services/triage.service';
+import { NurseService } from '../../../core/services/nurse.service';
 import { Doctor, QueueToken, CompleteConsultationRequest } from '../../../shared/models/queue.model';
 import { TriageAssessment } from '../../../shared/models/triage.model';
 import { environment } from '../../../../environments/environment';
@@ -27,7 +27,7 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private queueService = inject(QueueService);
   private signalR = inject(SignalRService);
-  private triageService = inject(TriageService);
+  private nurseService = inject(NurseService);
 
   doctorProfile = signal<DoctorProfile | null>(null);
   currentCalled = signal<QueueToken | null>(null);
@@ -104,7 +104,7 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
   }
 
   loadVitals(tokenId: string): void {
-    this.triageService.getTriageAssessment(tokenId).subscribe({
+    this.nurseService.getTriageAssessment(tokenId).subscribe({
       next: (vitals) => this.currentVitals.set(vitals),
       error: () => this.currentVitals.set(null)
     });

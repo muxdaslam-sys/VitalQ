@@ -31,13 +31,6 @@ export interface PatientVisitHistory {
   consultationNotes?: string;
 }
 
-export interface UpdatePatientRequest {
-  fullName: string;
-  phoneNumber: string;
-  dateOfBirth: string;
-  gender: string;
-}
-
 export interface SelfRegisterRequest {
   fullName: string;
   phoneNumber: string;

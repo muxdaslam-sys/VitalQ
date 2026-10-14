@@ -7,9 +7,9 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Department, Doctor, QueueToken, BookTokenRequest, UpdateTokenStatusRequest } from '../../shared/models/queue.model';
+import { Department, Doctor, QueueToken, BookTokenRequest } from '../../shared/models/queue.model';
 
-export type { Department, Doctor, QueueToken, BookTokenRequest, UpdateTokenStatusRequest };
+export type { Department, Doctor, QueueToken, BookTokenRequest };
 
 @Injectable({ providedIn: 'root' })
 export class BookingService {
@@ -48,19 +48,6 @@ export class BookingService {
    */
   bookToken(request: BookTokenRequest): Observable<QueueToken> {
     return this.http.post<QueueToken>(`${this.api}/patient/bookings`, request);
-  }
-
-  /**
-   * Retrieves the active token for a specific patient.
-   * Endpoint: GET /api/patient/bookings/active/{patientId}
-   * 
-   * @param patientId Optional GUID of a dependent profile; if omitted, fetches first active token.
-   */
-  getMyActiveToken(patientId?: string): Observable<QueueToken> {
-    const url = patientId 
-      ? `${this.api}/patient/bookings/active/${patientId}` 
-      : `${this.api}/patient/bookings/active`;
-    return this.http.get<QueueToken>(url);
   }
 
   /**
