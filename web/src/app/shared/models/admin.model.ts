@@ -42,6 +42,8 @@ export interface StaffUserResponse {
   fullName: string;
   phoneNumber: string;
   role: 'Admin' | 'Nurse';
+  nursingStationId?: string | null;
+  nursingStationName?: string | null;
   isActive: boolean;
   createdAtUtc: string;
 }
@@ -52,12 +54,14 @@ export interface CreateUserRequest {
   fullName: string;
   phoneNumber: string;
   role: 'Admin' | 'Nurse';
+  nursingStationId?: string | null;
 }
 
 export interface UpdateUserRequest {
   fullName: string;
   phoneNumber: string;
   role: 'Admin' | 'Nurse';
+  nursingStationId?: string | null;
   password?: string;
   isActive: boolean;
 }

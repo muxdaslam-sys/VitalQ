@@ -16,6 +16,8 @@ public class UserResponse
     public string FullName { get; set; } = null!;
     public string PhoneNumber { get; set; } = null!;
     public string Role { get; set; } = null!;              // "Admin", "Doctor", "Nurse", "Patient"
+    public Guid? NursingStationId { get; set; }
+    public string? NursingStationName { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAtUtc { get; set; }
 }
@@ -74,7 +76,9 @@ public class CreateUserRequest
     public string PhoneNumber { get; set; } = null!;
 
     [Required, MaxLength(20)]
-    public string Role { get; set; } = null!;              // "Admin", "Doctor", "Nurse"
+    public string Role { get; set; } = null!;              // "Admin", "Nurse"
+
+    public Guid? NursingStationId { get; set; }            // Mandatory for Nurse role
 }
 
 /// <summary>
@@ -91,6 +95,7 @@ public class UpdateUserRequest
     [Required, MaxLength(20)]
     public string Role { get; set; } = null!;
 
+    public Guid? NursingStationId { get; set; }
     public string? Password { get; set; }
     public bool IsActive { get; set; }
 }

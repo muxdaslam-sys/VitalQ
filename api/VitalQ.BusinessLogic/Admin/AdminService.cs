@@ -38,6 +38,26 @@ public class AdminService : IAdminService
         }
 
         var assignedRole = string.IsNullOrWhiteSpace(request.Role) ? "Admin" : request.Role.Trim();
+        string? stationName = null;
+
+        if (assignedRole == "Nurse")
+        {
+            if (!request.NursingStationId.HasValue || request.NursingStationId.Value == Guid.Empty)
+            {
+                throw new ArgumentException("A clinical Nursing Station must be assigned when registering a Nurse.");
+            }
+
+            var station = await _context.NursingStations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == request.NursingStationId.Value && s.IsActive);
+
+            if (station == null)
+            {
+                throw new ArgumentException("The selected Nursing Station does not exist or is inactive.");
+            }
+            stationName = station.StationName;
+        }
+
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -46,6 +66,7 @@ public class AdminService : IAdminService
             FullName = request.FullName,
             PhoneNumber = request.PhoneNumber,
             Role = assignedRole,
+            NursingStationId = assignedRole == "Nurse" ? request.NursingStationId : null,
             IsActive = true,
             CreatedAtUtc = DateTime.UtcNow
         };
@@ -61,6 +82,8 @@ public class AdminService : IAdminService
             FullName = user.FullName,
             PhoneNumber = user.PhoneNumber,
             Role = user.Role,
+            NursingStationId = user.NursingStationId,
+            NursingStationName = stationName,
             IsActive = user.IsActive,
             CreatedAtUtc = user.CreatedAtUtc
         };
@@ -70,6 +93,7 @@ public class AdminService : IAdminService
     {
         return await _context.Users
             .AsNoTracking()
+            .Include(u => u.NursingStation)
             .Where(u => u.Role == "Admin" || u.Role == "Nurse")
             .OrderBy(u => u.FullName)
             .Select(u => new StaffUserResponse
@@ -80,6 +104,8 @@ public class AdminService : IAdminService
                 FullName = u.FullName,
                 PhoneNumber = u.PhoneNumber,
                 Role = u.Role,
+                NursingStationId = u.NursingStationId,
+                NursingStationName = u.NursingStation != null ? u.NursingStation.StationName : null,
                 IsActive = u.IsActive,
                 CreatedAtUtc = u.CreatedAtUtc
             })
@@ -88,7 +114,10 @@ public class AdminService : IAdminService
 
     public async Task<StaffUserResponse> UpdateUserAsync(Guid id, UpdateUserRequest request)
     {
-        var user = await _context.Users.FindAsync(id);
+        var user = await _context.Users
+            .Include(u => u.NursingStation)
+            .FirstOrDefaultAsync(u => u.Id == id);
+
         if (user == null)
         {
             throw new KeyNotFoundException($"User with ID '{id}' not found.");
@@ -96,15 +125,35 @@ public class AdminService : IAdminService
 
         user.FullName = request.FullName.Trim();
         user.PhoneNumber = request.PhoneNumber.Trim();
-        if (!string.IsNullOrWhiteSpace(request.Role))
-        {
-            user.Role = request.Role.Trim();
-        }
+
+        var effectiveRole = !string.IsNullOrWhiteSpace(request.Role) ? request.Role.Trim() : user.Role;
+        user.Role = effectiveRole;
+
         if (!string.IsNullOrWhiteSpace(request.Password))
         {
             user.Password = request.Password.Trim();
         }
         user.IsActive = request.IsActive;
+
+        if (effectiveRole == "Nurse")
+        {
+            if (request.NursingStationId.HasValue && request.NursingStationId.Value != Guid.Empty)
+            {
+                var stationExists = await _context.NursingStations
+                    .AsNoTracking()
+                    .AnyAsync(s => s.Id == request.NursingStationId.Value && s.IsActive);
+
+                if (!stationExists)
+                {
+                    throw new ArgumentException("The selected Nursing Station does not exist or is inactive.");
+                }
+                user.NursingStationId = request.NursingStationId;
+            }
+        }
+        else
+        {
+            user.NursingStationId = null;
+        }
 
         await _context.SaveChangesAsync();
 
@@ -116,6 +165,8 @@ public class AdminService : IAdminService
             FullName = user.FullName,
             PhoneNumber = user.PhoneNumber,
             Role = user.Role,
+            NursingStationId = user.NursingStationId,
+            NursingStationName = user.NursingStation?.StationName,
             IsActive = user.IsActive,
             CreatedAtUtc = user.CreatedAtUtc
         };

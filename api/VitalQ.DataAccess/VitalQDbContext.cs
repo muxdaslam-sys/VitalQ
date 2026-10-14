@@ -197,6 +197,12 @@ public partial class VitalQDbContext : DbContext
             entity.Property(e => e.PhoneNumber).HasMaxLength(20);
             entity.Property(e => e.Role).HasMaxLength(20);
             entity.Property(e => e.Username).HasMaxLength(50);
+
+            entity.HasOne(d => d.NursingStation)
+                .WithMany(p => p.Users)
+                .HasForeignKey(d => d.NursingStationId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_Users_NursingStations_NursingStationId");
         });
 
         OnModelCreatingPartial(modelBuilder);

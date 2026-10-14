@@ -1,9 +1,11 @@
-﻿export interface UserResponse {
+export interface UserResponse {
   id: string;
   username: string;
   fullName: string;
   phoneNumber: string;
   role: 'Admin' | 'Doctor' | 'Nurse' | 'Patient';
+  nursingStationId?: string | null;
+  nursingStationName?: string | null;
   isActive: boolean;
   createdAtUtc: string;
 }

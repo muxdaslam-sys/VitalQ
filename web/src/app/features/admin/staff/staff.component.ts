@@ -7,7 +7,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../../core/services/admin.service';
 import { ToastService } from '../../../core/services/toast.service';
-import { StaffUserResponse, CreateUserRequest, UpdateUserRequest } from '../../../shared/models/admin.model';
+import { StaffUserResponse, CreateUserRequest, UpdateUserRequest, NursingStationResponse } from '../../../shared/models/admin.model';
 import { TeleportToBodyDirective } from '../../../shared/directives/teleport.directive';
 
 @Component({
@@ -31,6 +31,9 @@ export class StaffComponent implements OnInit {
 
   /** Master list of staff accounts loaded from backend */
   staffList = signal<StaffUserResponse[]>([]);
+
+  /** Available active nursing stations for nurse desk assignment */
+  stations = signal<NursingStationResponse[]>([]);
 
   /** Controls display of the Add Staff User modal */
   showAddModal = signal(false);
@@ -62,7 +65,8 @@ export class StaffComponent implements OnInit {
     password: '',
     fullName: '',
     phoneNumber: '',
-    role: 'Nurse'
+    role: 'Nurse',
+    nursingStationId: null
   };
 
   /** Form state model for editing an existing staff account */
@@ -70,6 +74,7 @@ export class StaffComponent implements OnInit {
     fullName: '',
     phoneNumber: '',
     role: 'Nurse',
+    nursingStationId: null,
     password: '',
     isActive: true
   };
@@ -113,6 +118,7 @@ export class StaffComponent implements OnInit {
   // --------------------------------------------------------------------------
   ngOnInit(): void {
     this.loadStaff();
+    this.loadStations();
   }
 
   /**
@@ -125,6 +131,16 @@ export class StaffComponent implements OnInit {
         this.staffList.set([]);
         this.toast.error('Failed to load staff list from server.');
       }
+    });
+  }
+
+  /**
+   * Fetches active clinical nursing stations for desk assignments.
+   */
+  loadStations(): void {
+    this.adminService.getNursingStations().subscribe({
+      next: stations => this.stations.set(stations),
+      error: () => this.stations.set([])
     });
   }
 
@@ -161,7 +177,8 @@ export class StaffComponent implements OnInit {
       password: '',
       fullName: '',
       phoneNumber: '',
-      role: 'Nurse'
+      role: 'Nurse',
+      nursingStationId: null
     };
     this.showAddModal.set(true);
   }
@@ -172,6 +189,11 @@ export class StaffComponent implements OnInit {
   saveStaff(): void {
     if (!this.newStaff.fullName || !this.newStaff.username || !this.newStaff.password) {
       this.toast.warning('Please fill in Name, Username, and Initial Password.');
+      return;
+    }
+
+    if (this.newStaff.role === 'Nurse' && !this.newStaff.nursingStationId) {
+      this.toast.warning('Please select an assigned Nursing Station for this Nurse.');
       return;
     }
 
@@ -199,6 +221,7 @@ export class StaffComponent implements OnInit {
       fullName: user.fullName,
       phoneNumber: user.phoneNumber,
       role: user.role,
+      nursingStationId: user.nursingStationId || null,
       password: '', // Blank by default so password is not accidentally changed
       isActive: user.isActive
     };
@@ -210,6 +233,11 @@ export class StaffComponent implements OnInit {
   updateStaff(): void {
     const id = this.editingStaffId();
     if (!id) return;
+
+    if (this.editStaff.role === 'Nurse' && !this.editStaff.nursingStationId) {
+      this.toast.warning('Please select an assigned Nursing Station for this Nurse.');
+      return;
+    }
 
     this.isSubmitting.set(true);
     this.adminService.updateUser(id, this.editStaff).subscribe({

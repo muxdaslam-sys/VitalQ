@@ -25,9 +25,13 @@ public partial class User
 
     public DateTime? RefreshTokenExpiryTime { get; set; }
 
+    public Guid? NursingStationId { get; set; }
+
     public virtual Doctor? Doctor { get; set; }
 
     public virtual Patient? Patient { get; set; }
+
+    public virtual NursingStation? NursingStation { get; set; }
 
     public virtual ICollection<TriageAssessment> TriageAssessments { get; set; } = new List<TriageAssessment>();
 }

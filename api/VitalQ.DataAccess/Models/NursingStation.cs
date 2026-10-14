@@ -17,5 +17,7 @@ public partial class NursingStation
 
     public virtual Department? Department { get; set; }
 
+    public virtual ICollection<User> Users { get; set; } = new List<User>();
+
     public virtual ICollection<TriageAssessment> TriageAssessments { get; set; } = new List<TriageAssessment>();
 }

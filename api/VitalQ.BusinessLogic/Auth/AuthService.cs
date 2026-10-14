@@ -42,10 +42,12 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u =>
-            u.Username == request.Username &&
-            u.Password == request.Password &&
-            u.IsActive);
+        var user = await _context.Users
+            .Include(u => u.NursingStation)
+            .FirstOrDefaultAsync(u =>
+                u.Username == request.Username &&
+                u.Password == request.Password &&
+                u.IsActive);
 
         if (user == null) return null;
 
@@ -61,10 +63,12 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponse?> RefreshTokenAsync(string refreshToken)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u =>
-            u.RefreshToken == refreshToken &&
-            u.RefreshTokenExpiryTime > DateTime.UtcNow &&
-            u.IsActive);
+        var user = await _context.Users
+            .Include(u => u.NursingStation)
+            .FirstOrDefaultAsync(u =>
+                u.RefreshToken == refreshToken &&
+                u.RefreshTokenExpiryTime > DateTime.UtcNow &&
+                u.IsActive);
 
         if (user == null) return null;
 
@@ -134,13 +138,18 @@ public class AuthService : IAuthService
 
     private string CreateJwtToken(User user)
     {
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Name, user.Username),
             new Claim(ClaimTypes.Role, user.Role),
             new Claim("fullName", user.FullName)
         };
+
+        if (user.NursingStationId.HasValue)
+        {
+            claims.Add(new Claim("nursingStationId", user.NursingStationId.Value.ToString()));
+        }
 
         var token = new JwtSecurityToken(
             issuer: _issuer,
@@ -160,6 +169,8 @@ public class AuthService : IAuthService
         FullName = user.FullName,
         PhoneNumber = user.PhoneNumber,
         Role = user.Role,
+        NursingStationId = user.NursingStationId,
+        NursingStationName = user.NursingStation?.StationName,
         IsActive = user.IsActive,
         CreatedAtUtc = user.CreatedAtUtc
     };
