@@ -306,7 +306,7 @@ public class PatientService : IPatientService
         // 2. Verify doctor availability
         var doctor = await _context.Doctors
             .AsNoTracking()
-            .Include(d => d.Department)
+            .Include(d => d.Department).ThenInclude(dept => dept.NursingStations)
             .Include(d => d.User)
             .FirstOrDefaultAsync(d => d.Id == request.DoctorId)
             ?? throw new KeyNotFoundException("Doctor was not found.");
@@ -389,8 +389,9 @@ public class PatientService : IPatientService
             .AsNoTracking()
             .Include(t => t.Patient)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.Department)
-            .Include(t => t.TriageAssessment)
+            .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(t => t.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
             .Where(t => familyPatientIds.Contains(t.PatientId)
                      && t.BookedAtUtc >= today
                      && t.BookedAtUtc < tomorrow
@@ -441,8 +442,9 @@ public class PatientService : IPatientService
             .AsNoTracking()
             .Include(t => t.Patient)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.Department)
-            .Include(t => t.TriageAssessment)
+            .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(t => t.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
             .Where(t => t.PatientId == patientId
                      && t.BookedAtUtc >= today
                      && t.BookedAtUtc < tomorrow
@@ -485,9 +487,9 @@ public class PatientService : IPatientService
         var token = await _context.QueueTokens
             .Include(t => t.Patient)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.Doctor).ThenInclude(d => d.Department)
-            .Include(t => t.Department)
-            .Include(t => t.TriageAssessment)
+            .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(t => t.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
             .FirstOrDefaultAsync(t => t.Id == tokenId)
             ?? throw new KeyNotFoundException($"Token with ID {tokenId} was not found.");
 
@@ -662,26 +664,58 @@ public class PatientService : IPatientService
         CreatedAtUtc = p.CreatedAtUtc
     };
 
-    private static QueueTokenResponse MapToTokenResponse(QueueToken t, Patient p, Doctor d) => new()
+    private static QueueTokenResponse MapToTokenResponse(QueueToken t, Patient p, Doctor d)
     {
-        Id = t.Id,
-        TokenNumber = t.TokenNumber,
-        PatientId = p.Id,
-        PatientName = p.FullName,
-        PatientPhone = p.PhoneNumber,
-        DepartmentId = d.DepartmentId,
-        DepartmentName = d.Department?.Name ?? string.Empty,
-        DepartmentCode = d.Department?.Code ?? string.Empty,
-        DoctorId = d.Id,
-        DoctorName = d.User?.FullName ?? string.Empty,
-        RoomNumber = d.RoomNumber ?? string.Empty,
-        Status = t.Status,
-        PriorityScore = t.PriorityScore,
-        BaseWeight = t.BaseWeight,
-        TriageLevel = t.TriageAssessment?.TriageLevel,
-        BookedAtUtc = t.BookedAtUtc,
-        RowVersion = t.RowVersion ?? Array.Empty<byte>()
-    };
+        // Resolve Nursing Station from TriageAssessment (if triaged) or from Department (if awaiting triage)
+        var station = t.TriageAssessment?.NursingStation 
+            ?? d?.Department?.NursingStations?.FirstOrDefault(s => s.IsActive)
+            ?? t.Department?.NursingStations?.FirstOrDefault(s => s.IsActive);
+
+        var stationName = station?.StationName ?? "Nursing Triage Desk";
+        var stationFloor = station?.LocationFloor ?? d?.Department?.LocationFloor ?? t.Department?.LocationFloor ?? "Floor 1";
+        var room = d?.RoomNumber ?? "Consultation Room";
+        var doctorName = d?.User?.FullName ?? "Doctor";
+
+        // Generate contextual wayfinding instruction based on current queue stage
+        var nextStepInstruction = t.Status switch
+        {
+            "Booked" => $"Please report to {stationName} ({stationFloor}) for Vital Signs Intake.",
+            "Waiting" => $"Vitals recorded ({t.TriageAssessment?.TriageLevel ?? "Green"}). Please wait in the lounge outside Room {room} ({stationFloor}).",
+            "Called" => $"Please enter Room {room} for your consultation with Dr. {doctorName}.",
+            "Completed" => "Consultation completed. Thank you for visiting VitalQ.",
+            "Cancelled" => "Appointment was cancelled.",
+            _ => $"Please proceed to {stationFloor}."
+        };
+
+        return new QueueTokenResponse
+        {
+            Id = t.Id,
+            TokenNumber = t.TokenNumber,
+            PatientId = p.Id,
+            PatientName = p.FullName,
+            PatientPhone = p.PhoneNumber,
+            DepartmentId = d?.DepartmentId ?? t.DepartmentId,
+            DepartmentName = d?.Department?.Name ?? t.Department?.Name ?? string.Empty,
+            DepartmentCode = d?.Department?.Code ?? t.Department?.Code ?? string.Empty,
+            DoctorId = d?.Id ?? t.DoctorId,
+            DoctorName = doctorName,
+            RoomNumber = room,
+            Status = t.Status,
+            PriorityScore = t.PriorityScore,
+            BaseWeight = t.BaseWeight,
+            TriageLevel = t.TriageAssessment?.TriageLevel,
+            BookedAtUtc = t.BookedAtUtc,
+            TriagedAtUtc = t.TriagedAtUtc,
+            CalledAtUtc = t.CalledAtUtc,
+            CompletedAtUtc = t.CompletedAtUtc,
+            ConsultationNotes = t.ConsultationNotes,
+            RowVersion = t.RowVersion ?? Array.Empty<byte>(),
+            NursingStationId = station?.Id,
+            NursingStationName = stationName,
+            LocationFloor = stationFloor,
+            NextStepInstruction = nextStepInstruction
+        };
+    }
 
     #endregion
 }

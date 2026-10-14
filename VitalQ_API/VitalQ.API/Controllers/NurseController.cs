@@ -7,8 +7,15 @@ using VitalQ.Entities.DTOs;
 namespace VitalQ.API.Controllers;
 
 /// <summary>
-/// Dedicated Nurse Station & Reception Desk Controller on PC.
-/// Handles patient lookup, walk-in registration, counter token booking, and vitals triage.
+/// CONTROLLER: Dedicated Nurse Station & Reception Desk API
+/// Route: /api/nurse
+/// 
+/// PURPOSE:
+/// Exposes clinical reception, walk-in token issuance, and CTAS vitals intake endpoints:
+/// - Section 1: Patient Lookup & Identification
+/// - Section 2: Walk-In Registration & Identity Linking
+/// - Section 3: Reception Desk Token Issuance
+/// - Section 4: Clinical Triage & Vital Signs Intake
 /// </summary>
 [Authorize(Roles = "Nurse,Admin")]
 [ApiController]
@@ -24,8 +31,10 @@ public class NurseController : ControllerBase
         _notificationService = notificationService;
     }
 
+    #region 1. Patient Lookup & Identification
+
     /// <summary>
-    /// Search patients by Phone, MRN, or Name for intake at the clinic desk.
+    /// Search patients by Token Number, MRN, Phone, or Name for intake at the clinic desk (GET /api/nurse/patients/search?query=...).
     /// </summary>
     [HttpGet("patients/search")]
     public async Task<IActionResult> SearchPatients([FromQuery] string query)
@@ -34,8 +43,12 @@ public class NurseController : ControllerBase
         return Ok(result);
     }
 
+    #endregion
+
+    #region 2. Walk-In Registration & Identity Linking
+
     /// <summary>
-    /// Register a walk-in patient in-person at the clinic reception desk.
+    /// Register a walk-in patient in-person at the clinic reception desk (POST /api/nurse/patients/walk-in).
     /// </summary>
     [HttpPost("patients/walk-in")]
     public async Task<IActionResult> RegisterWalkIn([FromBody] WalkInRegisterRequest request)
@@ -45,14 +58,26 @@ public class NurseController : ControllerBase
             var result = await _nurseService.RegisterWalkInPatientAsync(request);
             return Ok(result);
         }
-        catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+        catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while registering the walk-in patient." });
+        }
     }
 
+    #endregion
+
+    #region 3. Reception Desk Token Issuance
+
     /// <summary>
-    /// Issue a walk-in queue slip directly at the counter.
+    /// Issue a walk-in queue slip directly at the counter (POST /api/nurse/tokens/book).
     /// </summary>
     [HttpPost("tokens/book")]
     public async Task<IActionResult> BookWalkInToken([FromBody] BookTokenRequest request)
@@ -75,20 +100,28 @@ public class NurseController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while issuing the walk-in token." });
+        }
     }
 
+    #endregion
+
+    #region 4. Clinical Triage & Vital Signs Intake
+
     /// <summary>
-    /// List patients booked today awaiting vital signs intake.
+    /// List patients booked today awaiting vital signs intake (GET /api/nurse/triage/pending?departmentId=...&nursingStationId=...).
     /// </summary>
     [HttpGet("triage/pending")]
-    public async Task<IActionResult> GetPendingTriage([FromQuery] Guid? departmentId = null)
+    public async Task<IActionResult> GetPendingTriage([FromQuery] Guid? departmentId = null, [FromQuery] Guid? nursingStationId = null)
     {
-        var result = await _nurseService.GetPendingTriageQueueAsync(departmentId);
+        var result = await _nurseService.GetPendingTriageQueueAsync(departmentId, nursingStationId);
         return Ok(result);
     }
 
     /// <summary>
-    /// Record vitals (BP, SpO2, HR, Temp, Pain) and assign CTAS urgency level.
+    /// Record vitals (BP, SpO2, HR, Temp, Pain) and assign CTAS urgency level (POST /api/nurse/triage/{id}).
     /// </summary>
     [HttpPost("triage/{id:guid}")]
     public async Task<IActionResult> SubmitTriage(Guid id, [FromBody] TriageRequest request)
@@ -114,10 +147,14 @@ public class NurseController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while recording vital signs." });
+        }
     }
 
     /// <summary>
-    /// View recorded vitals and clinical assessment for a token.
+    /// View recorded vitals and clinical assessment for a token (GET /api/nurse/triage/{id}).
     /// </summary>
     [Authorize(Roles = "Nurse,Doctor,Admin")]
     [HttpGet("triage/{id:guid}")]
@@ -130,4 +167,6 @@ public class NurseController : ControllerBase
         }
         return Ok(result);
     }
+
+    #endregion
 }

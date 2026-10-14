@@ -9,8 +9,15 @@ using VitalQ.Entities.Models;
 namespace VitalQ.BusinessLogic.Services;
 
 /// <summary>
-/// Nurse station service running on PC at the clinic reception & triage desk.
-/// Handles patient intake, walk-in registration, counter token booking, and vitals triage.
+/// SERVICE: Nurse Station & Clinical Triage Service
+/// 
+/// PURPOSE:
+/// Powers clinical reception, walk-in token issuance, and CTAS vitals intake:
+/// - Section 1: Patient Lookup & Identification (Token, MRN, Phone, or Name search)
+/// - Section 2: Walk-In Registration & Identity Linking (Issue MRN + online login credentials)
+/// - Section 3: Reception Desk Token Issuance (Counter slip generation)
+/// - Section 4: Clinical Triage & Vital Signs Intake (CTAS scoring & doctor queue activation)
+/// - Section 5: Internal Clinical Rules & Entity Mapping (CTAS algorithms & wayfinding instruction generator)
 /// </summary>
 public class NurseService : INurseService
 {
@@ -21,9 +28,12 @@ public class NurseService : INurseService
         _context = context;
     }
 
-    // =========================================================================
-    // 1. SEARCH PATIENTS FOR NURSE DESK (With active token status)
-    // =========================================================================
+    #region 1. Patient Lookup & Identification
+
+    /// <summary>
+    /// Fast B-Tree index routed search for reception desk check-in.
+    /// Returns today's active token state if an appointment is already booked.
+    /// </summary>
     public async Task<IEnumerable<PatientSearchResult>> SearchPatientsAsync(string query)
     {
         if (string.IsNullOrWhiteSpace(query))
@@ -94,9 +104,14 @@ public class NurseService : INurseService
         });
     }
 
-    // =========================================================================
-    // 2. REGISTER WALK-IN PATIENT (In-person at Clinic Reception Desk)
-    // =========================================================================
+    #endregion
+
+    #region 2. Walk-In Registration & Identity Linking
+
+    /// <summary>
+    /// Registers a walk-in patient in person at the reception desk.
+    /// Automatically provisions a User account (Password = DOB) so the patient can log into the Patient Portal later.
+    /// </summary>
     public async Task<PatientResponse> RegisterWalkInPatientAsync(WalkInRegisterRequest request)
     {
         ValidateDateOfBirth(request.DateOfBirth);
@@ -154,9 +169,14 @@ public class NurseService : INurseService
         };
     }
 
-    // =========================================================================
-    // 3. BOOK WALK-IN TOKEN (Issued by Nurse at Reception Counter)
-    // =========================================================================
+    #endregion
+
+    #region 3. Reception Desk Token Issuance
+
+    /// <summary>
+    /// Issues an atomic walk-in consultation token at the clinic counter.
+    /// Assigns initial status 'Booked' and sets priority weights to 0 until vitals triage is completed.
+    /// </summary>
     public async Task<QueueTokenResponse> BookWalkInTokenAsync(BookTokenRequest request)
     {
         var patient = await _context.Patients
@@ -166,7 +186,7 @@ public class NurseService : INurseService
 
         var doctor = await _context.Doctors
             .AsNoTracking()
-            .Include(d => d.Department)
+            .Include(d => d.Department).ThenInclude(dept => dept.NursingStations)
             .Include(d => d.User)
             .FirstOrDefaultAsync(d => d.Id == request.DoctorId)
             ?? throw new KeyNotFoundException("Doctor was not found.");
@@ -190,7 +210,7 @@ public class NurseService : INurseService
             throw new InvalidOperationException($"Patient '{patient.FullName}' already has an active appointment with Dr. {doctor.User.FullName} today.");
         }
 
-        // Atomic Token Sequence
+        // Atomic Token Sequence Generation
         var tokenNumber = await TokenGenerator.GenerateAsync(_context, doctor.DepartmentId, doctor.Department.Code);
 
         var queueToken = new QueueToken
@@ -212,19 +232,25 @@ public class NurseService : INurseService
         return MapToTokenResponse(queueToken, patient, doctor);
     }
 
-    // =========================================================================
-    // 4. GET PENDING TRIAGE TOKENS (Booked today, awaiting nurse vitals)
-    // =========================================================================
-    public async Task<IEnumerable<QueueTokenResponse>> GetPendingTriageQueueAsync(Guid? departmentId = null)
+    #endregion
+
+    #region 4. Clinical Triage & Vital Signs Intake
+
+    /// <summary>
+    /// Lists patients booked today awaiting vital signs intake.
+    /// Supports filtering by Department and specific physical Nursing Station.
+    /// </summary>
+    public async Task<IEnumerable<QueueTokenResponse>> GetPendingTriageQueueAsync(Guid? departmentId = null, Guid? nursingStationId = null)
     {
         var todayUtc = DateTime.UtcNow.Date;
         var tomorrowUtc = todayUtc.AddDays(1);
         var query = _context.QueueTokens
             .AsNoTracking()
             .Include(t => t.Patient)
-            .Include(t => t.Department)
+            .Include(t => t.Department).ThenInclude(d => d.NursingStations)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.TriageAssessment)
+            .Include(t => t.Doctor).ThenInclude(d => d.Department)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
             .Where(t => t.Status == "Booked" && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc);
 
         if (departmentId.HasValue && departmentId.Value != Guid.Empty)
@@ -232,20 +258,35 @@ public class NurseService : INurseService
             query = query.Where(t => t.DepartmentId == departmentId.Value);
         }
 
+        if (nursingStationId.HasValue && nursingStationId.Value != Guid.Empty)
+        {
+            var stationDeptId = await _context.NursingStations
+                .AsNoTracking()
+                .Where(s => s.Id == nursingStationId.Value)
+                .Select(s => s.DepartmentId)
+                .FirstOrDefaultAsync();
+
+            if (stationDeptId.HasValue)
+            {
+                query = query.Where(t => t.DepartmentId == stationDeptId.Value);
+            }
+        }
+
         var tokens = await query.OrderBy(t => t.BookedAtUtc).ToListAsync();
-        return tokens.Select(t => MapToTokenResponse(t, t.Patient!, t.Doctor!));
+        return tokens.Select(t => MapToTokenResponse(t, t.Patient, t.Doctor));
     }
 
-    // =========================================================================
-    // 5. RECORD VITALS & TRIAGE (Calculate CTAS & move to Waiting queue)
-    // =========================================================================
+    /// <summary>
+    /// Records 5 vital signs, validates and stores NursingStationId, computes CTAS level,
+    /// and activates token into the Doctor's waiting queue with base priority weight.
+    /// </summary>
     public async Task<QueueTokenResponse> RecordVitalsAndTriageAsync(Guid tokenId, Guid nurseUserId, TriageRequest request)
     {
         var token = await _context.QueueTokens
             .Include(t => t.Patient)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.Doctor).ThenInclude(d => d.Department)
-            .Include(t => t.Department)
+            .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(t => t.Department).ThenInclude(dept => dept.NursingStations)
             .Include(t => t.TriageAssessment)
             .FirstOrDefaultAsync(t => t.Id == tokenId);
 
@@ -259,7 +300,20 @@ public class NurseService : INurseService
             throw new InvalidOperationException($"Cannot triage a token that is already {token.Status}.");
         }
 
-        // Determine triage level
+        // 1. Validate NursingStationId if provided
+        if (request.NursingStationId.HasValue)
+        {
+            var stationExists = await _context.NursingStations
+                .AsNoTracking()
+                .AnyAsync(s => s.Id == request.NursingStationId.Value && s.IsActive);
+
+            if (!stationExists)
+            {
+                throw new ArgumentException($"Nursing station with ID '{request.NursingStationId.Value}' was not found or is inactive.");
+            }
+        }
+
+        // 2. Determine clinical triage level (Automated CTAS vs Manual Override)
         string triageLevel;
         if (request.IsManualOverride && !string.IsNullOrWhiteSpace(request.OverrideTriageLevel))
         {
@@ -288,7 +342,7 @@ public class NurseService : INurseService
 
         var baseWeight = CalculateBaseWeight(triageLevel);
 
-        // Upsert Triage Assessment
+        // 3. Upsert Triage Assessment (Persisting NursingStationId & NurseUserId)
         var assessment = await _context.TriageAssessments.FirstOrDefaultAsync(a => a.QueueTokenId == tokenId);
         if (assessment == null)
         {
@@ -302,6 +356,9 @@ public class NurseService : INurseService
             await _context.TriageAssessments.AddAsync(assessment);
         }
 
+        // Bind all vitals and station audit info
+        assessment.NursingStationId = request.NursingStationId;
+        assessment.NurseUserId = nurseUserId;
         assessment.SpO2 = request.SpO2;
         assessment.SystolicBp = request.SystolicBp;
         assessment.DiastolicBp = request.DiastolicBp;
@@ -314,7 +371,7 @@ public class NurseService : INurseService
         assessment.NurseNotes = request.NurseNotes?.Trim();
         assessment.AssessedAtUtc = DateTime.UtcNow;
 
-        // Transition token to 'Waiting' in doctor's queue
+        // 4. Transition token to 'Waiting' in doctor's queue
         token.Status = "Waiting";
         token.BaseWeight = baseWeight;
         token.PriorityScore = baseWeight;
@@ -322,28 +379,25 @@ public class NurseService : INurseService
 
         await _context.SaveChangesAsync();
 
-        // Calculate position ahead
+        // 5. Calculate position ahead
         var patientsAhead = await _context.QueueTokens
             .AsNoTracking()
             .Where(t => t.DoctorId == token.DoctorId &&
                         t.Status == "Waiting" &&
                         t.Id != token.Id &&
-                        (t.PriorityScore > token.PriorityScore ||
-                         (t.PriorityScore == token.PriorityScore && t.BookedAtUtc < token.BookedAtUtc)))
+                        t.PriorityScore > token.PriorityScore)
             .CountAsync();
 
-        var avgConsultationMins = token.Doctor?.AvgConsultationMinutes ?? 10;
         var response = MapToTokenResponse(token, token.Patient, token.Doctor);
         response.PatientsAhead = patientsAhead;
-        response.EstimatedWaitMinutes = patientsAhead * avgConsultationMins;
-        response.TriageLevel = triageLevel;
+        response.EstimatedWaitMinutes = patientsAhead * (token.Doctor?.AvgConsultationMinutes ?? 10);
 
         return response;
     }
 
-    // =========================================================================
-    // 6. GET TRIAGE ASSESSMENT DETAILS
-    // =========================================================================
+    /// <summary>
+    /// Retrieves full clinical triage details and vital signs for a consultation token.
+    /// </summary>
     public async Task<TriageAssessmentResponse?> GetTriageAssessmentAsync(Guid tokenId)
     {
         var assessment = await _context.TriageAssessments
@@ -376,12 +430,17 @@ public class NurseService : INurseService
         };
     }
 
-    // CTAS Clinical Rules
+    #endregion
+
+    #region 5. Internal Clinical Rules & Entity Mapping
+
     private static string CalculateAutomatedTriageLevel(decimal spo2, int systolicBp, int heartRate, decimal temperature, int painScale)
     {
+        // 1. Red (Resuscitation / Immediate Life Threat)
         if (spo2 < 90m || systolicBp < 80 || heartRate > 150 || temperature > 40.5m)
             return "Red";
 
+        // 2. Yellow (Urgent / Serious Medical Concern)
         if ((spo2 >= 90m && spo2 <= 94m) ||
             (systolicBp >= 80 && systolicBp <= 89) ||
             (heartRate >= 121 && heartRate <= 150) ||
@@ -390,6 +449,7 @@ public class NurseService : INurseService
             painScale >= 7)
             return "Yellow";
 
+        // 3. Green (Routine / Standard Ambulatory)
         return "Green";
     }
 
@@ -420,24 +480,58 @@ public class NurseService : INurseService
             throw new ArgumentException("Please provide a valid date of birth.");
     }
 
-    private static QueueTokenResponse MapToTokenResponse(QueueToken t, Patient? p, Doctor? d) => new()
+    private static QueueTokenResponse MapToTokenResponse(QueueToken t, Patient? p, Doctor? d)
     {
-        Id = t.Id,
-        TokenNumber = t.TokenNumber,
-        PatientId = t.PatientId,
-        PatientName = p?.FullName ?? string.Empty,
-        PatientPhone = p?.PhoneNumber ?? string.Empty,
-        DepartmentId = t.DepartmentId,
-        DepartmentName = d?.Department?.Name ?? t.Department?.Name ?? string.Empty,
-        DepartmentCode = d?.Department?.Code ?? t.Department?.Code ?? string.Empty,
-        DoctorId = t.DoctorId,
-        DoctorName = d?.User?.FullName ?? string.Empty,
-        RoomNumber = d?.RoomNumber ?? string.Empty,
-        Status = t.Status,
-        PriorityScore = t.PriorityScore,
-        BaseWeight = t.BaseWeight,
-        TriageLevel = t.TriageAssessment?.TriageLevel,
-        BookedAtUtc = t.BookedAtUtc,
-        RowVersion = t.RowVersion ?? Array.Empty<byte>()
-    };
+        // Resolve Nursing Station from TriageAssessment (if triaged) or from Department (if awaiting triage)
+        var station = t.TriageAssessment?.NursingStation 
+            ?? d?.Department?.NursingStations?.FirstOrDefault(s => s.IsActive)
+            ?? t.Department?.NursingStations?.FirstOrDefault(s => s.IsActive);
+
+        var stationName = station?.StationName ?? "Nursing Triage Desk";
+        var stationFloor = station?.LocationFloor ?? d?.Department?.LocationFloor ?? t.Department?.LocationFloor ?? "Floor 1";
+        var room = d?.RoomNumber ?? "Consultation Room";
+        var doctorName = d?.User?.FullName ?? "Doctor";
+
+        // Generate contextual wayfinding instruction based on current queue stage
+        var nextStepInstruction = t.Status switch
+        {
+            "Booked" => $"Please report to {stationName} ({stationFloor}) for Vital Signs Intake.",
+            "Waiting" => $"Vitals recorded ({t.TriageAssessment?.TriageLevel ?? "Green"}). Please wait in the lounge outside Room {room} ({stationFloor}).",
+            "Called" => $"Please enter Room {room} for your consultation with Dr. {doctorName}.",
+            "Completed" => "Consultation completed. Thank you for visiting VitalQ.",
+            "Cancelled" => "Appointment was cancelled.",
+            _ => $"Please proceed to {stationFloor}."
+        };
+
+        return new QueueTokenResponse
+        {
+            Id = t.Id,
+            TokenNumber = t.TokenNumber,
+            PatientId = t.PatientId,
+            PatientName = p?.FullName ?? string.Empty,
+            PatientPhone = p?.PhoneNumber ?? string.Empty,
+            DepartmentId = t.DepartmentId,
+            DepartmentName = d?.Department?.Name ?? t.Department?.Name ?? string.Empty,
+            DepartmentCode = d?.Department?.Code ?? t.Department?.Code ?? string.Empty,
+            DoctorId = t.DoctorId,
+            DoctorName = doctorName,
+            RoomNumber = room,
+            Status = t.Status,
+            PriorityScore = t.PriorityScore,
+            BaseWeight = t.BaseWeight,
+            TriageLevel = t.TriageAssessment?.TriageLevel,
+            BookedAtUtc = t.BookedAtUtc,
+            TriagedAtUtc = t.TriagedAtUtc,
+            CalledAtUtc = t.CalledAtUtc,
+            CompletedAtUtc = t.CompletedAtUtc,
+            ConsultationNotes = t.ConsultationNotes,
+            RowVersion = t.RowVersion ?? Array.Empty<byte>(),
+            NursingStationId = station?.Id,
+            NursingStationName = stationName,
+            LocationFloor = stationFloor,
+            NextStepInstruction = nextStepInstruction
+        };
+    }
+
+    #endregion
 }

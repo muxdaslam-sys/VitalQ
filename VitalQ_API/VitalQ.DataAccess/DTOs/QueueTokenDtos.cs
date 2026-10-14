@@ -36,6 +36,12 @@ public class QueueTokenResponse
     public int PatientsAhead { get; set; }                 // Number of patients ahead in line
     public int EstimatedWaitMinutes { get; set; }          // Estimated wait based on doctor consultation time
 
+    // Nursing Station & Wayfinding Navigation
+    public Guid? NursingStationId { get; set; }
+    public string? NursingStationName { get; set; }        // e.g. "Desk A - Cardiology"
+    public string? LocationFloor { get; set; }              // e.g. "Floor 1"
+    public string? NextStepInstruction { get; set; }        // e.g. "Please report to Desk A - Cardiology (Floor 1) for Vitals"
+
     // Timestamps
     public DateTime BookedAtUtc { get; set; }
     public DateTime? TriagedAtUtc { get; set; }

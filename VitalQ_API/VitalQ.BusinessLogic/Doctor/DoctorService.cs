@@ -60,9 +60,10 @@ public class DoctorService : IDoctorService
         var tokens = await _context.QueueTokens
             .AsNoTracking()
             .Include(t => t.Patient)
-            .Include(t => t.Department)
+            .Include(t => t.Department).ThenInclude(d => d.NursingStations)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.TriageAssessment)
+            .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
             .Where(t => t.DoctorId == doctorId &&
                         t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc &&
                         (t.Status == "Called" || t.Status == "Waiting" || t.Status == "Skipped"))
@@ -113,9 +114,10 @@ public class DoctorService : IDoctorService
         var token = await _context.QueueTokens
             .AsNoTracking()
             .Include(t => t.Patient)
-            .Include(t => t.Department)
+            .Include(t => t.Department).ThenInclude(d => d.NursingStations)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.TriageAssessment)
+            .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
             .Where(t => t.DoctorId == doctorId &&
                         t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc &&
                         t.Status == "Called")
@@ -157,9 +159,10 @@ public class DoctorService : IDoctorService
         // Pick top-priority waiting patient
         var nextToken = await _context.QueueTokens
             .Include(t => t.Patient)
-            .Include(t => t.Department)
+            .Include(t => t.Department).ThenInclude(d => d.NursingStations)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.TriageAssessment)
+            .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
             .Where(t => t.DoctorId == doctorId &&
                         t.Status == "Waiting" &&
                         t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc)
@@ -291,6 +294,21 @@ public class DoctorService : IDoctorService
                 token.PriorityScore = newScore;
                 hasChanges = true;
             }
+
+            // 60-Minute Anti-Starvation SLA Auto-Escalation:
+            // If a Green patient has waited >= 60 minutes, elevate their base weight to Yellow (500)
+            if (token.BaseWeight == PriorityScoreCalculator.BaseWeightGreen &&
+                PriorityScoreCalculator.IsEscalated(token.BaseWeight, token.TriagedAtUtc!.Value, now))
+            {
+                token.BaseWeight = PriorityScoreCalculator.BaseWeightYellow; // Promoted to 500
+                if (string.IsNullOrEmpty(token.ConsultationNotes) || !token.ConsultationNotes.Contains("SLA Escalated"))
+                {
+                    token.ConsultationNotes = string.IsNullOrEmpty(token.ConsultationNotes)
+                        ? "[⏱️ 60m+ Wait: Auto-Escalated to Urgent]"
+                        : $"{token.ConsultationNotes} [⏱️ 60m+ Wait: Auto-Escalated to Urgent]";
+                }
+                hasChanges = true;
+            }
         }
 
         if (hasChanges)
@@ -316,30 +334,56 @@ public class DoctorService : IDoctorService
                 .SetProperty(t => t.ConsultationNotes, "Expired — Patient did not attend on scheduled date."));
     }
 
-    private static QueueTokenResponse MapToResponse(QueueToken t, int patientsAhead, int avgConsultationMins) => new()
+    private static QueueTokenResponse MapToResponse(QueueToken t, int patientsAhead, int avgConsultationMins)
     {
-        Id = t.Id,
-        TokenNumber = t.TokenNumber,
-        PatientId = t.PatientId,
-        PatientName = t.Patient?.FullName ?? string.Empty,
-        PatientPhone = t.Patient?.PhoneNumber ?? string.Empty,
-        DepartmentId = t.DepartmentId,
-        DepartmentName = t.Department?.Name ?? string.Empty,
-        DepartmentCode = t.Department?.Code ?? string.Empty,
-        DoctorId = t.DoctorId,
-        DoctorName = t.Doctor?.User?.FullName ?? string.Empty,
-        RoomNumber = t.Doctor?.RoomNumber ?? string.Empty,
-        Status = t.Status,
-        PriorityScore = t.PriorityScore,
-        BaseWeight = t.BaseWeight,
-        TriageLevel = t.TriageAssessment?.TriageLevel,
-        PatientsAhead = patientsAhead,
-        EstimatedWaitMinutes = patientsAhead * avgConsultationMins,
-        BookedAtUtc = t.BookedAtUtc,
-        TriagedAtUtc = t.TriagedAtUtc,
-        CalledAtUtc = t.CalledAtUtc,
-        CompletedAtUtc = t.CompletedAtUtc,
-        ConsultationNotes = t.ConsultationNotes,
-        RowVersion = t.RowVersion ?? Array.Empty<byte>()
-    };
+        var station = t.TriageAssessment?.NursingStation 
+            ?? t.Department?.NursingStations?.FirstOrDefault(s => s.IsActive)
+            ?? t.Doctor?.Department?.NursingStations?.FirstOrDefault(s => s.IsActive);
+
+        var stationName = station?.StationName ?? "Nursing Triage Desk";
+        var stationFloor = station?.LocationFloor ?? t.Department?.LocationFloor ?? "Floor 1";
+        var room = t.Doctor?.RoomNumber ?? "Consultation Room";
+        var doctorName = t.Doctor?.User?.FullName ?? "Doctor";
+
+        var nextStepInstruction = t.Status switch
+        {
+            "Booked" => $"Please report to {stationName} ({stationFloor}) for Vital Signs Intake.",
+            "Waiting" => $"Vitals recorded ({t.TriageAssessment?.TriageLevel ?? "Green"}). Please wait in the lounge outside Room {room} ({stationFloor}).",
+            "Called" => $"Please enter Room {room} for your consultation with Dr. {doctorName}.",
+            "Completed" => "Consultation completed. Thank you for visiting VitalQ.",
+            "Cancelled" => "Appointment was cancelled.",
+            _ => $"Please proceed to {stationFloor}."
+        };
+
+        return new QueueTokenResponse
+        {
+            Id = t.Id,
+            TokenNumber = t.TokenNumber,
+            PatientId = t.PatientId,
+            PatientName = t.Patient?.FullName ?? string.Empty,
+            PatientPhone = t.Patient?.PhoneNumber ?? string.Empty,
+            DepartmentId = t.DepartmentId,
+            DepartmentName = t.Department?.Name ?? string.Empty,
+            DepartmentCode = t.Department?.Code ?? string.Empty,
+            DoctorId = t.DoctorId,
+            DoctorName = doctorName,
+            RoomNumber = room,
+            Status = t.Status,
+            PriorityScore = t.PriorityScore,
+            BaseWeight = t.BaseWeight,
+            TriageLevel = t.TriageAssessment?.TriageLevel,
+            PatientsAhead = patientsAhead,
+            EstimatedWaitMinutes = patientsAhead * avgConsultationMins,
+            BookedAtUtc = t.BookedAtUtc,
+            TriagedAtUtc = t.TriagedAtUtc,
+            CalledAtUtc = t.CalledAtUtc,
+            CompletedAtUtc = t.CompletedAtUtc,
+            ConsultationNotes = t.ConsultationNotes,
+            RowVersion = t.RowVersion ?? Array.Empty<byte>(),
+            NursingStationId = station?.Id,
+            NursingStationName = stationName,
+            LocationFloor = stationFloor,
+            NextStepInstruction = nextStepInstruction
+        };
+    }
 }
