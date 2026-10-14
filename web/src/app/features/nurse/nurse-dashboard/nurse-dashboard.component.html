@@ -1,94 +1,1219 @@
-<div class="min-h-screen bg-slate-100 flex flex-col font-sans">
-  <!-- Nurse Topbar -->
-  <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between shadow-sm">
-    <div class="flex items-center gap-3.5">
-      <div class="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-bold text-lg shadow-md shadow-purple-600/20">👩‍⚕️</div>
+<div class="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800">
+  <!-- 1. Top Enterprise Header Bar -->
+  <header class="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between shadow-xs sticky top-0 z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-lg shadow-md shadow-teal-600/20">
+        👩‍⚕️
+      </div>
       <div>
-        <h1 class="text-base font-bold text-slate-800">{{ auth.currentUser()?.fullName || 'Nurse' }}</h1>
-        <p class="text-xs text-slate-500">Nursing Station · Vitals & Triage Assessment</p>
+        <div class="flex items-center gap-2">
+          <h1 class="text-base font-bold text-slate-900 leading-tight">{{ auth.currentUser()?.fullName || 'Triage Nurse' }}</h1>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">Clinical Desk</span>
+        </div>
+        <p class="text-xs text-slate-400">VitalQ Hospital OPD · Vital Signs & Triage Command Center</p>
       </div>
     </div>
-    <div class="flex items-center gap-4">
-      <select class="text-xs font-semibold px-3.5 py-2 rounded-xl border border-slate-200 bg-white shadow-sm">
-        <option>Station: Desk A - Cardiology (Floor 1)</option>
-        <option>Station: Desk B - Orthopedics (Floor 2)</option>
-      </select>
-      <button (click)="logout()" class="text-xs font-bold text-slate-600 hover:text-red-600 border border-slate-200 px-3.5 py-1.5 rounded-xl transition">
-        Logout
+
+    <div class="flex items-center gap-3">
+      <!-- Locked Station Badge -->
+      <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-teal-50 border border-teal-200/80 text-teal-900 text-xs font-bold shadow-xs">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Station: {{ auth.currentUser()?.nursingStationName || 'General OPD Desk' }}</span>
+      </div>
+
+      <!-- Quick Refresh Button -->
+      <button (click)="loadDashboard(); loadPendingTriage()" title="Refresh live data"
+              class="text-xs font-bold text-slate-600 hover:text-teal-700 border border-slate-200 hover:border-teal-300 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 bg-white shadow-2xs">
+        <span>↻</span>
+        <span class="hidden sm:inline">Refresh</span>
+      </button>
+
+      <!-- Logout Button -->
+      <button (click)="logout()" title="Sign out"
+              class="text-xs font-bold text-slate-600 hover:text-red-600 border border-slate-200 hover:border-red-200 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 bg-white shadow-2xs">
+        <span>Logout</span>
+        <span>🚪</span>
       </button>
     </div>
   </header>
 
-  <!-- Main Layout -->
-  <main class="flex-1 p-8 max-w-5xl mx-auto w-full space-y-6">
-    <!-- Patient Lookup Bar & Walk-in -->
-    <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex items-center justify-between gap-6">
-      <div class="flex-1">
-        <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Look up arriving patient</label>
-        <div class="flex gap-2.5">
-          <input type="text" placeholder="Enter Token Number (e.g. CARD-104) or Phone Number..." 
-                 class="flex-1 px-4 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-purple-500 bg-white">
-          <button class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold shadow-md shadow-purple-600/20 transition">
-            Search
-          </button>
+  <!-- Main Container -->
+  <main class="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-6">
+
+    <!-- 2. Dashboard KPI Metric Cards (4 Cards) -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
+      <!-- Doctors On Duty -->
+      <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-xs flex items-center gap-3.5 hover:shadow-sm transition">
+        <div class="w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shrink-0 font-bold">
+          🩺
+        </div>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Doctors Duty</p>
+          <p class="text-xl font-bold text-slate-900 leading-snug">
+            {{ stats()?.doctorsPresent ?? 0 }} <span class="text-xs font-semibold text-emerald-600">On Duty</span>
+          </p>
+          <p class="text-[10px] text-slate-400">{{ stats()?.doctorsAbsent ?? 0 }} on leave</p>
         </div>
       </div>
-      <div class="border-l border-slate-100 pl-6">
-        <button class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-bold shadow-md shadow-amber-500/20 transition whitespace-nowrap">
-          + Emergency Walk-In
-        </button>
+
+      <!-- Total Bookings Today -->
+      <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-xs flex items-center gap-3.5 hover:shadow-sm transition">
+        <div class="w-11 h-11 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center text-xl shrink-0 font-bold">
+          📋
+        </div>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Bookings</p>
+          <p class="text-xl font-bold text-slate-900 leading-snug">{{ stats()?.totalBookingsToday ?? 0 }}</p>
+          <p class="text-[10px] text-slate-400">Patients booked today</p>
+        </div>
+      </div>
+
+      <!-- Awaiting Vitals (Station Desk) -->
+      <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-xs flex items-center gap-3.5 hover:shadow-sm transition">
+        <div class="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shrink-0 font-bold">
+          ⏱️
+        </div>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Awaiting Vitals</p>
+          <p class="text-xl font-bold text-amber-600 leading-snug">{{ pendingTriage().length }}</p>
+          <p class="text-[10px] text-slate-400">Waiting at your desk</p>
+        </div>
+      </div>
+
+      <!-- Consultations Completed -->
+      <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-xs flex items-center gap-3.5 hover:shadow-sm transition">
+        <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0 font-bold">
+          ✅
+        </div>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Consultations Done</p>
+          <p class="text-xl font-bold text-slate-900 leading-snug">{{ stats()?.totalCompletedToday ?? 0 }}</p>
+          <p class="text-[10px] text-slate-400">{{ stats()?.totalTriagedToday ?? 0 }} total triaged today</p>
+        </div>
       </div>
     </div>
 
-    <!-- Vitals Entry Form Placeholder -->
-    <div class="bg-white rounded-3xl border border-slate-200 p-7 shadow-sm">
-      <div class="flex items-center justify-between mb-5 border-b border-slate-100 pb-4">
+    <!-- 3. Doctor-Wise Live Queue Roster Grid -->
+    <div class="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
+      <div class="flex items-center justify-between">
         <div>
-          <h3 class="text-base font-bold text-slate-800">Clinical Vitals & Urgency Evaluation</h3>
-          <p class="text-xs text-slate-400">Cardiology intake for Token <span class="font-mono font-bold text-slate-700">CARD-104</span></p>
+          <h2 class="text-base font-bold text-slate-900 leading-tight">Doctor Roster & Live Room Queues</h2>
+          <p class="text-xs text-slate-400">Click any doctor card to open their real-time priority patient queue</p>
         </div>
-        <span class="px-3.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">
-          Auto-Calculated Level: Yellow (Urgent)
+        <span class="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+          {{ stats()?.doctors?.length ?? 0 }} Doctors Assigned
         </span>
       </div>
 
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Oxygen Saturation (SpO2 %)</label>
-          <input type="number" value="94" class="w-full px-3.5 py-2 border rounded-xl text-sm">
+      @if (stats()?.doctors?.length === 0) {
+        <p class="text-xs text-slate-400 py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+          No doctors currently scheduled or assigned to this nursing station.
+        </p>
+      } @else {
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+          @for (doc of stats()?.doctors; track doc.doctorId) {
+            <div (click)="openDoctorQueue(doc)"
+                 class="group bg-slate-50/70 hover:bg-teal-50/40 border border-slate-200 hover:border-teal-400 rounded-2xl p-4 cursor-pointer transition shadow-2xs hover:shadow-md space-y-3">
+              <!-- Top Row: Doctor Name & Status Badge -->
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <h3 class="font-bold text-sm text-slate-900 group-hover:text-teal-700 transition leading-tight">{{ doc.doctorName }}</h3>
+                  <p class="text-xs text-slate-500 mt-0.5">{{ doc.specialization }} · Room {{ doc.roomNumber }}</p>
+                </div>
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 uppercase tracking-wider"
+                      [ngClass]="{
+                        'bg-emerald-100 text-emerald-800 border border-emerald-200': doc.status === 'Available',
+                        'bg-amber-100 text-amber-800 border border-amber-200': doc.status === 'Busy',
+                        'bg-slate-200 text-slate-600': doc.status === 'OnLeave'
+                      }">
+                  {{ doc.status }}
+                </span>
+              </div>
+
+              <!-- Bottom Row: Currently Calling & Waiting Count -->
+              <div class="flex items-center justify-between pt-2 border-t border-slate-200/70 text-xs">
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Calling: </span>
+                  @if (doc.currentCallingToken) {
+                    <span class="font-mono font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded border border-emerald-300">
+                      {{ doc.currentCallingToken }}
+                    </span>
+                  } @else {
+                    <span class="text-slate-400 italic">None</span>
+                  }
+                </div>
+
+                <div class="flex items-center gap-1.5 font-bold text-slate-700">
+                  <span class="w-2 h-2 rounded-full bg-teal-500"></span>
+                  <span>{{ doc.waitingCount }} waiting</span>
+                </div>
+              </div>
+            </div>
+          }
         </div>
+      }
+    </div>
+
+    <!-- 4. UNIFIED PATIENT INTAKE HUB (Combined Search & Station Arrivals Desk) -->
+    <div class="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-6">
+      
+      <!-- Intake Desk Header & Action Bar -->
+      <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Blood Pressure (Sys / Dia)</label>
-          <div class="flex gap-2">
-            <input type="number" value="135" placeholder="Sys" class="w-1/2 px-3 py-2 border rounded-xl text-sm">
-            <input type="number" value="88" placeholder="Dia" class="w-1/2 px-3 py-2 border rounded-xl text-sm">
+          <div class="flex items-center gap-2">
+            <h2 class="text-base font-bold text-slate-900 leading-tight">Unified Patient Intake Hub</h2>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 border border-teal-200">Arriving & Station Queue</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Search arriving patients, inspect medical charts, track live queue positions, or assess triage vitals</p>
+        </div>
+
+        <!-- Emergency Walk-In Trigger Button -->
+        <button (click)="openWalkInModal()"
+                class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-amber-500/20 transition flex items-center justify-center gap-2 self-start lg:self-auto shrink-0">
+          <span>🚨</span>
+          <span>+ Emergency Walk-In</span>
+        </button>
+      </div>
+
+      <!-- Patient Search Input with Live Autocomplete -->
+      <div class="relative">
+        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+          Look up arriving patient / token at desk
+        </label>
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">🔍</span>
+          <input type="text"
+                 [ngModel]="searchQuery()"
+                 (ngModelChange)="searchQuery.set($event); onSearchInput()"
+                 placeholder="Search by Patient Phone Number, MRN, Name, or Token Number (e.g. CARD-101)..."
+                 class="w-full pl-10 pr-24 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none bg-slate-50/60 font-medium">
+          
+          <div class="absolute inset-y-0 right-0 pr-3 flex items-center gap-2">
+            @if (isSearching()) {
+              <span class="text-xs text-teal-600 font-bold animate-pulse">Searching...</span>
+            }
+            @if (searchQuery()) {
+              <button (click)="searchQuery.set(''); onSearchInput()" class="text-xs text-slate-400 hover:text-slate-700 font-bold px-1.5 py-0.5 rounded">
+                ✕
+              </button>
+            }
           </div>
         </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Heart Rate (BPM)</label>
-          <input type="number" value="82" class="w-full px-3.5 py-2 border rounded-xl text-sm">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Temperature (°F)</label>
-          <input type="number" value="98.7" class="w-full px-3.5 py-2 border rounded-xl text-sm">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Pain Scale (0–10)</label>
-          <input type="number" value="7" min="0" max="10" class="w-full px-3.5 py-2 border rounded-xl text-sm">
-        </div>
+
+        <!-- Autocomplete Dropdown List -->
+        @if (searchResults().length > 0) {
+          <div class="absolute left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden divide-y divide-slate-100 max-h-72 overflow-y-auto">
+            @for (patient of searchResults(); track patient.patientId) {
+              <div (click)="selectPatient(patient)"
+                   class="p-3.5 hover:bg-teal-50/60 cursor-pointer transition flex items-center justify-between gap-3">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <p class="font-bold text-sm text-slate-900">{{ patient.fullName }}</p>
+                    <span class="font-mono text-xs text-slate-400">({{ patient.medicalRecordNumber || 'Pending MRN' }})</span>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">Phone: {{ patient.phoneNumber }} · DOB: {{ patient.dateOfBirth }} ({{ patient.gender }})</p>
+                </div>
+                @if (patient.activeTokenNumber) {
+                  <span class="px-2.5 py-1 rounded-lg text-xs font-bold font-mono bg-teal-100 text-teal-800 border border-teal-200">
+                    {{ patient.activeTokenNumber }}
+                  </span>
+                }
+              </div>
+            }
+          </div>
+        }
       </div>
 
-      <div class="mt-4">
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Nurse Observation Notes</label>
-        <textarea rows="2" placeholder="Patient appears in moderate distress..." class="w-full px-3.5 py-2 border rounded-xl text-sm"></textarea>
-      </div>
+      <!-- SELECTED PATIENT INTAKE DRAWER (Reveals the 3 Action Buttons) -->
+      @if (selectedPatient()) {
+        <div class="bg-gradient-to-r from-teal-50/70 via-slate-50 to-teal-50/70 border-2 border-teal-300 rounded-3xl p-5 shadow-xs animate-fadeIn space-y-4">
+          <!-- Patient Summary Header -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-xl shadow-xs">
+                🧑‍⚕️
+              </div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="font-bold text-base text-slate-900 leading-tight">{{ selectedPatient()?.fullName }}</h3>
+                  <span class="font-mono text-xs font-bold px-2.5 py-0.5 rounded-lg bg-white border border-teal-200 text-teal-900 shadow-2xs">
+                    {{ selectedPatient()?.medicalRecordNumber || 'MRN: Pending' }}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-600 mt-0.5">
+                  Phone: <span class="font-semibold">{{ selectedPatient()?.phoneNumber }}</span> · 
+                  DOB: <span class="font-semibold">{{ selectedPatient()?.dateOfBirth }} ({{ calculateAge(selectedPatient()?.dateOfBirth) }})</span> · 
+                  Gender: <span class="font-semibold">{{ selectedPatient()?.gender }}</span>
+                </p>
+              </div>
+            </div>
 
-      <div class="mt-7 flex justify-end">
-        <button class="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-sm shadow-md shadow-purple-600/20 transition">
-          Submit Triage & Activate into Queue &rarr;
-        </button>
+            <!-- Dismiss Drawer Button -->
+            <button (click)="clearSelectedPatient()"
+                    class="self-start sm:self-auto text-xs font-bold text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 transition shadow-2xs">
+              Dismiss ✕
+            </button>
+          </div>
+
+          <!-- THE 3 PATIENT ACTION BUTTONS BANNER -->
+          <div class="p-4 bg-white rounded-2xl border border-teal-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Intake Actions:</span>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap">
+              <!-- Action Button 1: [📋 Full Details] -->
+              <button (click)="openFullDetails(selectedPatient()!.patientId)"
+                      class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5">
+                <span>📋</span>
+                <span>Full Details</span>
+              </button>
+
+              <!-- Action Button 2: [⏱️ Queue Status] -->
+              @if (patientTokens().length > 0) {
+                <button (click)="openQueueStatus(patientTokens()[0])"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5">
+                  <span>⏱️</span>
+                  <span>Queue Status</span>
+                </button>
+              } @else if (selectedPatient()?.activeTokenId) {
+                <button (click)="openQueueStatus(selectedPatient()!.activeTokenId!)"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5">
+                  <span>⏱️</span>
+                  <span>Queue Status</span>
+                </button>
+              } @else {
+                <button disabled title="No active token today"
+                        class="px-4 py-2 bg-slate-200 text-slate-400 rounded-xl text-xs font-bold cursor-not-allowed flex items-center gap-1.5">
+                  <span>⏱️</span>
+                  <span>Queue Status</span>
+                </button>
+              }
+
+              <!-- Action Button 3: [🩺 Triage Assessment] -->
+              @if (patientTokens().length > 0) {
+                <button (click)="openTriageModal(patientTokens()[0])"
+                        class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5">
+                  <span>🩺</span>
+                  <span>Triage Assessment</span>
+                </button>
+              } @else {
+                <button disabled title="Patient has no token to triage"
+                        class="px-4 py-2 bg-slate-200 text-slate-400 rounded-xl text-xs font-bold cursor-not-allowed flex items-center gap-1.5">
+                  <span>🩺</span>
+                  <span>Triage Assessment</span>
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Patient's Active Tokens Today -->
+          <div class="space-y-2">
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Today's Appointment Tokens</p>
+            @if (isLoadingPatientTokens()) {
+              <div class="py-4 text-center text-xs text-slate-400 bg-white rounded-2xl border border-slate-200">
+                Loading today's appointment tokens...
+              </div>
+            } @else if (patientTokens().length === 0) {
+              <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <span class="text-slate-500">No active appointment tokens found for this patient today.</span>
+                <button (click)="openWalkInModal()"
+                        class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold transition">
+                  + Issue Emergency Walk-In Slip
+                </button>
+              </div>
+            } @else {
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                @for (token of patientTokens(); track token.id) {
+                  <div class="bg-white p-4 rounded-2xl border border-slate-200 flex items-center justify-between gap-3 shadow-2xs">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="font-mono font-bold text-sm text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
+                          {{ token.tokenNumber }}
+                        </span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              [ngClass]="{
+                                'bg-amber-100 text-amber-800 border border-amber-200': token.status === 'Booked',
+                                'bg-blue-100 text-blue-800 border border-blue-200': token.status === 'Waiting',
+                                'bg-emerald-100 text-emerald-800 border border-emerald-200': token.status === 'Called',
+                                'bg-slate-100 text-slate-600': token.status === 'Completed'
+                              }">
+                          {{ token.status }}
+                        </span>
+                        @if (token.triageLevel) {
+                          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                [ngClass]="{
+                                  'bg-red-100 text-red-700 border border-red-200': token.triageLevel === 'Red',
+                                  'bg-amber-100 text-amber-700 border border-amber-200': token.triageLevel === 'Yellow',
+                                  'bg-emerald-100 text-emerald-700 border border-emerald-200': token.triageLevel === 'Green'
+                                }">
+                            {{ token.triageLevel }}
+                          </span>
+                        }
+                      </div>
+                      <p class="text-xs text-slate-500 mt-1">Dr. {{ token.doctorName }} · Room {{ token.roomNumber }}</p>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                      <button (click)="openQueueStatus(token)"
+                              title="View Live Position"
+                              class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition">
+                        ⏱️ Position
+                      </button>
+
+                      @if (token.status === 'Booked') {
+                        <button (click)="openTriageModal(token)"
+                                class="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-xs transition">
+                          🩺 Take Vitals
+                        </button>
+                      } @else {
+                        <button (click)="openTriageModal(token)"
+                                class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+                          Re-triage
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- STATION ARRIVALS WAITING FOR TRIAGE TABLE -->
+      <div class="space-y-3 pt-2">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 leading-tight">Station Arrivals Waiting for Vitals</h3>
+            <p class="text-xs text-slate-400">Patients booked for today who have arrived and require vital signs evaluation before queue activation</p>
+          </div>
+          <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+            {{ filteredStationQueue().length }} Awaiting Desk
+          </span>
+        </div>
+
+        @if (filteredStationQueue().length === 0) {
+          <div class="py-10 text-center max-w-sm mx-auto space-y-2">
+            <div class="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 mx-auto flex items-center justify-center text-xl">🎉</div>
+            <p class="font-bold text-slate-700 text-sm">Station arrivals queue is clear</p>
+            <p class="text-xs text-slate-400">All arriving patients have been triaged or no pending arrivals currently waiting at this desk.</p>
+          </div>
+        } @else {
+          <div class="overflow-x-auto rounded-2xl border border-slate-200">
+            <table class="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr class="bg-slate-100 text-slate-600 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
+                  <th class="py-3 px-4">Token #</th>
+                  <th class="py-3 px-4">Patient Name</th>
+                  <th class="py-3 px-4">Phone Number</th>
+                  <th class="py-3 px-4">Assigned Doctor</th>
+                  <th class="py-3 px-4">Booked Time</th>
+                  <th class="py-3 px-4 text-right">Intake Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @for (token of filteredStationQueue(); track token.id) {
+                  <tr class="hover:bg-teal-50/40 transition">
+                    <!-- Token Number -->
+                    <td class="py-3 px-4 whitespace-nowrap">
+                      <span class="font-mono font-bold text-xs text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
+                        {{ token.tokenNumber }}
+                      </span>
+                    </td>
+
+                    <!-- Patient Name (Clicking loads into desk) -->
+                    <td class="py-3 px-4 whitespace-nowrap">
+                      <button (click)="selectArrivingToken(token)" class="text-left group cursor-pointer">
+                        <p class="font-bold text-slate-900 group-hover:text-teal-700 transition leading-tight flex items-center gap-1.5">
+                          <span>{{ token.patientName }}</span>
+                          <span class="text-[10px] text-teal-600 opacity-0 group-hover:opacity-100 font-normal">select &rarr;</span>
+                        </p>
+                      </button>
+                    </td>
+
+                    <!-- Phone Number -->
+                    <td class="py-3 px-4 font-mono text-xs text-slate-500 whitespace-nowrap">{{ token.patientPhone }}</td>
+
+                    <!-- Doctor & Room -->
+                    <td class="py-3 px-4 whitespace-nowrap">
+                      <p class="text-xs font-semibold text-slate-800">Dr. {{ token.doctorName }}</p>
+                      <p class="text-[10px] text-slate-400">Room {{ token.roomNumber }}</p>
+                    </td>
+
+                    <!-- Booked Time -->
+                    <td class="py-3 px-4 text-xs text-slate-500 whitespace-nowrap">
+                      {{ token.bookedAtUtc | date:'shortTime' }}
+                    </td>
+
+                    <!-- Direct Action Buttons on Row -->
+                    <td class="py-3 px-4 whitespace-nowrap text-right">
+                      <div class="inline-flex items-center gap-1.5 justify-end">
+                        <!-- Action 1: Full Details -->
+                        <button (click)="openFullDetails(token.patientId)"
+                                title="Patient Medical Chart"
+                                class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1">
+                          <span>📋</span>
+                          <span class="hidden md:inline">Chart</span>
+                        </button>
+
+                        <!-- Action 2: Queue Status -->
+                        <button (click)="openQueueStatus(token)"
+                                title="Track Queue Position"
+                                class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1">
+                          <span>⏱️</span>
+                          <span class="hidden md:inline">Queue</span>
+                        </button>
+
+                        <!-- Action 3: Triage Assessment -->
+                        <button (click)="openTriageModal(token)"
+                                class="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-xs transition inline-flex items-center gap-1.5">
+                          <span>🩺</span>
+                          <span>Triage</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
       </div>
     </div>
   </main>
-</div>
 
+  <!-- ========================================================================= -->
+  <!-- MODAL 1: DOCTOR DETAILED QUEUE MODAL (Triggered on clicking Doctor Card) -->
+  <!-- ========================================================================= -->
+  @if (showDoctorModal()) {
+    <div teleportToBody class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+      <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn max-h-[90vh] flex flex-col">
+        <!-- Modal Header -->
+        <div class="px-6 py-4 bg-slate-100 border-b border-slate-200 flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center text-lg font-bold">🩺</div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-base font-bold text-slate-900 leading-tight">{{ selectedDoctorQueue()?.doctorName }}</h3>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  {{ selectedDoctorQueue()?.status }}
+                </span>
+              </div>
+              <p class="text-xs text-slate-500">{{ selectedDoctorQueue()?.specialization }} · Room {{ selectedDoctorQueue()?.roomNumber }}</p>
+            </div>
+          </div>
+          <button (click)="closeDoctorModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition font-bold text-lg">&times;</button>
+        </div>
+
+        <!-- Modal Queue List Body -->
+        <div class="p-5 sm:p-6 flex-1 overflow-y-auto space-y-3">
+          @if (isLoadingDoctorQueue()) {
+            <div class="py-12 text-center text-slate-400 text-sm">Loading live queue...</div>
+          } @else if (selectedDoctorQueue()?.queue?.length === 0) {
+            <div class="py-12 text-center text-slate-400 text-sm">No patients currently queued for this doctor today.</div>
+          } @else {
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Live Priority Order (High Score First)</p>
+              <span class="text-xs text-slate-400">{{ selectedDoctorQueue()?.queue?.length }} Total in Line</span>
+            </div>
+
+            <div class="space-y-2.5">
+              @for (item of selectedDoctorQueue()?.queue; track item.tokenId; let idx = $index) {
+                <div class="border rounded-2xl p-4 transition shadow-2xs"
+                     [ngClass]="{
+                       'bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200': item.status === 'Called',
+                       'bg-white border-slate-200': item.status === 'Waiting',
+                       'bg-slate-50 border-slate-200 opacity-60': item.status === 'Completed'
+                     }">
+                  <div class="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+                    <div class="flex items-center gap-3">
+                      <!-- 1-Based Queue Order Pill -->
+                      <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-bold">
+                        {{ idx + 1 }}
+                      </span>
+
+                      <span class="font-mono font-bold text-xs text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                        {{ item.tokenNumber }}
+                      </span>
+                      <div>
+                        <p class="font-bold text-sm text-slate-900 leading-tight">{{ item.patientName }}</p>
+                        <p class="text-xs text-slate-400">Phone: {{ item.phoneNumber }}</p>
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                      <!-- Urgency Pill -->
+                      @if (item.triageLevel) {
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold"
+                              [ngClass]="{
+                                'bg-red-100 text-red-700 border border-red-200': item.triageLevel === 'Red',
+                                'bg-amber-100 text-amber-700 border border-amber-200': item.triageLevel === 'Yellow',
+                                'bg-emerald-100 text-emerald-700 border border-emerald-200': item.triageLevel === 'Green'
+                              }">
+                          {{ item.triageLevel }}
+                        </span>
+                      }
+
+                      <!-- Status Pill -->
+                      <span class="px-2.5 py-0.5 rounded-full text-xs font-bold"
+                            [ngClass]="{
+                              'bg-emerald-600 text-white': item.status === 'Called',
+                              'bg-blue-100 text-blue-700': item.status === 'Waiting',
+                              'bg-slate-200 text-slate-600': item.status === 'Completed'
+                            }">
+                        {{ item.status }}
+                      </span>
+
+                      <!-- View More Accordion Toggle -->
+                      @if (item.triageAssessment) {
+                        <button (click)="toggleTokenDetails(item.tokenId)"
+                                class="text-xs font-bold text-teal-600 hover:text-teal-800 underline ml-2">
+                          {{ expandedTokenId() === item.tokenId ? 'Hide Vitals' : 'View More' }}
+                        </button>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Expanded Triage Assessment Details -->
+                  @if (expandedTokenId() === item.tokenId && item.triageAssessment) {
+                    <div class="mt-3 pt-3 border-t border-slate-200/80 animate-fadeIn space-y-2">
+                      <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center text-xs">
+                        <div class="bg-white p-2 rounded-xl border border-slate-200">
+                          <span class="text-[10px] text-slate-400 font-bold block">SpO2</span>
+                          <span class="font-bold text-slate-800">{{ item.triageAssessment.spO2 }}%</span>
+                        </div>
+                        <div class="bg-white p-2 rounded-xl border border-slate-200">
+                          <span class="text-[10px] text-slate-400 font-bold block">BP</span>
+                          <span class="font-bold text-slate-800">{{ item.triageAssessment.systolicBp }}/{{ item.triageAssessment.diastolicBp }}</span>
+                        </div>
+                        <div class="bg-white p-2 rounded-xl border border-slate-200">
+                          <span class="text-[10px] text-slate-400 font-bold block">Heart Rate</span>
+                          <span class="font-bold text-slate-800">{{ item.triageAssessment.heartRate }} bpm</span>
+                        </div>
+                        <div class="bg-white p-2 rounded-xl border border-slate-200">
+                          <span class="text-[10px] text-slate-400 font-bold block">Temp</span>
+                          <span class="font-bold text-slate-800">{{ item.triageAssessment.temperature }}°C</span>
+                        </div>
+                        <div class="bg-white p-2 rounded-xl border border-slate-200">
+                          <span class="text-[10px] text-slate-400 font-bold block">Pain</span>
+                          <span class="font-bold text-slate-800">{{ item.triageAssessment.painScale }}/10</span>
+                        </div>
+                        <div class="bg-white p-2 rounded-xl border border-slate-200">
+                          <span class="text-[10px] text-slate-400 font-bold block">Priority Score</span>
+                          <span class="font-bold text-teal-700">{{ item.priorityScore }}</span>
+                        </div>
+                      </div>
+
+                      @if (item.triageAssessment.nurseNotes) {
+                        <p class="text-xs text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200">
+                          <span class="font-bold">Nurse Notes:</span> {{ item.triageAssessment.nurseNotes }}
+                        </p>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="px-6 py-3.5 bg-slate-100 border-t border-slate-200 flex justify-end shrink-0">
+          <button (click)="closeDoctorModal()"
+                  class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 2: PATIENT MEDICAL CHART (FULL DETAILS MODAL)                       -->
+  <!-- ========================================================================= -->
+  @if (showDetailsModal()) {
+    <div teleportToBody class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+      <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn max-h-[90vh] flex flex-col">
+        <!-- Header -->
+        <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-teal-500 text-white flex items-center justify-center text-lg font-bold">📋</div>
+            <div>
+              <h3 class="text-base font-bold leading-tight">Patient Medical Profile & History</h3>
+              <p class="text-xs text-slate-300">Permanent Hospital Chart & Past Consultations</p>
+            </div>
+          </div>
+          <button (click)="closeDetailsModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-white flex items-center justify-center transition font-bold text-lg">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 flex-1 overflow-y-auto space-y-5">
+          @if (isLoadingDetails()) {
+            <div class="py-12 text-center text-slate-400 text-sm">Loading patient profile chart...</div>
+          } @else if (patientDetails()) {
+            <!-- Patient Demographics Card -->
+            <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+              <div class="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h4 class="font-bold text-lg text-slate-900">{{ patientDetails()?.fullName }}</h4>
+                  <p class="text-xs text-slate-500 font-mono">MRN: {{ patientDetails()?.medicalRecordNumber }}</p>
+                </div>
+                <span class="px-3 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
+                  {{ patientDetails()?.totalCompletedBookings }} Completed Visits
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1 border-t border-slate-200/80">
+                <div>
+                  <span class="text-[10px] font-bold uppercase text-slate-400 block">Phone</span>
+                  <span class="font-semibold text-slate-800">{{ patientDetails()?.phoneNumber }}</span>
+                </div>
+                <div>
+                  <span class="text-[10px] font-bold uppercase text-slate-400 block">Date of Birth</span>
+                  <span class="font-semibold text-slate-800">{{ patientDetails()?.dateOfBirth }}</span>
+                </div>
+                <div>
+                  <span class="text-[10px] font-bold uppercase text-slate-400 block">Age</span>
+                  <span class="font-semibold text-slate-800">{{ calculateAge(patientDetails()?.dateOfBirth) || 'N/A' }}</span>
+                </div>
+                <div>
+                  <span class="text-[10px] font-bold uppercase text-slate-400 block">Gender</span>
+                  <span class="font-semibold text-slate-800">{{ patientDetails()?.gender }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Past Visit & Consultation History -->
+            <div class="space-y-3">
+              <h5 class="text-xs font-bold uppercase tracking-wider text-slate-500">Visit & Doctor Notes History</h5>
+              
+              @if (patientDetails()?.visits?.length === 0) {
+                <p class="text-xs text-slate-400 py-6 text-center bg-slate-50 rounded-xl border border-slate-200">
+                  No prior consultation records logged for this patient.
+                </p>
+              } @else {
+                <div class="space-y-2.5">
+                  @for (visit of patientDetails()?.visits; track visit.tokenId) {
+                    <div class="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                      <div class="flex items-center justify-between text-xs flex-wrap gap-2">
+                        <div class="flex items-center gap-2">
+                          <span class="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            {{ visit.tokenNumber }}
+                          </span>
+                          <span class="font-bold text-slate-800">{{ visit.departmentName }} · Dr. {{ visit.doctorName }}</span>
+                        </div>
+                        <span class="text-slate-400 text-[11px]">{{ visit.bookedAtUtc | date:'mediumDate' }}</span>
+                      </div>
+
+                      @if (visit.consultationNotes) {
+                        <p class="text-xs text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                          <span class="font-bold text-slate-900">Physician Notes:</span> {{ visit.consultationNotes }}
+                        </p>
+                      } @else {
+                        <p class="text-xs text-slate-400 italic">No notes recorded for this visit.</p>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-3.5 bg-slate-100 border-t border-slate-200 flex justify-end shrink-0">
+          <button (click)="closeDetailsModal()"
+                  class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition">
+            Close Chart
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 3: PATIENT QUEUE STATUS & DOCTOR LINE VISUALIZER                    -->
+  <!-- ========================================================================= -->
+  @if (showQueueModal()) {
+    <div teleportToBody class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+      <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn max-h-[90vh] flex flex-col">
+        <!-- Header -->
+        <div class="px-6 py-4 bg-blue-600 text-white flex items-center justify-between shrink-0">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-white/20 text-white flex items-center justify-center text-lg font-bold">⏱️</div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-base font-bold leading-tight">{{ queuePositionData()?.patientName }}</h3>
+                <span class="font-mono text-xs font-bold bg-white text-blue-900 px-2 py-0.5 rounded">
+                  {{ queuePositionData()?.tokenNumber }}
+                </span>
+              </div>
+              <p class="text-xs text-blue-100">Dr. {{ queuePositionData()?.doctorName }} · Room {{ queuePositionData()?.roomNumber }} ({{ queuePositionData()?.specialization }})</p>
+            </div>
+          </div>
+          <button (click)="closeQueueModal()" class="w-8 h-8 rounded-lg text-blue-200 hover:text-white flex items-center justify-center transition font-bold text-lg">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 flex-1 overflow-y-auto space-y-5">
+          @if (isLoadingQueue()) {
+            <div class="py-12 text-center text-slate-400 text-sm">Calculating real-time position in doctor's line...</div>
+          } @else if (queuePositionData()) {
+            <!-- Real-Time Position Indicator Hero Banner -->
+            @if (queuePositionData()?.status === 'Called') {
+              <div class="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 flex items-center gap-3">
+                <span class="text-2xl animate-pulse">📢</span>
+                <div>
+                  <p class="font-bold text-sm">Patient Is Currently Inside Consultation Room!</p>
+                  <p class="text-xs opacity-90">Dr. {{ queuePositionData()?.doctorName }} is seeing this patient in Room {{ queuePositionData()?.roomNumber }}.</p>
+                </div>
+              </div>
+            } @else if (queuePositionData()?.status === 'Waiting') {
+              <div class="grid grid-cols-3 gap-3">
+                <!-- Exact Queue Position -->
+                <div class="bg-blue-50 border border-blue-200 p-4 rounded-2xl text-center">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-blue-600 block">Queue Position</span>
+                  <span class="text-2xl font-black text-blue-900 leading-tight">#{{ queuePositionData()?.queuePosition }}</span>
+                  <span class="text-[10px] text-blue-500 block">in line</span>
+                </div>
+
+                <!-- Patients Ahead -->
+                <div class="bg-slate-50 border border-slate-200 p-4 rounded-2xl text-center">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Ahead in Line</span>
+                  <span class="text-2xl font-black text-slate-800 leading-tight">{{ queuePositionData()?.patientsAhead }}</span>
+                  <span class="text-[10px] text-slate-400 block">patients ahead</span>
+                </div>
+
+                <!-- Est. Wait Minutes -->
+                <div class="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-center">
+                  <span class="text-[10px] font-bold uppercase tracking-wider text-amber-700 block">Est. Wait</span>
+                  <span class="text-2xl font-black text-amber-900 leading-tight">~{{ queuePositionData()?.estimatedWaitMinutes }}m</span>
+                  <span class="text-[10px] text-amber-600 block">approx wait</span>
+                </div>
+              </div>
+            } @else if (queuePositionData()?.status === 'Booked') {
+              <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-3">
+                <span class="text-xl">⏱️</span>
+                <div>
+                  <p class="font-bold text-sm">Awaiting Triage Vitals</p>
+                  <p class="text-xs text-amber-700">Patient has not yet completed vital signs intake. Complete triage to activate them in the doctor's prioritized queue.</p>
+                </div>
+              </div>
+            } @else {
+              <div class="p-4 rounded-2xl bg-slate-100 text-slate-700 text-xs">
+                Status: <span class="font-bold">{{ queuePositionData()?.status }}</span>
+              </div>
+            }
+
+            <!-- Doctor Live Line Visualizer (The Track) -->
+            <div class="space-y-3 pt-2">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600">Doctor's Real-Time Patient Line</h4>
+                  <p class="text-[11px] text-slate-400">Prioritized order of all patients currently queued for Dr. {{ queuePositionData()?.doctorName }}</p>
+                </div>
+                <span class="text-xs font-semibold text-slate-400">
+                  {{ queuePositionData()?.doctorLiveQueue?.length }} In Queue
+                </span>
+              </div>
+
+              @if (queuePositionData()?.doctorLiveQueue?.length === 0) {
+                <p class="text-xs text-slate-400 py-6 text-center bg-slate-50 rounded-xl border border-slate-200">
+                  No other patients are currently queued for this doctor.
+                </p>
+              } @else {
+                <div class="space-y-2">
+                  @for (item of queuePositionData()?.doctorLiveQueue; track item.tokenId; let i = $index) {
+                    <div class="p-3 rounded-2xl border transition flex items-center justify-between gap-3"
+                         [ngClass]="{
+                           'bg-amber-50/80 border-2 border-amber-400 ring-2 ring-amber-300/40 shadow-sm': item.tokenId === queuePositionData()?.tokenId,
+                           'bg-emerald-50/60 border-emerald-200': item.status === 'Called' && item.tokenId !== queuePositionData()?.tokenId,
+                           'bg-white border-slate-200': item.status === 'Waiting' && item.tokenId !== queuePositionData()?.tokenId
+                         }">
+                      <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+                              [ngClass]="item.tokenId === queuePositionData()?.tokenId ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-600'">
+                          {{ i + 1 }}
+                        </span>
+
+                        <span class="font-mono font-bold text-xs px-2 py-0.5 rounded border"
+                              [ngClass]="item.tokenId === queuePositionData()?.tokenId ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-slate-100 text-slate-900 border-slate-200'">
+                          {{ item.tokenNumber }}
+                        </span>
+
+                        <div>
+                          <div class="flex items-center gap-1.5">
+                            <p class="font-bold text-xs text-slate-900 leading-tight">{{ item.patientName }}</p>
+                            @if (item.tokenId === queuePositionData()?.tokenId) {
+                              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white animate-pulse">
+                                👉 This Patient
+                              </span>
+                            }
+                          </div>
+                          <p class="text-[10px] text-slate-400">Score: {{ item.priorityScore }}</p>
+                        </div>
+                      </div>
+
+                      <div class="flex items-center gap-2">
+                        @if (item.triageLevel) {
+                          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                [ngClass]="{
+                                  'bg-red-100 text-red-700 border border-red-200': item.triageLevel === 'Red',
+                                  'bg-amber-100 text-amber-700 border border-amber-200': item.triageLevel === 'Yellow',
+                                  'bg-emerald-100 text-emerald-700 border border-emerald-200': item.triageLevel === 'Green'
+                                }">
+                            {{ item.triageLevel }}
+                          </span>
+                        }
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              [ngClass]="item.status === 'Called' ? 'bg-emerald-600 text-white' : 'bg-blue-100 text-blue-700'">
+                          {{ item.status }}
+                        </span>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <!-- Footer -->
+        <div class="px-6 py-3.5 bg-slate-100 border-t border-slate-200 flex justify-end shrink-0">
+          <button (click)="closeQueueModal()"
+                  class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 4: CLINICAL VITALS INTAKE (TRIAGE ASSESSMENT MODAL)                 -->
+  <!-- ========================================================================= -->
+  @if (showTriageModal()) {
+    <div teleportToBody class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+      <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn">
+        <!-- Modal Header -->
+        <div class="px-6 py-4 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center text-base">🩺</div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900 leading-tight">Clinical Vitals Intake</h3>
+              <p class="text-xs text-slate-500">Token <span class="font-mono font-bold text-teal-700">{{ triageToken()?.tokenNumber }}</span> · {{ triageToken()?.patientName }}</p>
+            </div>
+          </div>
+          <button (click)="closeTriageModal()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition font-bold text-lg">&times;</button>
+        </div>
+
+        <form (ngSubmit)="submitTriage()">
+          <div class="p-5 sm:p-6 space-y-4">
+            <!-- Automated CTAS Urgency Banner -->
+            <div class="p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition"
+                 [ngClass]="{
+                   'bg-red-50 border-red-200 text-red-900': effectiveLevel() === 'Red',
+                   'bg-amber-50 border-amber-200 text-amber-900': effectiveLevel() === 'Yellow',
+                   'bg-emerald-50 border-emerald-200 text-emerald-900': effectiveLevel() === 'Green'
+                 }">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">
+                  {{ effectiveLevel() === 'Red' ? '🚨' : effectiveLevel() === 'Yellow' ? '⚠️' : '✅' }}
+                </span>
+                <div>
+                  <p class="text-xs font-bold leading-tight">Automated CTAS Urgency Level</p>
+                  <p class="text-[11px] opacity-80">
+                    {{ effectiveLevel() === 'Red' ? 'Emergency - Immediate physician review' : effectiveLevel() === 'Yellow' ? 'Urgent - Target evaluation < 30m' : 'Standard Routine Case' }}
+                  </p>
+                </div>
+              </div>
+              <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
+                    [ngClass]="{
+                      'bg-red-600 text-white': effectiveLevel() === 'Red',
+                      'bg-amber-500 text-white': effectiveLevel() === 'Yellow',
+                      'bg-emerald-600 text-white': effectiveLevel() === 'Green'
+                    }">
+                {{ effectiveLevel() }}
+              </span>
+            </div>
+
+            <!-- Vitals Input Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">SpO2 (%) *</label>
+                <input type="number" [(ngModel)]="vitalsForm.spO2" name="spO2" required min="50" max="100"
+                       class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 font-bold bg-slate-50/50">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Systolic BP *</label>
+                <input type="number" [(ngModel)]="vitalsForm.systolicBp" name="systolicBp" required min="50" max="250"
+                       class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 font-bold bg-slate-50/50">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Diastolic BP *</label>
+                <input type="number" [(ngModel)]="vitalsForm.diastolicBp" name="diastolicBp" required min="30" max="150"
+                       class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 font-bold bg-slate-50/50">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Heart Rate (BPM) *</label>
+                <input type="number" [(ngModel)]="vitalsForm.heartRate" name="heartRate" required min="30" max="250"
+                       class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 font-bold bg-slate-50/50">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Temp (°C) *</label>
+                <input type="number" [(ngModel)]="vitalsForm.temperature" name="temperature" required step="0.1" min="34" max="43"
+                       class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 font-bold bg-slate-50/50">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Pain Scale (0–10)</label>
+                <input type="number" [(ngModel)]="vitalsForm.painScale" name="painScale" min="0" max="10"
+                       class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 font-bold bg-slate-50/50">
+              </div>
+            </div>
+
+            <!-- Manual Override Toggle -->
+            <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" [(ngModel)]="vitalsForm.isManualOverride" name="isManualOverride" id="manualOverride"
+                       class="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 border-slate-300">
+                <label for="manualOverride" class="text-xs font-bold text-slate-700 cursor-pointer select-none">
+                  Manual Clinical Urgency Override
+                </label>
+              </div>
+
+              @if (vitalsForm.isManualOverride) {
+                <div class="space-y-2 pt-2 animate-fadeIn">
+                  <div>
+                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Override Urgency Level</label>
+                    <select [(ngModel)]="vitalsForm.overrideTriageLevel" name="overrideLevel"
+                            class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-xs font-bold bg-white focus:ring-2 focus:ring-teal-500">
+                      <option value="Red">🚨 Red (Emergency Priority)</option>
+                      <option value="Yellow">⚠️ Yellow (Urgent Priority)</option>
+                      <option value="Green">✅ Green (Routine Priority)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Clinical Override Justification *</label>
+                    <input type="text" [(ngModel)]="vitalsForm.overrideReason" name="overrideReason" required
+                           placeholder="e.g. Severe acute distress, respiratory stridor, diaphoresis..."
+                           class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-xs bg-white focus:ring-2 focus:ring-teal-500">
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Nurse Observation Notes -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Nurse Observation Notes</label>
+              <textarea [(ngModel)]="vitalsForm.nurseNotes" name="nurseNotes" rows="2"
+                        placeholder="Clinical observations, patient history remarks, chief complaint..."
+                        class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50/50 focus:ring-2 focus:ring-teal-500 focus:outline-none"></textarea>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="px-6 py-3.5 bg-slate-100 border-t border-slate-200 flex justify-end gap-2.5">
+            <button type="button" (click)="closeTriageModal()" [disabled]="isSubmitting()"
+                    class="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-200 transition">
+              Cancel
+            </button>
+            <button type="submit" [disabled]="isSubmitting()"
+                    class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-600/20 transition flex items-center gap-2">
+              @if (isSubmitting()) {
+                <span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <span>Saving Vitals...</span>
+              } @else {
+                <span>Submit & Activate in Queue &rarr;</span>
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 5: EMERGENCY WALK-IN INTAKE (PHONE MATCH & CODE-RED BYPASS)          -->
+  <!-- ========================================================================= -->
+  @if (showWalkInModal()) {
+    <div teleportToBody class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+      <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn">
+        <!-- Header -->
+        <div class="px-6 py-4 bg-amber-500 text-white flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center text-base">🚨</div>
+            <div>
+              <h3 class="text-base font-bold leading-tight">Emergency Walk-In Intake</h3>
+              <p class="text-xs text-amber-100">Auto-scoped to {{ auth.currentUser()?.nursingStationName || 'Station' }} Clinic</p>
+            </div>
+          </div>
+          <button (click)="closeWalkInModal()" class="w-7 h-7 rounded-lg text-amber-200 hover:text-white flex items-center justify-center transition font-bold text-lg">&times;</button>
+        </div>
+
+        @if (!walkInSuccessToken()) {
+          <form (ngSubmit)="submitWalkIn()">
+            <div class="p-5 sm:p-6 space-y-4">
+
+              <!-- Phone Number Input with Auto Patient Recognition -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Patient Phone Number *</label>
+                <div class="relative">
+                  <input type="tel" [(ngModel)]="walkInForm.phoneNumber" (input)="onWalkInPhoneChange()" name="walkInPhone" required
+                         placeholder="Enter 10-digit mobile number..."
+                         class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 bg-slate-50/50 font-medium">
+                </div>
+
+                <!-- Existing Patient Recognized Badge -->
+                @if (existingPatientMatch()) {
+                  <div class="mt-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-2 text-xs text-emerald-900 animate-fadeIn">
+                    <div class="flex items-center gap-1.5">
+                      <span>✓</span>
+                      <span><strong>Returning Patient:</strong> {{ existingPatientMatch()?.fullName }} ({{ existingPatientMatch()?.medicalRecordNumber || 'MRN On File' }})</span>
+                    </div>
+                    <span class="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded font-bold">Auto-filled</span>
+                  </div>
+                }
+              </div>
+
+              <!-- Full Name -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Patient Full Name *</label>
+                <input type="text" [(ngModel)]="walkInForm.fullName" name="walkInName" required placeholder="e.g. John Doe"
+                       class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 bg-slate-50/50 font-medium">
+              </div>
+
+              <!-- DOB & Gender -->
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Date of Birth *</label>
+                  <input type="date" [(ngModel)]="walkInForm.dateOfBirth" name="walkInDob" required
+                         class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-xs bg-slate-50/50 focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">Gender</label>
+                  <select [(ngModel)]="walkInForm.gender" name="walkInGender"
+                          class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-xs bg-slate-50/50 focus:ring-2 focus:ring-amber-500 font-medium">
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Assign to On-Duty Doctor -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Assign to On-Duty Doctor *</label>
+                <select [(ngModel)]="walkInForm.doctorId" name="walkInDoctor" required
+                        class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 bg-slate-50/50 font-bold text-slate-900">
+                  @for (doc of stats()?.doctors; track doc.doctorId) {
+                    <option [value]="doc.doctorId">
+                      Dr. {{ doc.doctorName }} ({{ doc.specialization }} · Room {{ doc.roomNumber }} - {{ doc.status }})
+                    </option>
+                  }
+                </select>
+              </div>
+
+              <!-- ⚡ IMMEDIATE CODE-RED EMERGENCY BYPASS TOGGLE -->
+              <div class="p-3.5 rounded-2xl border-2 transition space-y-2"
+                   [ngClass]="walkInForm.isEmergencyCodeRed ? 'bg-red-50 border-red-400 ring-2 ring-red-200' : 'bg-slate-50 border-slate-200'">
+                <label class="flex items-start gap-3 cursor-pointer select-none">
+                  <input type="checkbox" [(ngModel)]="walkInForm.isEmergencyCodeRed" name="isCodeRed"
+                         class="mt-1 w-5 h-5 rounded text-red-600 focus:ring-red-500 border-red-300">
+                  <div>
+                    <span class="text-xs font-bold flex items-center gap-1.5"
+                          [ngClass]="walkInForm.isEmergencyCodeRed ? 'text-red-900' : 'text-slate-700'">
+                      <span>⚡ Immediate Code-Red Emergency (Acute Collapse / Critical)</span>
+                    </span>
+                    <p class="text-[11px] mt-0.5"
+                       [ngClass]="walkInForm.isEmergencyCodeRed ? 'text-red-700 font-medium' : 'text-slate-400'">
+                      Check this if patient has severe acute trauma or respiratory/cardiac collapse. Vitals entry will be bypassed, status marked CTAS Red (Urgency Weight 100), and token pushed directly to POSITION #1 in doctor's queue!
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              <!-- Clinical Observation Remarks -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Emergency Remarks / Clinical Notes</label>
+                <textarea [(ngModel)]="walkInForm.clinicalNotes" name="walkInNotes" rows="2"
+                          placeholder="Brief chief complaint or presenting condition..."
+                          class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50/50 focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="px-6 py-3.5 bg-slate-100 border-t border-slate-200 flex justify-end gap-2.5">
+              <button type="button" (click)="closeWalkInModal()" [disabled]="isSubmitting()"
+                      class="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-200 transition">
+                Cancel
+              </button>
+              <button type="submit" [disabled]="isSubmitting()"
+                      class="px-5 py-2 rounded-xl text-xs font-bold shadow-md transition flex items-center gap-2"
+                      [ngClass]="walkInForm.isEmergencyCodeRed ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/30 animate-pulse' : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20'">
+                @if (isSubmitting()) {
+                  <span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  <span>Issuing Slip...</span>
+                } @else if (walkInForm.isEmergencyCodeRed) {
+                  <span>⚡ Issue Code-Red Slip (Priority #1) &rarr;</span>
+                } @else {
+                  <span>Issue Walk-in Slip &rarr;</span>
+                }
+              </button>
+            </div>
+          </form>
+        } @else {
+          <!-- Walk-in Success Slip -->
+          <div class="p-6 text-center space-y-4 animate-fadeIn">
+            <div class="w-14 h-14 rounded-full mx-auto flex items-center justify-center text-3xl font-bold"
+                 [ngClass]="walkInForm.isEmergencyCodeRed ? 'bg-red-100 text-red-600 ring-4 ring-red-200' : 'bg-emerald-100 text-emerald-600'">
+              {{ walkInForm.isEmergencyCodeRed ? '🚨' : '✓' }}
+            </div>
+
+            <div>
+              <h4 class="font-bold text-lg text-slate-900">
+                {{ walkInForm.isEmergencyCodeRed ? '⚡ Code-Red Token Issued!' : 'Walk-In Token Issued!' }}
+              </h4>
+              <p class="text-xs text-slate-500">
+                {{ walkInForm.isEmergencyCodeRed ? 'Patient placed at the ABSOLUTE FRONT of the queue' : 'Walk-in registration slip is active' }}
+              </p>
+            </div>
+
+            <div class="p-4 rounded-2xl border space-y-2"
+                 [ngClass]="walkInForm.isEmergencyCodeRed ? 'bg-red-50/70 border-red-200' : 'bg-slate-50 border-slate-200'">
+              <span class="font-mono font-bold text-3xl block"
+                    [ngClass]="walkInForm.isEmergencyCodeRed ? 'text-red-700' : 'text-teal-700'">
+                {{ walkInSuccessToken()?.tokenNumber }}
+              </span>
+              <p class="font-bold text-sm text-slate-900">{{ walkInSuccessToken()?.patientName }}</p>
+              <p class="text-xs text-slate-600">Assigned: Dr. {{ walkInSuccessToken()?.doctorName }} · Room {{ walkInSuccessToken()?.roomNumber }}</p>
+              @if (walkInForm.isEmergencyCodeRed) {
+                <div class="inline-block mt-1 px-3 py-1 rounded-full text-xs font-bold bg-red-600 text-white">
+                  URGENCY: CTAS RED (POSITION #1)
+                </div>
+              }
+            </div>
+
+            <div class="flex gap-2.5 justify-center pt-2">
+              <button (click)="closeWalkInModal()"
+                      class="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition">
+                Done
+              </button>
+              @if (!walkInForm.isEmergencyCodeRed) {
+                <button (click)="startTriageForWalkIn()"
+                        class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-xs transition">
+                  Record Vitals Immediately &rarr;
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>
