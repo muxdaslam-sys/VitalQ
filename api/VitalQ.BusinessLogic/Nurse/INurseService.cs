@@ -14,21 +14,7 @@ public interface INurseService
     Task<IEnumerable<PatientSearchResult>> SearchPatientsAsync(string query);
     #endregion
 
-    #region 2. Walk-In Registration & Identity Linking
-    /// <summary>
-    /// Registers a walk-in patient arriving in person and issues an MRN + User credentials.
-    /// </summary>
-    Task<PatientResponse> RegisterWalkInPatientAsync(WalkInRegisterRequest request);
-    #endregion
-
-    #region 3. Reception Desk Token Issuance
-    /// <summary>
-    /// Issues an atomic walk-in token at the clinic counter.
-    /// </summary>
-    Task<QueueTokenResponse> BookWalkInTokenAsync(BookTokenRequest request);
-    #endregion
-
-    #region 4. Clinical Triage & Vital Signs Intake
+    #region 2. Clinical Triage & Vital Signs Intake
     /// <summary>
     /// Lists patients booked today awaiting vital signs intake, filterable by Department or Station.
     /// </summary>
@@ -43,5 +29,37 @@ public interface INurseService
     /// Retrieves recorded vital signs and triage assessment for a consultation token.
     /// </summary>
     Task<TriageAssessmentResponse?> GetTriageAssessmentAsync(Guid tokenId);
+    #endregion
+
+    #region 5. Dashboard KPIs & Live Doctor Queues
+    /// <summary>
+    /// Aggregates today's OPD metrics and doctor live queue roster for the station.
+    /// </summary>
+    Task<NurseDashboardStatsResponse> GetDashboardStatsAsync(Guid? nursingStationId);
+
+    /// <summary>
+    /// Retrieves full live queue for a specific doctor with priority scores and triage vitals.
+    /// </summary>
+    Task<DoctorDetailedQueueResponse> GetDoctorQueueAsync(Guid doctorId);
+
+    /// <summary>
+    /// Retrieves all active tokens booked today for a patient.
+    /// </summary>
+    Task<IEnumerable<QueueTokenResponse>> GetPatientActiveTokensAsync(Guid patientId);
+
+    /// <summary>
+    /// Retrieves complete patient medical profile and visit history for the Full Details modal.
+    /// </summary>
+    Task<PatientDetailResponse> GetPatientDetailsAsync(Guid patientId);
+
+    /// <summary>
+    /// Computes real-time line position, wait estimates, and doctor queue visualizer for a patient token.
+    /// </summary>
+    Task<PatientQueuePositionResponse> GetPatientQueuePositionAsync(Guid tokenId);
+
+    /// <summary>
+    /// Registers or resolves existing patient, generates walk-in token, and optionally executes Code-Red emergency bypass.
+    /// </summary>
+    Task<QueueTokenResponse> ProcessEmergencyWalkInAsync(EmergencyWalkInBookingRequest request, Guid nurseUserId, Guid? nursingStationId);
     #endregion
 }

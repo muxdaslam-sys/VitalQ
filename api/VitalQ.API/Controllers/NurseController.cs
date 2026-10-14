@@ -37,70 +37,7 @@ public class NurseController : ControllerBase
 
     #endregion
 
-    #region 2. Walk-In Registration & Identity Linking
-
-    /// <summary>
-    /// Register a walk-in patient in-person at the clinic reception desk (POST /api/nurse/patients/walk-in).
-    /// </summary>
-    [HttpPost("patients/walk-in")]
-    public async Task<IActionResult> RegisterWalkIn([FromBody] WalkInRegisterRequest request)
-    {
-        try
-        {
-            var result = await _nurseService.RegisterWalkInPatientAsync(request);
-            return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (Exception)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while registering the walk-in patient." });
-        }
-    }
-
-    #endregion
-
-    #region 3. Reception Desk Token Issuance
-
-    /// <summary>
-    /// Issue a walk-in queue slip directly at the counter (POST /api/nurse/tokens/book).
-    /// </summary>
-    [HttpPost("tokens/book")]
-    public async Task<IActionResult> BookWalkInToken([FromBody] BookTokenRequest request)
-    {
-        try
-        {
-            var token = await _nurseService.BookWalkInTokenAsync(request);
-            await _notificationService.NotifyTokenBookedAsync(token);
-            return Ok(token);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (Exception)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while issuing the walk-in token." });
-        }
-    }
-
-    #endregion
-
-    #region 4. Clinical Triage & Vital Signs Intake
+    #region 2. Clinical Triage & Vital Signs Intake
 
     /// <summary>
     /// List patients booked today awaiting vital signs intake (GET /api/nurse/triage/pending?departmentId=...&nursingStationId=...).
@@ -108,6 +45,20 @@ public class NurseController : ControllerBase
     [HttpGet("triage/pending")]
     public async Task<IActionResult> GetPendingTriage([FromQuery] Guid? departmentId = null, [FromQuery] Guid? nursingStationId = null)
     {
+        // Enforce SBAC: If the caller is a Nurse, lock them exclusively to their assigned station
+        if (User.IsInRole("Nurse"))
+        {
+            var stationClaim = User.FindFirst("nursingStationId")?.Value;
+            if (Guid.TryParse(stationClaim, out var assignedStationId))
+            {
+                nursingStationId = assignedStationId;
+            }
+            else
+            {
+                return Forbid();
+            }
+        }
+
         var result = await _nurseService.GetPendingTriageQueueAsync(departmentId, nursingStationId);
         return Ok(result);
     }
@@ -120,6 +71,16 @@ public class NurseController : ControllerBase
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         Guid.TryParse(userIdStr, out var nurseUserId);
+
+        // Enforce SBAC: Stamp the assessment with the nurse's assigned station
+        if (User.IsInRole("Nurse"))
+        {
+            var stationClaim = User.FindFirst("nursingStationId")?.Value;
+            if (Guid.TryParse(stationClaim, out var assignedStationId))
+            {
+                request.NursingStationId = assignedStationId;
+            }
+        }
 
         try
         {
@@ -158,6 +119,136 @@ public class NurseController : ControllerBase
             return NotFound(new { message = "No triage assessment found for this token." });
         }
         return Ok(result);
+    }
+
+    #endregion
+
+    #region 5. Dashboard KPIs & Live Doctor Queues
+
+    /// <summary>
+    /// Aggregates today's clinic metrics and doctor live queue roster (GET /api/nurse/dashboard/stats).
+    /// </summary>
+    [HttpGet("dashboard/stats")]
+    public async Task<IActionResult> GetDashboardStats()
+    {
+        Guid? stationId = null;
+        if (User.IsInRole("Nurse"))
+        {
+            var stationClaim = User.FindFirst("nursingStationId")?.Value;
+            if (Guid.TryParse(stationClaim, out var parsedStationId))
+            {
+                stationId = parsedStationId;
+            }
+        }
+
+        var result = await _nurseService.GetDashboardStatsAsync(stationId);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Detailed live queue for a specific doctor with priority scores and full triage vitals (GET /api/nurse/doctors/{doctorId}/queue).
+    /// </summary>
+    [HttpGet("doctors/{doctorId:guid}/queue")]
+    public async Task<IActionResult> GetDoctorQueue(Guid doctorId)
+    {
+        try
+        {
+            var result = await _nurseService.GetDoctorQueueAsync(doctorId);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Retrieves active booked tokens today for a patient selected in search (GET /api/nurse/patients/{patientId}/tokens/today).
+    /// </summary>
+    [HttpGet("patients/{patientId:guid}/tokens/today")]
+    public async Task<IActionResult> GetPatientActiveTokens(Guid patientId)
+    {
+        var result = await _nurseService.GetPatientActiveTokensAsync(patientId);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Complete patient profile and historical visits for the Full Details modal (GET /api/nurse/patients/{patientId}/details).
+    /// </summary>
+    [HttpGet("patients/{patientId:guid}/details")]
+    public async Task<IActionResult> GetPatientDetails(Guid patientId)
+    {
+        try
+        {
+            var result = await _nurseService.GetPatientDetailsAsync(patientId);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Computes real-time line position, wait estimates, and doctor queue visualizer for a token (GET /api/nurse/tokens/{tokenId}/queue-position).
+    /// </summary>
+    [HttpGet("tokens/{tokenId:guid}/queue-position")]
+    public async Task<IActionResult> GetPatientQueuePosition(Guid tokenId)
+    {
+        try
+        {
+            var result = await _nurseService.GetPatientQueuePositionAsync(tokenId);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Enhanced walk-in intake with automatic patient deduplication and Code-Red bypass option (POST /api/nurse/tokens/walk-in-emergency).
+    /// </summary>
+    [HttpPost("tokens/walk-in-emergency")]
+    public async Task<IActionResult> ProcessEmergencyWalkIn([FromBody] EmergencyWalkInBookingRequest request)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        Guid.TryParse(userIdStr, out var nurseUserId);
+
+        Guid? stationId = null;
+        if (User.IsInRole("Nurse"))
+        {
+            var stationClaim = User.FindFirst("nursingStationId")?.Value;
+            if (Guid.TryParse(stationClaim, out var parsedStationId))
+            {
+                stationId = parsedStationId;
+            }
+        }
+
+        try
+        {
+            var token = await _nurseService.ProcessEmergencyWalkInAsync(request, nurseUserId, stationId);
+            await _notificationService.NotifyTokenBookedAsync(token);
+
+            if (request.IsEmergencyCodeRed)
+            {
+                await _notificationService.NotifyTriageCompletedAsync(token);
+            }
+
+            return Ok(token);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+        }
     }
 
     #endregion

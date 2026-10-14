@@ -98,135 +98,7 @@ public class NurseService : INurseService
 
     #endregion
 
-    #region 2. Walk-In Registration & Identity Linking
-
-    /// <summary>
-    /// Registers a walk-in patient in person at the reception desk.
-    /// Automatically provisions a User account (Password = DOB) so the patient can log into the Patient Portal later.
-    /// </summary>
-    public async Task<PatientResponse> RegisterWalkInPatientAsync(WalkInRegisterRequest request)
-    {
-        ValidateDateOfBirth(request.DateOfBirth);
-        var phone = NormalizePhone(request.PhoneNumber);
-        var dobPassword = request.DateOfBirth.ToString("ddMMyyyy");
-
-        // Ensure User account exists (so patient can log in later via Mobile/PC with Phone + DOB)
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == phone);
-        if (user == null)
-        {
-            user = new User
-            {
-                Id = Guid.NewGuid(),
-                Username = phone,
-                Password = dobPassword,
-                FullName = request.FullName.Trim(),
-                PhoneNumber = phone,
-                Role = "Patient",
-                IsActive = true,
-                CreatedAtUtc = DateTime.UtcNow
-            };
-            await _context.Users.AddAsync(user);
-        }
-
-        // Link primary UserId if this user account does not yet have a profile
-        var alreadyLinked = await _context.Patients.AnyAsync(p => p.UserId == user.Id);
-        Guid? linkedUserId = alreadyLinked ? null : user.Id;
-
-        // Create Medical Record
-        var patient = new Patient
-        {
-            Id = Guid.NewGuid(),
-            UserId = linkedUserId,
-            MedicalRecordNumber = MrnGenerator.Generate(),
-            FullName = request.FullName.Trim(),
-            PhoneNumber = phone,
-            DateOfBirth = request.DateOfBirth,
-            Gender = request.Gender.Trim(),
-            CreatedAtUtc = DateTime.UtcNow
-        };
-
-        await _context.Patients.AddAsync(patient);
-        await _context.SaveChangesAsync();
-
-        return new PatientResponse
-        {
-            Id = patient.Id,
-            UserId = patient.UserId,
-            MedicalRecordNumber = patient.MedicalRecordNumber,
-            FullName = patient.FullName,
-            PhoneNumber = patient.PhoneNumber,
-            DateOfBirth = patient.DateOfBirth,
-            Gender = patient.Gender,
-            CreatedAtUtc = patient.CreatedAtUtc
-        };
-    }
-
-    #endregion
-
-    #region 3. Reception Desk Token Issuance
-
-    /// <summary>
-    /// Issues an atomic walk-in consultation token at the clinic counter.
-    /// Assigns initial status 'Booked' and sets priority weights to 0 until vitals triage is completed.
-    /// </summary>
-    public async Task<QueueTokenResponse> BookWalkInTokenAsync(BookTokenRequest request)
-    {
-        var patient = await _context.Patients
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Id == request.PatientId)
-            ?? throw new KeyNotFoundException("Patient profile was not found.");
-
-        var doctor = await _context.Doctors
-            .AsNoTracking()
-            .Include(d => d.Department).ThenInclude(dept => dept.NursingStations)
-            .Include(d => d.User)
-            .FirstOrDefaultAsync(d => d.Id == request.DoctorId)
-            ?? throw new KeyNotFoundException("Doctor was not found.");
-
-        if (doctor.Status != "Available")
-            throw new InvalidOperationException($"Dr. {doctor.User.FullName} is currently not available ({doctor.Status}).");
-
-        if (doctor.DepartmentId != request.DepartmentId)
-            throw new ArgumentException("The doctor does not belong to the selected department.");
-
-        var today = DateTime.UtcNow.Date;
-        var alreadyBooked = await _context.QueueTokens
-            .AsNoTracking()
-            .AnyAsync(t => t.PatientId == patient.Id
-                        && t.DoctorId == doctor.Id
-                        && t.BookedAtUtc >= today
-                        && (t.Status == "Booked" || t.Status == "Waiting" || t.Status == "Called"));
-
-        if (alreadyBooked)
-        {
-            throw new InvalidOperationException($"Patient '{patient.FullName}' already has an active appointment with Dr. {doctor.User.FullName} today.");
-        }
-
-        // Atomic Token Sequence Generation
-        var tokenNumber = await TokenGenerator.GenerateAsync(_context, doctor.DepartmentId, doctor.Department.Code);
-
-        var queueToken = new QueueToken
-        {
-            Id = Guid.NewGuid(),
-            TokenNumber = tokenNumber,
-            PatientId = patient.Id,
-            DepartmentId = doctor.DepartmentId,
-            DoctorId = doctor.Id,
-            Status = "Booked",
-            BaseWeight = 0,
-            PriorityScore = 0,
-            BookedAtUtc = DateTime.UtcNow
-        };
-
-        await _context.QueueTokens.AddAsync(queueToken);
-        await _context.SaveChangesAsync();
-
-        return MapToTokenResponse(queueToken, patient, doctor);
-    }
-
-    #endregion
-
-    #region 4. Clinical Triage & Vital Signs Intake
+    #region 2. Clinical Triage & Vital Signs Intake
 
     /// <summary>
     /// Lists patients booked today awaiting vital signs intake.
@@ -523,6 +395,474 @@ public class NurseService : INurseService
             LocationFloor = stationFloor,
             NextStepInstruction = nextStepInstruction
         };
+    }
+
+    #endregion
+
+    #region 5. Dashboard KPIs & Live Doctor Queues
+
+    /// <summary>
+    /// Aggregates today's clinic metrics and live doctor roster with single-trip SQL aggregation.
+    /// </summary>
+    public async Task<NurseDashboardStatsResponse> GetDashboardStatsAsync(Guid? nursingStationId)
+    {
+        var todayUtc = DateTime.UtcNow.Date;
+        var tomorrowUtc = todayUtc.AddDays(1);
+
+        Guid? deptId = null;
+        if (nursingStationId.HasValue && nursingStationId.Value != Guid.Empty)
+        {
+            deptId = await _context.NursingStations
+                .AsNoTracking()
+                .Where(s => s.Id == nursingStationId.Value)
+                .Select(s => s.DepartmentId)
+                .FirstOrDefaultAsync();
+        }
+
+        // 1. Single aggregated query for today's tokens
+        var tokenQuery = _context.QueueTokens
+            .AsNoTracking()
+            .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc);
+
+        if (deptId.HasValue)
+        {
+            tokenQuery = tokenQuery.Where(t => t.DepartmentId == deptId.Value);
+        }
+
+        var tokenStats = await tokenQuery
+            .GroupBy(t => t.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var totalBookings = tokenStats.Sum(x => x.Count);
+        var totalCompleted = tokenStats.Where(x => x.Status == "Completed").Sum(x => x.Count);
+        var totalTriaged = tokenStats.Where(x => x.Status != "Booked" && x.Status != "Cancelled").Sum(x => x.Count);
+
+        // 2. Query doctors for the station's department
+        var doctorQuery = _context.Doctors
+            .AsNoTracking()
+            .Include(d => d.User)
+            .Where(d => d.User.IsActive);
+
+        if (deptId.HasValue)
+        {
+            doctorQuery = doctorQuery.Where(d => d.DepartmentId == deptId.Value);
+        }
+
+        var doctors = await doctorQuery
+            .OrderBy(d => d.User.FullName)
+            .ToListAsync();
+
+        var doctorsPresent = doctors.Count(d => d.Status == "Available" || d.Status == "Busy");
+        var doctorsAbsent = doctors.Count(d => d.Status == "OnLeave");
+
+        var doctorIds = doctors.Select(d => d.Id).ToList();
+
+        // 3. Single-trip fetch of active tokens by doctor to eliminate N+1 queries
+        var activeTokensByDoc = await _context.QueueTokens
+            .AsNoTracking()
+            .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && doctorIds.Contains(t.DoctorId))
+            .Select(t => new { t.DoctorId, t.TokenNumber, t.Status, t.CalledAtUtc })
+            .ToListAsync();
+
+        var doctorSummaries = doctors.Select(d =>
+        {
+            var docTokens = activeTokensByDoc.Where(t => t.DoctorId == d.Id).ToList();
+            var currentCalling = docTokens
+                .Where(t => t.Status == "Called")
+                .OrderByDescending(t => t.CalledAtUtc)
+                .Select(t => t.TokenNumber)
+                .FirstOrDefault();
+
+            return new DoctorQueueSummaryDto
+            {
+                DoctorId = d.Id,
+                DoctorName = d.User.FullName,
+                Specialization = d.Specialization,
+                RoomNumber = d.RoomNumber,
+                Status = d.Status,
+                CurrentCallingToken = currentCalling,
+                WaitingCount = docTokens.Count(t => t.Status == "Waiting"),
+                TotalAssignedToday = docTokens.Count
+            };
+        }).ToList();
+
+        return new NurseDashboardStatsResponse
+        {
+            TotalBookingsToday = totalBookings,
+            TotalTriagedToday = totalTriaged,
+            TotalCompletedToday = totalCompleted,
+            DoctorsPresent = doctorsPresent,
+            DoctorsAbsent = doctorsAbsent,
+            Doctors = doctorSummaries
+        };
+    }
+
+    /// <summary>
+    /// Retrieves full live queue for a specific doctor with priority scores and triage vitals.
+    /// </summary>
+    public async Task<DoctorDetailedQueueResponse> GetDoctorQueueAsync(Guid doctorId)
+    {
+        var doctor = await _context.Doctors
+            .AsNoTracking()
+            .Include(d => d.User)
+            .FirstOrDefaultAsync(d => d.Id == doctorId);
+
+        if (doctor == null)
+        {
+            throw new KeyNotFoundException($"Doctor with ID '{doctorId}' was not found.");
+        }
+
+        var todayUtc = DateTime.UtcNow.Date;
+        var tomorrowUtc = todayUtc.AddDays(1);
+
+        var tokens = await _context.QueueTokens
+            .AsNoTracking()
+            .Include(t => t.Patient)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NurseUser)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
+            .Where(t => t.DoctorId == doctorId && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Cancelled")
+            .OrderByDescending(t => t.Status == "Called")
+            .ThenByDescending(t => t.Status == "Waiting")
+            .ThenByDescending(t => t.PriorityScore)
+            .ThenBy(t => t.BookedAtUtc)
+            .ToListAsync();
+
+        var queueItems = tokens.Select(t => new DoctorQueueItemDto
+        {
+            TokenId = t.Id,
+            TokenNumber = t.TokenNumber,
+            PatientId = t.PatientId,
+            PatientName = t.Patient.FullName,
+            PhoneNumber = t.Patient.PhoneNumber,
+            Status = t.Status,
+            PriorityScore = t.PriorityScore,
+            TriageLevel = t.TriageAssessment?.TriageLevel,
+            BookedAtUtc = t.BookedAtUtc,
+            TriagedAtUtc = t.TriagedAtUtc,
+            CalledAtUtc = t.CalledAtUtc,
+            TriageAssessment = t.TriageAssessment != null ? new TriageAssessmentResponse
+            {
+                Id = t.TriageAssessment.Id,
+                QueueTokenId = t.TriageAssessment.QueueTokenId,
+                NurseUserId = t.TriageAssessment.NurseUserId,
+                NurseName = t.TriageAssessment.NurseUser?.FullName ?? string.Empty,
+                NursingStationId = t.TriageAssessment.NursingStationId,
+                StationName = t.TriageAssessment.NursingStation?.StationName,
+                SpO2 = t.TriageAssessment.SpO2,
+                SystolicBp = t.TriageAssessment.SystolicBp,
+                DiastolicBp = t.TriageAssessment.DiastolicBp,
+                HeartRate = t.TriageAssessment.HeartRate,
+                Temperature = t.TriageAssessment.Temperature,
+                PainScale = t.TriageAssessment.PainScale,
+                TriageLevel = t.TriageAssessment.TriageLevel,
+                IsManualOverride = t.TriageAssessment.IsManualOverride,
+                OverrideReason = t.TriageAssessment.OverrideReason,
+                NurseNotes = t.TriageAssessment.NurseNotes,
+                AssessedAtUtc = t.TriageAssessment.AssessedAtUtc
+            } : null
+        }).ToList();
+
+        return new DoctorDetailedQueueResponse
+        {
+            DoctorId = doctor.Id,
+            DoctorName = doctor.User.FullName,
+            Specialization = doctor.Specialization,
+            RoomNumber = doctor.RoomNumber,
+            Status = doctor.Status,
+            Queue = queueItems
+        };
+    }
+
+    /// <summary>
+    /// Retrieves all active tokens booked today for a patient.
+    /// </summary>
+    public async Task<IEnumerable<QueueTokenResponse>> GetPatientActiveTokensAsync(Guid patientId)
+    {
+        var todayUtc = DateTime.UtcNow.Date;
+        var tomorrowUtc = todayUtc.AddDays(1);
+
+        var tokens = await _context.QueueTokens
+            .AsNoTracking()
+            .Include(t => t.Patient)
+            .Include(t => t.Doctor).ThenInclude(d => d.User)
+            .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(t => t.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
+            .Where(t => t.PatientId == patientId && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Cancelled")
+            .OrderByDescending(t => t.BookedAtUtc)
+            .ToListAsync();
+
+        return tokens.Select(t => MapToTokenResponse(t, t.Patient, t.Doctor));
+    }
+
+    /// <summary>
+    /// Retrieves complete patient medical profile and visit history for the Full Details modal.
+    /// </summary>
+    public async Task<PatientDetailResponse> GetPatientDetailsAsync(Guid patientId)
+    {
+        var patient = await _context.Patients
+            .AsNoTracking()
+            .Where(p => p.Id == patientId)
+            .Select(p => new PatientDetailResponse
+            {
+                Id = p.Id,
+                MedicalRecordNumber = p.MedicalRecordNumber,
+                FullName = p.FullName,
+                PhoneNumber = p.PhoneNumber,
+                DateOfBirth = p.DateOfBirth,
+                Gender = p.Gender,
+                IsRegisteredAppUser = p.UserId.HasValue,
+                CreatedAtUtc = p.CreatedAtUtc,
+                TotalCompletedBookings = p.QueueTokens.Count(t => t.Status == "Completed"),
+                Visits = p.QueueTokens
+                    .OrderByDescending(t => t.BookedAtUtc)
+                    .Select(t => new PatientVisitHistoryDto
+                    {
+                        TokenId = t.Id,
+                        TokenNumber = t.TokenNumber,
+                        PatientId = t.PatientId,
+                        PatientName = p.FullName,
+                        DepartmentName = t.Department.Name,
+                        DoctorName = t.Doctor.User.FullName,
+                        Status = t.Status,
+                        TriageLevel = t.TriageAssessment != null ? t.TriageAssessment.TriageLevel : null,
+                        BookedAtUtc = t.BookedAtUtc,
+                        TriagedAtUtc = t.TriagedAtUtc,
+                        CalledAtUtc = t.CalledAtUtc,
+                        CompletedAtUtc = t.CompletedAtUtc,
+                        ConsultationNotes = t.ConsultationNotes
+                    })
+                    .ToList()
+            })
+            .FirstOrDefaultAsync();
+
+        if (patient == null)
+        {
+            throw new KeyNotFoundException($"Patient with ID '{patientId}' was not found.");
+        }
+
+        return patient;
+    }
+
+    /// <summary>
+    /// Computes real-time line position, wait estimates, and doctor queue visualizer for a patient token.
+    /// </summary>
+    public async Task<PatientQueuePositionResponse> GetPatientQueuePositionAsync(Guid tokenId)
+    {
+        var todayUtc = DateTime.UtcNow.Date;
+        var tomorrowUtc = todayUtc.AddDays(1);
+
+        var token = await _context.QueueTokens
+            .AsNoTracking()
+            .Include(t => t.Patient)
+            .Include(t => t.Doctor).ThenInclude(d => d.User)
+            .Include(t => t.TriageAssessment)
+            .FirstOrDefaultAsync(t => t.Id == tokenId);
+
+        if (token == null)
+        {
+            throw new KeyNotFoundException($"Token with ID '{tokenId}' was not found.");
+        }
+
+        // Fetch all active tokens for this doctor today
+        var docTokens = await _context.QueueTokens
+            .AsNoTracking()
+            .Include(t => t.Patient)
+            .Include(t => t.TriageAssessment)
+            .Where(t => t.DoctorId == token.DoctorId && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Cancelled")
+            .OrderByDescending(t => t.Status == "Called")
+            .ThenByDescending(t => t.Status == "Waiting")
+            .ThenByDescending(t => t.PriorityScore)
+            .ThenBy(t => t.BookedAtUtc)
+            .ToListAsync();
+
+        var queueItems = docTokens.Select(t => new DoctorQueueItemDto
+        {
+            TokenId = t.Id,
+            TokenNumber = t.TokenNumber,
+            PatientId = t.PatientId,
+            PatientName = t.Patient.FullName,
+            PhoneNumber = t.Patient.PhoneNumber,
+            Status = t.Status,
+            PriorityScore = t.PriorityScore,
+            TriageLevel = t.TriageAssessment?.TriageLevel,
+            BookedAtUtc = t.BookedAtUtc,
+            TriagedAtUtc = t.TriagedAtUtc,
+            CalledAtUtc = t.CalledAtUtc
+        }).ToList();
+
+        // Calculate position among Waiting tokens
+        var waitingTokens = docTokens.Where(t => t.Status == "Waiting").ToList();
+        var indexInWaiting = waitingTokens.FindIndex(t => t.Id == tokenId);
+
+        int queuePosition = 0;
+        int patientsAhead = 0;
+
+        if (token.Status == "Called")
+        {
+            queuePosition = 1;
+            patientsAhead = 0;
+        }
+        else if (indexInWaiting >= 0)
+        {
+            var isSomeoneCalled = docTokens.Any(t => t.Status == "Called");
+            patientsAhead = indexInWaiting + (isSomeoneCalled ? 1 : 0);
+            queuePosition = patientsAhead + 1;
+        }
+
+        var currentlyCalling = docTokens
+            .Where(t => t.Status == "Called")
+            .OrderByDescending(t => t.CalledAtUtc)
+            .Select(t => t.TokenNumber)
+            .FirstOrDefault();
+
+        var avgMinutes = token.Doctor?.AvgConsultationMinutes ?? 15;
+        var estWait = patientsAhead * avgMinutes;
+
+        return new PatientQueuePositionResponse
+        {
+            TokenId = token.Id,
+            TokenNumber = token.TokenNumber,
+            PatientId = token.PatientId,
+            PatientName = token.Patient.FullName,
+            Status = token.Status,
+            QueuePosition = queuePosition,
+            PatientsAhead = patientsAhead,
+            EstimatedWaitMinutes = estWait,
+            DoctorId = token.DoctorId,
+            DoctorName = token.Doctor?.User?.FullName ?? "Doctor",
+            Specialization = token.Doctor?.Specialization ?? "General",
+            RoomNumber = token.Doctor?.RoomNumber ?? "Room",
+            CurrentlyCallingToken = currentlyCalling,
+            TriageLevel = token.TriageAssessment?.TriageLevel,
+            PriorityScore = token.PriorityScore,
+            DoctorLiveQueue = queueItems
+        };
+    }
+
+    /// <summary>
+    /// Registers or resolves existing patient, generates walk-in token, and optionally executes Code-Red emergency bypass.
+    /// </summary>
+    public async Task<QueueTokenResponse> ProcessEmergencyWalkInAsync(EmergencyWalkInBookingRequest request, Guid nurseUserId, Guid? nursingStationId)
+    {
+        ValidateDateOfBirth(request.DateOfBirth);
+        var phone = NormalizePhone(request.PhoneNumber);
+
+        // 1. Resolve or create Patient
+        var patient = await _context.Patients.FirstOrDefaultAsync(p => p.PhoneNumber == phone);
+        if (patient == null)
+        {
+            var dobPassword = request.DateOfBirth.ToString("ddMMyyyy");
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == phone);
+            if (user == null)
+            {
+                user = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Username = phone,
+                    Password = dobPassword,
+                    FullName = request.FullName.Trim(),
+                    PhoneNumber = phone,
+                    Role = "Patient",
+                    IsActive = true,
+                    CreatedAtUtc = DateTime.UtcNow
+                };
+                await _context.Users.AddAsync(user);
+            }
+
+            patient = new Patient
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                MedicalRecordNumber = MrnGenerator.Generate(),
+                FullName = request.FullName.Trim(),
+                PhoneNumber = phone,
+                DateOfBirth = request.DateOfBirth,
+                Gender = request.Gender.Trim(),
+                CreatedAtUtc = DateTime.UtcNow
+            };
+            await _context.Patients.AddAsync(patient);
+            await _context.SaveChangesAsync();
+        }
+
+        // 2. Validate Doctor
+        var doctor = await _context.Doctors
+            .Include(d => d.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(d => d.User)
+            .FirstOrDefaultAsync(d => d.Id == request.DoctorId)
+            ?? throw new KeyNotFoundException("Doctor was not found.");
+
+        // 3. Generate atomic token sequence
+        var tokenNumber = await TokenGenerator.GenerateAsync(_context, doctor.DepartmentId, doctor.Department.Code);
+
+        // 4. If Code-Red Emergency Bypass:
+        if (request.IsEmergencyCodeRed)
+        {
+            // Set directly to Waiting with maximum priority score (1000) to jump to front of doctor's queue
+            var token = new QueueToken
+            {
+                Id = Guid.NewGuid(),
+                TokenNumber = tokenNumber,
+                PatientId = patient.Id,
+                DepartmentId = doctor.DepartmentId,
+                DoctorId = doctor.Id,
+                Status = "Waiting",
+                BaseWeight = 100, // CTAS Red maximum weight
+                PriorityScore = 1000, // Top priority
+                BookedAtUtc = DateTime.UtcNow,
+                TriagedAtUtc = DateTime.UtcNow,
+                ConsultationNotes = request.ClinicalNotes
+            };
+
+            var assessment = new TriageAssessment
+            {
+                Id = Guid.NewGuid(),
+                QueueTokenId = token.Id,
+                NurseUserId = nurseUserId,
+                NursingStationId = nursingStationId,
+                SpO2 = 0,
+                SystolicBp = 0,
+                DiastolicBp = 0,
+                HeartRate = 0,
+                Temperature = 0,
+                PainScale = 10,
+                TriageLevel = "Red",
+                IsManualOverride = true,
+                OverrideReason = "⚡ Immediate Emergency Walk-In Bypass (Acute Distress)",
+                NurseNotes = request.ClinicalNotes,
+                AssessedAtUtc = DateTime.UtcNow
+            };
+
+            await _context.QueueTokens.AddAsync(token);
+            await _context.TriageAssessments.AddAsync(assessment);
+            await _context.SaveChangesAsync();
+
+            token.TriageAssessment = assessment;
+            return MapToTokenResponse(token, patient, doctor);
+        }
+        else
+        {
+            // Standard Booked status awaiting vitals
+            var token = new QueueToken
+            {
+                Id = Guid.NewGuid(),
+                TokenNumber = tokenNumber,
+                PatientId = patient.Id,
+                DepartmentId = doctor.DepartmentId,
+                DoctorId = doctor.Id,
+                Status = "Booked",
+                BaseWeight = 0,
+                PriorityScore = 0,
+                BookedAtUtc = DateTime.UtcNow,
+                ConsultationNotes = request.ClinicalNotes
+            };
+
+            await _context.QueueTokens.AddAsync(token);
+            await _context.SaveChangesAsync();
+
+            return MapToTokenResponse(token, patient, doctor);
+        }
     }
 
     #endregion
