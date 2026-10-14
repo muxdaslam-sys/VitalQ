@@ -1,20 +1,6 @@
 /**
- * ============================================================================
- * SERVICE: SignalRService (Hospital Real-Time WebSocket Synchronization)
- * ============================================================================
- * 
- * PURPOSE:
- * Serves as the central real-time reactive bridge between the ASP.NET Core 8
- * SignalR Hub (/hubs/queue) and Angular components.
- * 
- * ARCHITECTURE & ZERO-POLLING PHILOSOPHY:
- * Instead of subjecting the backend to aggressive `setInterval` polling loops,
- * all clients maintain a persistent WebSocket channel:
- * 1. Low Latency (<1ms): Instant alerts when doctors call patients.
- * 2. Bandwidth Efficiency: 95% reduction in server network overhead.
- * 3. Automatic Resiliency: Configured with exponential reconnection backoffs
- *    ([0, 2000, 5000, 10000, 30000ms]) for intermittent hospital mobile Wi-Fi.
- * ============================================================================
+ * SignalRService: Manages persistent WebSocket connection to the SignalR Hub (/hubs/queue)
+ * and exposes reactive RxJS event streams for real-time queue synchronization.
  */
 
 import { Injectable } from '@angular/core';

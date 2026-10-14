@@ -1,32 +1,6 @@
 /**
- * ============================================================================
- * INTERCEPTOR: jwtInterceptor (Bearer Token Injection & Infinite-Loop-Safe 401 Recovery)
- * ============================================================================
- * 
- * PURPOSE:
- * Transparently manages HTTP transport security for all outbound REST API requests.
- * 
- * RESPONSIBILITIES & HIGH-CONCURRENCY SAFEGUARDS:
- * 1. Secure Cookie Transport:
- *    Always sets `withCredentials: true` so the browser delivers the HttpOnly
- *    refresh cookie for authentication endpoints.
- * 
- * 2. Authorization Header Injection:
- *    Attaches `Authorization: Bearer <token>` for all protected endpoints
- *    (skips public authentication endpoints `/auth/login` and `/auth/register`).
- * 
- * 3. Infinite Retry Loop Defense (`X-VitalQ-Retry`):
- *    If an API request is retried with a fresh token and STILL returns 401 (e.g. account
- *    deactivated, revoked role permissions, or corrupt session), the interceptor
- *    detects the `X-VitalQ-Retry` flag and immediately aborts the cycle.
- *    This completely eliminates client-side infinite request loops that could flood
- *    the hospital backend or lock the browser.
- * 
- * 4. Deduplicated Token Recovery:
- *    Delegates 401 recovery to `authService.refreshToken()`, which utilizes an
- *    internal RxJS `shareReplay` mutex so multiple parallel failures share ONE
- *    single network round-trip.
- * ============================================================================
+ * jwtInterceptor: Attaches Bearer authentication headers and withCredentials to outbound HTTP requests,
+ * and recovers gracefully from 401 Unauthorized responses with deduplicated refresh token rotation.
  */
 
 import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';

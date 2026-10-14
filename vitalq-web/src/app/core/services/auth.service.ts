@@ -1,30 +1,6 @@
 /**
- * ============================================================================
- * SERVICE: AuthService (Identity, JWT Authentication & Session Manager)
- * ============================================================================
- * 
- * PURPOSE:
- * Manages user authentication, token storage, concurrent-safe token refresh,
- * session revocation, and role-based route navigation.
- * 
- * HIGH-CONCURRENCY ARCHITECTURE (10K+ USERS):
- * 1. Mutex Deduplication (`shareReplay`):
- *    When a 60-minute JWT expires, multiple parallel clinical API requests
- *    (e.g., patient list, vitals, department status) may fail with 401 at the
- *    exact same millisecond. Without a mutex, the client fires multiple refresh
- *    requests, causing token-rotation race conditions that log the user out.
- *    `refreshInProgress$` ensures exactly ONE refresh request hits the network,
- *    and all other waiting requests safely subscribe to that single result.
- * 
- * 2. Centralized Session Invalidation:
- *    If the 7-day refresh token has genuinely expired or been revoked, cleanup
- *    and redirection to `/login` happens here ONCE, preventing multiple parallel
- *    logout bursts from individual failed requests.
- * 
- * 3. Reactive State Signals:
- *    Angular 19 Signals (`currentUser`, `accessToken`, `isAuthenticated`, `userRole`)
- *    provide zero-overhead, glitch-free UI reactivity across all hospital portals.
- * ============================================================================
+ * AuthService: Manages user authentication, token storage, token rotation,
+ * session revocation, and role-based navigation.
  */
 
 import { Injectable, inject, signal, computed } from '@angular/core';

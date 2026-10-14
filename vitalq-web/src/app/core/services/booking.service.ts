@@ -1,19 +1,6 @@
 /**
- * ============================================================================
- * SERVICE: BookingService (OPD Appointment & Sequence Slip Engine)
- * ============================================================================
- * 
- * PURPOSE:
- * Manages the patient outpatient booking lifecycle, connecting the frontend to
- * the high-concurrency booking endpoints in the ASP.NET Core 8 Web API.
- * 
- * CORE RESPONSIBILITIES:
- * 1. Fetching available clinical departments and their floor locations.
- * 2. Querying on-duty specialists for a selected department.
- * 3. Booking daily consultation slips with atomic sequence numbers (e.g., CARD-1003-001).
- * 4. Retrieving today's active tokens for live tracking.
- * 5. In-app appointment cancellations with ownership validation and audit trail.
- * ============================================================================
+ * BookingService: Manages outpatient consultation booking, department and doctor lookups,
+ * and token cancellation.
  */
 
 import { Injectable, inject } from '@angular/core';

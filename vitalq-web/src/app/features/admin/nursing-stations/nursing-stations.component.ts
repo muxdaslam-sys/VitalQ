@@ -1,22 +1,5 @@
 /**
- * ============================================================================
- * COMPONENT: NursingStationsComponent (Triage Desks & Clinical Intake)
- * ============================================================================
- * 
- * PURPOSE:
- * Allows Hospital Administrators to:
- * 1. View all physical nursing triage desks and their assigned department.
- * 2. Search desks by name or floor location.
- * 3. Filter by department assignment and operational status (Active vs Inactive).
- * 4. Register new triage desks across hospital wings.
- * 5. Reassign desks to different departments or floor locations.
- * 
- * ARCHITECTURAL DESIGN:
- * - Angular 19 Signals for clean, high-performance reactivity.
- * - Reactive computed filtering pipeline.
- * - ToastService alerts replacing browser alerts.
- * - Submission safety (isSubmitting) to guard against duplicate API calls.
- * ============================================================================
+ * NursingStationsComponent: Admin management for nursing triage desks, floor locations, and department links.
  */
 
 import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';

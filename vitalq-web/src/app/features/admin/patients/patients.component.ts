@@ -1,17 +1,5 @@
 /**
- * ============================================================================
- * COMPONENT: PatientsComponent (Outpatient Directory & Booking History)
- * ============================================================================
- * 
- * FEATURES:
- * 1. Displays up to 50 patients from the database.
- * 2. Real-time 300ms debounced search by MRN, Name, or Phone Number across the DB.
- * 3. Quick Clear Search (✖) button.
- * 4. Gender category filter chips ('All', 'Male', 'Female').
- * 5. Click ANY patient row to view full details, total completed bookings, and past bookings.
- * 6. One-click "Copy MRN" to clipboard with toast notification.
- * 7. Automatic calculation of patient age from Date of Birth.
- * ============================================================================
+ * PatientsComponent: Admin patient directory with debounced search, MRN lookup, and visit history modal.
  */
 
 import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';

@@ -1,22 +1,5 @@
 /**
- * ============================================================================
- * COMPONENT: DepartmentsComponent (Clinical Departments & Token Prefixes)
- * ============================================================================
- * 
- * PURPOSE:
- * Allows Hospital Administrators to:
- * 1. View all clinical departments (Cardiology, Orthopedics, Pediatrics, etc.).
- * 2. Search by department name or token prefix code (e.g. CARD, ORTH).
- * 3. Filter by Active vs Inactive operational status.
- * 4. Register new clinical departments and designate unique prefix codes.
- * 5. Update department floor/wing locations and toggle active routing.
- * 
- * ARCHITECTURAL DESIGN:
- * - Angular 19 Signals for clean, high-performance reactivity.
- * - Reactive computed filtering for instantaneous searching without network latency.
- * - In-app ToastService alerts replacing browser alerts.
- * - Double-click protection with isSubmitting state.
- * ============================================================================
+ * DepartmentsComponent: Admin management for clinical departments, floor assignments, and token codes.
  */
 
 import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';

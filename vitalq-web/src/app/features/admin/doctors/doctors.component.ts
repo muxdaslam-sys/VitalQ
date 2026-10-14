@@ -1,23 +1,5 @@
 /**
- * ============================================================================
- * COMPONENT: DoctorsComponent (Physician Fleet & Duty Roster Management)
- * ============================================================================
- * 
- * PURPOSE:
- * Allows Hospital Administrators to:
- * 1. View all doctors, their department, room location, and consultation duration.
- * 2. Search dynamically across names, specialties, room numbers, and usernames.
- * 3. Filter by clinical department and on-duty availability status.
- * 4. Register new physicians and generate login credentials (Username + Password).
- * 5. Update profiles or reset physician credentials if forgotten.
- * 6. Toggle on-duty availability (Available vs OnLeave) with one click.
- * 
- * ARCHITECTURAL DESIGN:
- * - Built on Angular 19 Signals for simple, robust reactivity.
- * - Uses computed() for instantaneous multi-criteria client-side filtering.
- * - Integrates ToastService for professional non-blocking medical feedback.
- * - Enforces submission safety via isSubmitting signal to eliminate double-clicks.
- * ============================================================================
+ * DoctorsComponent: Admin management for physician directory, schedules, room assignments, and credentials.
  */
 
 import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';

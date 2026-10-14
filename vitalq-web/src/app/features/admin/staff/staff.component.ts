@@ -1,23 +1,5 @@
 /**
- * ============================================================================
- * COMPONENT: StaffComponent (Hospital Staff & Clinical Users Management)
- * ============================================================================
- * 
- * PURPOSE:
- * Allows Hospital Administrators to:
- * 1. View all system users (Triage Nurses and System Administrators).
- * 2. Search dynamically across names, phone numbers, and staff IDs/usernames.
- * 3. Filter by role (All, Nurse, Admin) and account status (Active, Suspended).
- * 4. Create new clinical accounts with initial login credentials.
- * 5. Update user information and reset passwords if personnel lose credentials.
- * 6. Activate or Suspend staff access with one click.
- * 
- * ARCHITECTURE:
- * - Angular 19 Signals for clean reactive state management.
- * - Reactive computed filter pipeline.
- * - Non-blocking ToastService notifications instead of browser alerts.
- * - Submission safety (isSubmitting) to guard against duplicate API calls.
- * ============================================================================
+ * StaffComponent: Admin management for hospital staff accounts (nurses and administrators) and access control.
  */
 
 import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';

@@ -1,19 +1,6 @@
 /**
- * ============================================================================
- * GUARD: authGuard (Functional Role-Based Route Protection)
- * ============================================================================
- * 
- * PURPOSE:
- * Enforces authentication and role-based access control across all portal routes.
- * 
- * BEHAVIOR:
- * 1. If unauthenticated: Intercepts navigation and returns a UrlTree pointing to
- *    `/login` with the attempted destination preserved in `returnUrl`.
- * 2. If authenticated: Inspects the user's role against `allowedRoles`.
- *    - If role matches: Allows route activation (`return true`).
- *    - If role does NOT match (e.g. Patient attempting to access `/admin`):
- *      Redirects them to their appropriate authorized portal (e.g. `/patient`).
- * ============================================================================
+ * authGuard: Functional route guard enforcing authentication and role-based access control.
+ * Unauthenticated users are redirected to /login; unauthorized roles are redirected to their default portal.
  */
 
 import { CanActivateFn, Router } from '@angular/router';

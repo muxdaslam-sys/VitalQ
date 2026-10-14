@@ -1,21 +1,6 @@
 /**
- * ============================================================================
- * SERVICE: QueueService (Doctor Priority Queue & Consultation Engine)
- * ============================================================================
- * 
- * PURPOSE:
- * Manages the live clinical consultation queue for attending physicians.
- * Powers the doctor's priority list, patient calling, skipping, re-queueing,
- * and consultation completion.
- * 
- * CONCURRENCY & CLINICAL LOGIC:
- * - Dynamic Priority Sorting: Patients are ordered by calculated PriorityScore
- *   (Base CTAS Urgency Weight + Aging Minutes).
- * - Concurrency Protection: `callNext` utilizes SQL RowVersion optimistic locking
- *   to ensure two staff members cannot call or mutate the same token simultaneously.
- * - Broadcasts: Every mutation triggers real-time SignalR broadcasts updating
- *   the patient's mobile slip and waiting room displays.
- * ============================================================================
+ * QueueService: Manages live doctor consultation queues, patient calling,
+ * skipping, requeueing, and consultation completion.
  */
 
 import { Injectable, inject } from '@angular/core';

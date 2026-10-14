@@ -2,26 +2,8 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 
 /**
- * ============================================================================
- * APPLICATION ROUTING TABLE (VITALQ WEB)
- * ============================================================================
- * 
- * ARCHITECTURE PRINCIPLES:
- * 1. Role-First Clean URL Hierarchy:
- *    - /login   -> Public Dual-Mode Entry (Hospital Staff & Patients)
- *    - /patient -> Unified Patient OPD Smart Hub & Live Queue Tracker
- *    - /doctor  -> Doctor Consultation & Dynamic Priority Queue Console
- *    - /nurse   -> Nursing Station & Clinical Triage Intake Desk
- *    - /admin   -> Hospital Administration & System Configuration Suite
- * 
- * 2. Clean Single-Segment URLs:
- *    - /patient, /doctor, and /nurse have single-segment URLs (no redundant /dashboard nesting).
- *    - Modal drawers on the patient side use query parameters:
- *      e.g. /patient?action=book, /patient?action=family, /patient?token=CARD-104
- * 
- * 3. Multi-Page Structure for Admin:
- *    - /admin maintains distinct resource sub-routes with a persistent sidebar.
- * ============================================================================
+ * Application routing table for VitalQ Web.
+ * Maps role-based routes for authentication, patient portal, doctor console, nurse station, and admin suite.
  */
 export const routes: Routes = [
   // Default entry route redirects to Unified Login

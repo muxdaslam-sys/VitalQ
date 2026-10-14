@@ -1,19 +1,6 @@
 /**
- * ============================================================================
- * SERVICE: PatientService (Medical Profile & Family Management Engine)
- * ============================================================================
- * 
- * PURPOSE:
- * Manages patient demographic profiles, family dependent relationships, and
- * lifelong outpatient consultation history.
- * 
- * CLINICAL ARCHITECTURE:
- * - Shared Phone Number: A parent or guardian can register multiple family members
- *   under their primary mobile account for login convenience.
- * - Distinct Medical Record Numbers (MRN): Each dependent is assigned a unique,
- *   permanent MRN (e.g. MRN-20261003-ABCD) ensuring medical diagnoses, vitals,
- *   and prescriptions remain confidential and strictly segregated.
- * ============================================================================
+ * PatientService: Manages patient demographic profiles, family dependents,
+ * and outpatient visit history.
  */
 
 import { Injectable, inject } from '@angular/core';

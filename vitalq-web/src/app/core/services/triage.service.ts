@@ -1,22 +1,6 @@
 /**
- * ============================================================================
- * SERVICE: TriageService (Automated CTAS Clinical Triage Engine)
- * ============================================================================
- * 
- * PURPOSE:
- * Bridges the nurse intake station with the backend CTAS clinical evaluation engine.
- * Records patient vital signs, applies Canadian Triage & Acuity Scale rules,
- * supports manual clinical overrides with audit logging, and tracks the pending
- * triage intake queue.
- * 
- * CTAS CLINICAL RULES & THRESHOLDS:
- * - Red (Emergency, Base Weight 100): Immediate life threat.
- *   SpO2 < 90% | Systolic BP < 90 or > 180 | Heart Rate > 120 or < 40 | Temp > 39.5°C | Pain = 10
- * - Yellow (Urgent, Base Weight 50): Target evaluation < 30 minutes.
- *   SpO2 <= 94% | Systolic BP >= 160 | Heart Rate >= 100 | Temp >= 38.0°C | Pain >= 6
- * - Green (Routine, Base Weight 10): Stable outpatient consultation.
- *   Normal vital signs within standard clinical ranges.
- * ============================================================================
+ * TriageService: Manages clinical vitals entry, CTAS evaluation submission,
+ * manual triage overrides, and pending triage queue retrieval.
  */
 
 import { Injectable, inject } from '@angular/core';
