@@ -11,6 +11,16 @@ using VitalQ.Entities.Models;
 
 namespace VitalQ.BusinessLogic.Services;
 
+/// <summary>
+/// SERVICE: Authentication & Security Token Lifecycle
+/// 
+/// PURPOSE:
+/// High-throughput JWT authentication and refresh token management:
+/// - Section 1: Authentication & Session Initiation (Login verification)
+/// - Section 2: Token Lifecycle & Rotation (Sliding refresh token rotation)
+/// - Section 3: Session Revocation & Sign-out (Atomic EF Core 8 ExecuteUpdateAsync session termination)
+/// - Section 4: Cryptographic Token Generation & Internal Helpers (Cached HMAC-SHA256 signing)
+/// </summary>
 public class AuthService : IAuthService
 {
     private readonly VitalQDbContext _context;
@@ -35,7 +45,8 @@ public class AuthService : IAuthService
         _audience = _config["Jwt:Audience"] ?? "VitalQ";
     }
 
-    // 1. LOGIN
+    #region 1. Authentication & Session Initiation
+
     public async Task<AuthResponse?> LoginAsync(LoginRequest request)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u =>
@@ -51,7 +62,10 @@ public class AuthService : IAuthService
         return response;
     }
 
-    // 2. REFRESH TOKEN (Rotation)
+    #endregion
+
+    #region 2. Token Lifecycle & Rotation
+
     public async Task<AuthResponse?> RefreshTokenAsync(string refreshToken)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u =>
@@ -67,34 +81,47 @@ public class AuthService : IAuthService
         return response;
     }
 
-    // 3. LOGOUT (Session Invalidation)
+    #endregion
+
+    #region 3. Session Revocation & Sign-out
+
+    /// <summary>
+    /// Revokes active session by User ID.
+    /// Uses atomic EF Core 8 ExecuteUpdateAsync for zero-allocation SQL execution.
+    /// </summary>
     public async Task<bool> RevokeRefreshTokenAsync(Guid userId)
     {
-        var user = await _context.Users.FindAsync(userId);
-        if (user == null) return false;
+        var rowsAffected = await _context.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(u => u.RefreshToken, (string?)null)
+                .SetProperty(u => u.RefreshTokenExpiryTime, (DateTime?)null));
 
-        user.RefreshToken = null;
-        user.RefreshTokenExpiryTime = null;
-        await _context.SaveChangesAsync();
-        return true;
+        return rowsAffected > 0;
     }
 
     /// <summary>
     /// Revokes refresh token directly using the token string from the HttpOnly cookie.
-    /// Uses the IX_Users_RefreshToken filtered B-tree index for O(1) instantaneous lookup.
+    /// Uses the IX_Users_RefreshToken filtered B-tree index and atomic ExecuteUpdateAsync.
     /// </summary>
     public async Task<bool> RevokeByRefreshTokenAsync(string refreshToken)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
-        if (user == null) return false;
+        var rowsAffected = await _context.Users
+            .Where(u => u.RefreshToken == refreshToken)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(u => u.RefreshToken, (string?)null)
+                .SetProperty(u => u.RefreshTokenExpiryTime, (DateTime?)null));
 
-        user.RefreshToken = null;
-        user.RefreshTokenExpiryTime = null;
-        await _context.SaveChangesAsync();
-        return true;
+        return rowsAffected > 0;
     }
 
-    // 4. CENTRAL JWT GENERATOR (Single source of truth across the entire system)
+    #endregion
+
+    #region 4. Cryptographic Token Generation & Internal Helpers
+
+    /// <summary>
+    /// Centralized single source of truth for generating JWT access tokens & refresh tokens.
+    /// </summary>
     public AuthResponse GenerateToken(User user)
     {
         var accessToken = CreateJwtToken(user);
@@ -112,7 +139,6 @@ public class AuthService : IAuthService
         };
     }
 
-    // --- PRIVATE HELPERS ---
     private string CreateJwtToken(User user)
     {
         var claims = new[]
@@ -144,4 +170,6 @@ public class AuthService : IAuthService
         IsActive = user.IsActive,
         CreatedAtUtc = user.CreatedAtUtc
     };
+
+    #endregion
 }
