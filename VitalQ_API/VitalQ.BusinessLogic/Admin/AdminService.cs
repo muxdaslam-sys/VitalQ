@@ -6,6 +6,17 @@ using VitalQ.Entities.Models;
 
 namespace VitalQ.BusinessLogic.Services;
 
+/// <summary>
+/// SERVICE: Hospital Administration & Staff Governance
+/// 
+/// PURPOSE:
+/// Powers all administrative workflows across clinical and operational departments:
+/// - Section 1: Staff & Admin Account Management (Admin & Nurse credentials)
+/// - Section 2: Doctor Roster & Practice Profile (Doctor accounts, schedules, availability status)
+/// - Section 3: Clinical Department Management (OPD departments, token counters, floor maps)
+/// - Section 4: Nursing Station Management (Triage desks & intake stations)
+/// - Section 5: Patient Directory & Clinical Lookup (B-Tree indexed lookup of patient charts & visit history)
+/// </summary>
 public class AdminService : IAdminService
 {
     private readonly VitalQDbContext _context;
@@ -15,199 +26,10 @@ public class AdminService : IAdminService
         _context = context;
     }
 
-    /// <summary>
-    /// Creates both a User account and a Doctor profile row.
-    /// Stores the password in plain text as requested.
-    /// </summary>
-    public async Task<DoctorResponse> CreateDoctorAsync(CreateDoctorRequest request)
-    {
-        // 1. Verify that the requested Department exists
-        var department = await _context.Departments.FindAsync(request.DepartmentId);
-        if (department == null)
-        {
-            throw new ArgumentException($"Department with ID '{request.DepartmentId}' does not exist.");
-        }
-
-        // 2. Ensure Username is not already taken
-        var usernameExists = await _context.Users.AnyAsync(u => u.Username == request.Username);
-        if (usernameExists)
-        {
-            throw new InvalidOperationException($"Username '{request.Username}' is already in use.");
-        }
-
-        // 3. Ensure Phone Number is not already taken
-        var phoneExists = await _context.Users.AnyAsync(u => u.PhoneNumber == request.PhoneNumber);
-        if (phoneExists)
-        {
-            throw new InvalidOperationException($"Phone number '{request.PhoneNumber}' is already in use.");
-        }
-
-        // 4. Create the User account (Role = 'Doctor', plain text password)
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            Username = request.Username,
-            Password = request.Password, // Plain password directly as requested
-            FullName = request.FullName,
-            PhoneNumber = request.PhoneNumber,
-            Role = "Doctor",
-            IsActive = true,
-            CreatedAtUtc = DateTime.UtcNow
-        };
-
-        // 5. Create the Doctor profile linked to the User and Department
-        var doctor = new Doctor
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            DepartmentId = department.Id,
-            Specialization = request.Specialization,
-            RoomNumber = request.RoomNumber,
-            Status = "Available",
-            AvgConsultationMinutes = request.AvgConsultationMinutes,
-            CreatedAtUtc = DateTime.UtcNow
-        };
-
-        await _context.Users.AddAsync(user);
-        await _context.Doctors.AddAsync(doctor);
-        await _context.SaveChangesAsync();
-
-        return new DoctorResponse
-        {
-            Id = doctor.Id,
-            UserId = user.Id,
-            DoctorName = user.FullName,
-            Username = user.Username,
-            Password = user.Password,
-            DepartmentId = department.Id,
-            DepartmentName = department.Name,
-            Specialization = doctor.Specialization,
-            RoomNumber = doctor.RoomNumber,
-            Status = doctor.Status,
-            AvgConsultationMinutes = doctor.AvgConsultationMinutes,
-            CreatedAtUtc = doctor.CreatedAtUtc
-        };
-    }
-
-    public async Task<IEnumerable<DoctorResponse>> GetAllDoctorsAsync()
-    {
-        return await _context.Doctors
-            .AsNoTracking()
-            .Include(d => d.User)
-            .Include(d => d.Department)
-            .Select(d => new DoctorResponse
-            {
-                Id = d.Id,
-                UserId = d.UserId,
-                DoctorName = d.User.FullName,
-                Username = d.User.Username,
-                Password = d.User.Password,
-                DepartmentId = d.DepartmentId,
-                DepartmentName = d.Department.Name,
-                Specialization = d.Specialization,
-                RoomNumber = d.RoomNumber,
-                Status = d.Status,
-                AvgConsultationMinutes = d.AvgConsultationMinutes,
-                CreatedAtUtc = d.CreatedAtUtc
-            })
-            .ToListAsync();
-    }
-
-    public async Task<DoctorResponse> UpdateDoctorStatusAsync(Guid doctorId, UpdateDoctorStatusRequest request)
-    {
-        var doctor = await _context.Doctors
-            .Include(d => d.User)
-            .Include(d => d.Department)
-            .FirstOrDefaultAsync(d => d.Id == doctorId);
-
-        if (doctor == null)
-        {
-            throw new KeyNotFoundException($"Doctor with ID '{doctorId}' not found.");
-        }
-
-        doctor.Status = request.Status;
-        await _context.SaveChangesAsync();
-
-        return new DoctorResponse
-        {
-            Id = doctor.Id,
-            UserId = doctor.UserId,
-            DoctorName = doctor.User.FullName,
-            Username = doctor.User.Username,
-            Password = doctor.User.Password,
-            DepartmentId = doctor.DepartmentId,
-            DepartmentName = doctor.Department.Name,
-            Specialization = doctor.Specialization,
-            RoomNumber = doctor.RoomNumber,
-            Status = doctor.Status,
-            AvgConsultationMinutes = doctor.AvgConsultationMinutes,
-            CreatedAtUtc = doctor.CreatedAtUtc
-        };
-    }
-
-    public async Task<DoctorResponse> UpdateDoctorAsync(Guid doctorId, UpdateDoctorRequest request)
-    {
-        var doctor = await _context.Doctors
-            .Include(d => d.User)
-            .Include(d => d.Department)
-            .FirstOrDefaultAsync(d => d.Id == doctorId);
-
-        if (doctor == null)
-        {
-            throw new KeyNotFoundException($"Doctor with ID '{doctorId}' not found.");
-        }
-
-        // 1. Verify requested department exists
-        var department = await _context.Departments.FindAsync(request.DepartmentId);
-        if (department == null)
-        {
-            throw new ArgumentException($"Department with ID '{request.DepartmentId}' does not exist.");
-        }
-
-        // 2. Update User details if provided
-        if (!string.IsNullOrWhiteSpace(request.FullName))
-        {
-            doctor.User.FullName = request.FullName.Trim();
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
-        {
-            doctor.User.PhoneNumber = request.PhoneNumber.Trim();
-        }
-
-        if (!string.IsNullOrWhiteSpace(request.Password))
-        {
-            doctor.User.Password = request.Password.Trim();
-        }
-
-        // 3. Update Doctor profile details
-        doctor.DepartmentId = request.DepartmentId;
-        doctor.Specialization = request.Specialization.Trim();
-        doctor.RoomNumber = request.RoomNumber.Trim();
-        doctor.Status = request.Status;
-        doctor.AvgConsultationMinutes = request.AvgConsultationMinutes;
-
-        await _context.SaveChangesAsync();
-
-        return new DoctorResponse
-        {
-            Id = doctor.Id,
-            UserId = doctor.UserId,
-            DoctorName = doctor.User.FullName,
-            Username = doctor.User.Username,
-            Password = doctor.User.Password,
-            DepartmentId = department.Id,
-            DepartmentName = department.Name,
-            Specialization = doctor.Specialization,
-            RoomNumber = doctor.RoomNumber,
-            Status = doctor.Status,
-            AvgConsultationMinutes = doctor.AvgConsultationMinutes,
-            CreatedAtUtc = doctor.CreatedAtUtc
-        };
-    }
+    #region 1. Staff & Admin Account Management
 
     /// <summary>
-    /// Creates an Admin user account with plain text password.
+    /// Creates an Admin or Nurse staff user account with plain text password as requested.
     /// </summary>
     public async Task<StaffUserResponse> CreateAdminUserAsync(CreateUserRequest request)
     {
@@ -307,9 +129,211 @@ public class AdminService : IAdminService
         };
     }
 
-    // ==========================================
-    // DEPARTMENT MANAGEMENT
-    // ==========================================
+    #endregion
+
+    #region 2. Doctor Roster & Practice Profile
+
+    /// <summary>
+    /// Creates both a User account and a Doctor profile row.
+    /// Stores the password in plain text as requested.
+    /// Uses zero-tracking Department check for optimal memory management.
+    /// </summary>
+    public async Task<DoctorResponse> CreateDoctorAsync(CreateDoctorRequest request)
+    {
+        // 1. Zero-tracking check that the requested Department exists
+        var department = await _context.Departments
+            .AsNoTracking()
+            .Select(d => new { d.Id, d.Name })
+            .FirstOrDefaultAsync(d => d.Id == request.DepartmentId);
+
+        if (department == null)
+        {
+            throw new ArgumentException($"Department with ID '{request.DepartmentId}' does not exist.");
+        }
+
+        // 2. Ensure Username is not already taken
+        var usernameExists = await _context.Users.AnyAsync(u => u.Username == request.Username);
+        if (usernameExists)
+        {
+            throw new InvalidOperationException($"Username '{request.Username}' is already in use.");
+        }
+
+        // 3. Ensure Phone Number is not already taken
+        var phoneExists = await _context.Users.AnyAsync(u => u.PhoneNumber == request.PhoneNumber);
+        if (phoneExists)
+        {
+            throw new InvalidOperationException($"Phone number '{request.PhoneNumber}' is already in use.");
+        }
+
+        // 4. Create the User account (Role = 'Doctor', plain text password)
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Username = request.Username,
+            Password = request.Password, // Plain password directly as requested
+            FullName = request.FullName,
+            PhoneNumber = request.PhoneNumber,
+            Role = "Doctor",
+            IsActive = true,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        // 5. Create the Doctor profile linked to the User and Department
+        var doctor = new Doctor
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            DepartmentId = department.Id,
+            Specialization = request.Specialization,
+            RoomNumber = request.RoomNumber,
+            Status = "Available",
+            AvgConsultationMinutes = request.AvgConsultationMinutes,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        await _context.Users.AddAsync(user);
+        await _context.Doctors.AddAsync(doctor);
+        await _context.SaveChangesAsync();
+
+        return new DoctorResponse
+        {
+            Id = doctor.Id,
+            UserId = user.Id,
+            DoctorName = user.FullName,
+            Username = user.Username,
+            Password = user.Password,
+            DepartmentId = department.Id,
+            DepartmentName = department.Name,
+            Specialization = doctor.Specialization,
+            RoomNumber = doctor.RoomNumber,
+            Status = doctor.Status,
+            AvgConsultationMinutes = doctor.AvgConsultationMinutes,
+            CreatedAtUtc = doctor.CreatedAtUtc
+        };
+    }
+
+    public async Task<IEnumerable<DoctorResponse>> GetAllDoctorsAsync()
+    {
+        return await _context.Doctors
+            .AsNoTracking()
+            .Select(d => new DoctorResponse
+            {
+                Id = d.Id,
+                UserId = d.UserId,
+                DoctorName = d.User.FullName,
+                Username = d.User.Username,
+                Password = d.User.Password,
+                DepartmentId = d.DepartmentId,
+                DepartmentName = d.Department.Name,
+                Specialization = d.Specialization,
+                RoomNumber = d.RoomNumber,
+                Status = d.Status,
+                AvgConsultationMinutes = d.AvgConsultationMinutes,
+                CreatedAtUtc = d.CreatedAtUtc
+            })
+            .ToListAsync();
+    }
+
+    public async Task<DoctorResponse> UpdateDoctorAsync(Guid doctorId, UpdateDoctorRequest request)
+    {
+        var doctor = await _context.Doctors
+            .Include(d => d.User)
+            .Include(d => d.Department)
+            .FirstOrDefaultAsync(d => d.Id == doctorId);
+
+        if (doctor == null)
+        {
+            throw new KeyNotFoundException($"Doctor with ID '{doctorId}' not found.");
+        }
+
+        // 1. Zero-tracking check that requested department exists
+        var department = await _context.Departments
+            .AsNoTracking()
+            .Select(d => new { d.Id, d.Name })
+            .FirstOrDefaultAsync(d => d.Id == request.DepartmentId);
+
+        if (department == null)
+        {
+            throw new ArgumentException($"Department with ID '{request.DepartmentId}' does not exist.");
+        }
+
+        // 2. Update User details if provided
+        if (!string.IsNullOrWhiteSpace(request.FullName))
+        {
+            doctor.User.FullName = request.FullName.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.PhoneNumber))
+        {
+            doctor.User.PhoneNumber = request.PhoneNumber.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Password))
+        {
+            doctor.User.Password = request.Password.Trim();
+        }
+
+        // 3. Update Doctor profile details
+        doctor.DepartmentId = request.DepartmentId;
+        doctor.Specialization = request.Specialization.Trim();
+        doctor.RoomNumber = request.RoomNumber.Trim();
+        doctor.Status = request.Status;
+        doctor.AvgConsultationMinutes = request.AvgConsultationMinutes;
+
+        await _context.SaveChangesAsync();
+
+        return new DoctorResponse
+        {
+            Id = doctor.Id,
+            UserId = doctor.UserId,
+            DoctorName = doctor.User.FullName,
+            Username = doctor.User.Username,
+            Password = doctor.User.Password,
+            DepartmentId = department.Id,
+            DepartmentName = department.Name,
+            Specialization = doctor.Specialization,
+            RoomNumber = doctor.RoomNumber,
+            Status = doctor.Status,
+            AvgConsultationMinutes = doctor.AvgConsultationMinutes,
+            CreatedAtUtc = doctor.CreatedAtUtc
+        };
+    }
+
+    public async Task<DoctorResponse> UpdateDoctorStatusAsync(Guid doctorId, UpdateDoctorStatusRequest request)
+    {
+        var doctor = await _context.Doctors
+            .Include(d => d.User)
+            .Include(d => d.Department)
+            .FirstOrDefaultAsync(d => d.Id == doctorId);
+
+        if (doctor == null)
+        {
+            throw new KeyNotFoundException($"Doctor with ID '{doctorId}' not found.");
+        }
+
+        doctor.Status = request.Status;
+        await _context.SaveChangesAsync();
+
+        return new DoctorResponse
+        {
+            Id = doctor.Id,
+            UserId = doctor.UserId,
+            DoctorName = doctor.User.FullName,
+            Username = doctor.User.Username,
+            Password = doctor.User.Password,
+            DepartmentId = doctor.DepartmentId,
+            DepartmentName = doctor.Department.Name,
+            Specialization = doctor.Specialization,
+            RoomNumber = doctor.RoomNumber,
+            Status = doctor.Status,
+            AvgConsultationMinutes = doctor.AvgConsultationMinutes,
+            CreatedAtUtc = doctor.CreatedAtUtc
+        };
+    }
+
+    #endregion
+
+    #region 3. Clinical Department Management
 
     public async Task<DepartmentResponse> CreateDepartmentAsync(CreateDepartmentRequest request)
     {
@@ -329,7 +353,7 @@ public class AdminService : IAdminService
             Name = request.Name.Trim(),
             Code = codeUpper,
             LocationFloor = request.LocationFloor.Trim(),
-            LastTokenNumber = 0, // Starts at 0!
+            LastTokenNumber = 0,
             IsActive = true,
             CreatedAtUtc = DateTime.UtcNow
         };
@@ -393,23 +417,27 @@ public class AdminService : IAdminService
         };
     }
 
-    // ==========================================
-    // NURSING STATION MANAGEMENT
-    // ==========================================
+    #endregion
+
+    #region 4. Nursing Station Management
 
     public async Task<NursingStationResponse> CreateNursingStationAsync(CreateNursingStationRequest request)
     {
         string? departmentName = null;
 
-        // 1. If DepartmentId is supplied, verify it exists
+        // 1. Zero-tracking check that Department exists if supplied
         if (request.DepartmentId.HasValue)
         {
-            var department = await _context.Departments.FindAsync(request.DepartmentId.Value);
-            if (department == null)
+            var dept = await _context.Departments
+                .AsNoTracking()
+                .Select(d => new { d.Id, d.Name })
+                .FirstOrDefaultAsync(d => d.Id == request.DepartmentId.Value);
+
+            if (dept == null)
             {
-                throw new ArgumentException($"Department with ID '{request.DepartmentId}' does not exist.");
+                throw new ArgumentException($"Department with ID '{request.DepartmentId.Value}' does not exist.");
             }
-            departmentName = department.Name;
+            departmentName = dept.Name;
         }
 
         // 2. Create the Nursing Station
@@ -440,7 +468,6 @@ public class AdminService : IAdminService
     {
         var query = _context.NursingStations
             .AsNoTracking()
-            .Include(s => s.Department)
             .AsQueryable();
 
         if (departmentId.HasValue)
@@ -477,12 +504,16 @@ public class AdminService : IAdminService
         string? departmentName = null;
         if (request.DepartmentId.HasValue)
         {
-            var department = await _context.Departments.FindAsync(request.DepartmentId.Value);
-            if (department == null)
+            var dept = await _context.Departments
+                .AsNoTracking()
+                .Select(d => new { d.Id, d.Name })
+                .FirstOrDefaultAsync(d => d.Id == request.DepartmentId.Value);
+
+            if (dept == null)
             {
-                throw new ArgumentException($"Department with ID '{request.DepartmentId}' does not exist.");
+                throw new ArgumentException($"Department with ID '{request.DepartmentId.Value}' does not exist.");
             }
-            departmentName = department.Name;
+            departmentName = dept.Name;
         }
 
         station.StationName = request.StationName.Trim();
@@ -503,10 +534,14 @@ public class AdminService : IAdminService
         };
     }
 
-    // ==========================================
-    // PATIENT DIRECTORY & VISIT HISTORY
-    // ==========================================
+    #endregion
 
+    #region 5. Patient Directory & Clinical Lookup
+
+    /// <summary>
+    /// Searches patients using B-Tree index-routed predicates.
+    /// Limited strictly to 50 records to prevent memory exhaustion on large datasets.
+    /// </summary>
     public async Task<IEnumerable<PatientDetailResponse>> GetPatientDirectoryAsync(string? search = null)
     {
         var query = _context.Patients
@@ -611,4 +646,6 @@ public class AdminService : IAdminService
             })
             .FirstOrDefaultAsync();
     }
+
+    #endregion
 }

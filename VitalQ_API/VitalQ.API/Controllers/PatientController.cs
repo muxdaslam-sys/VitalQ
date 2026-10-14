@@ -12,13 +12,10 @@ namespace VitalQ.API.Controllers;
 /// Route: /api/patient
 /// 
 /// PURPOSE:
-/// Serves all HTTP requests from the patient's mobile phone browser and PC desktop portal.
-/// Powers:
-/// 1. Self-Registration (/api/patient/self-register)
-/// 2. Family Members Management (/api/patient/family)
-/// 3. Booking Doctor Appointments (/api/patient/bookings)
-/// 4. Live Queue Tracking & ETA (/api/patient/bookings/active)
-/// 5. Consultation & Diagnosis History (/api/patient/history)
+/// Serves all HTTP requests from the patient's mobile phone browser and PC desktop portal:
+/// - Section 1: Demographics & Family Profiles (Self-registration, family members, profile management)
+/// - Section 2: Appointment Booking & Live Queue Tracking (Slots booking, active tokens, cancellation)
+/// - Section 3: Consultation & Clinical History (Batch and individual encounter records)
 /// </summary>
 [ApiController]
 [Route("api/patient")]
@@ -32,6 +29,8 @@ public class PatientController : ControllerBase
         _patientService = patientService;
         _notificationService = notificationService;
     }
+
+    #region 1. Demographics & Family Profiles
 
     /// <summary>
     /// ENDPOINT: POST /api/patient/self-register
@@ -60,17 +59,14 @@ public class PatientController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            // E.g., Account with this phone already exists
             return Conflict(new { message = ex.Message });
         }
         catch (ArgumentException ex)
         {
-            // E.g., Invalid DOB or malformed phone number
             return BadRequest(new { message = ex.Message });
         }
         catch (DbUpdateException)
         {
-            // Database unique constraint violation fallback
             return Conflict(new { message = "An account with this phone number already exists." });
         }
     }
@@ -78,7 +74,6 @@ public class PatientController : ControllerBase
     /// <summary>
     /// ENDPOINT: GET /api/patient/family
     /// Returns all patient profiles registered under the user's family mobile number.
-    /// Used by the booking wizard to pick which family member is visiting the clinic.
     /// </summary>
     [Authorize(Roles = "Patient")]
     [HttpGet("family")]
@@ -124,42 +119,47 @@ public class PatientController : ControllerBase
     }
 
     /// <summary>
-    /// ENDPOINT: GET /api/patient/history
-    /// Retrieves past completed outpatient encounters and doctor advice for the user and their family.
-    /// 
-    /// OPTIMIZATION NOTE:
-    /// Uses a single indexed batch query. Eliminates Task.WhenAll to guarantee 100% thread safety
-    /// and prevent DbContext concurrency exceptions.
+    /// ENDPOINT: GET /api/patient/profile/{id}
+    /// Retrieves a patient demographic profile by ID.
     /// </summary>
-    [Authorize(Roles = "Patient")]
-    [HttpGet("history")]
-    public async Task<IActionResult> GetMyVisitHistory()
+    [Authorize(Roles = "Patient,Nurse,Admin,Doctor")]
+    [HttpGet("profile/{id:guid}")]
+    public async Task<IActionResult> GetProfile(Guid id)
     {
-        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!Guid.TryParse(userIdStr, out var currentUserId))
-            return Unauthorized();
-
-        var family = await _patientService.GetMyFamilyMembersAsync(currentUserId);
-        if (!family.Any())
-            return Ok(Enumerable.Empty<PatientVisitHistoryDto>());
-
-        var familyIds = family.Select(m => m.Id);
-        var combined = await _patientService.GetFamilyVisitHistoryAsync(familyIds);
-
-        return Ok(combined);
+        var patient = await _patientService.GetPatientByIdAsync(id);
+        if (patient == null)
+        {
+            return NotFound(new { message = $"Patient with ID {id} was not found." });
+        }
+        return Ok(patient);
     }
 
     /// <summary>
-    /// ENDPOINT: GET /api/patient/history/{patientId}
-    /// Retrieves past visit history for a specific individual patient ID.
+    /// ENDPOINT: PUT /api/patient/profile/{id}
+    /// Updates patient demographic details.
     /// </summary>
-    [Authorize(Roles = "Patient,Nurse,Doctor,Admin")]
-    [HttpGet("history/{patientId:guid}")]
-    public async Task<IActionResult> GetPatientVisitHistory(Guid patientId)
+    [Authorize(Roles = "Patient,Nurse,Admin")]
+    [HttpPut("profile/{id:guid}")]
+    public async Task<IActionResult> UpdateProfile(Guid id, [FromBody] UpdatePatientRequest request)
     {
-        var history = await _patientService.GetPatientVisitHistoryAsync(patientId);
-        return Ok(history);
+        try
+        {
+            var result = await _patientService.UpdatePatientAsync(id, request);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
+
+    #endregion
+
+    #region 2. Appointment Booking & Live Queue Tracking
 
     /// <summary>
     /// ENDPOINT: POST /api/patient/bookings
@@ -298,42 +298,43 @@ public class PatientController : ControllerBase
         }
     }
 
+    #endregion
+
+    #region 3. Consultation & Clinical History
+
     /// <summary>
-    /// ENDPOINT: GET /api/patient/profile/{id}
-    /// Retrieves a patient demographic profile by ID.
+    /// ENDPOINT: GET /api/patient/history
+    /// Retrieves past completed outpatient encounters and doctor advice for the user and their family.
     /// </summary>
-    [Authorize(Roles = "Patient,Nurse,Admin,Doctor")]
-    [HttpGet("profile/{id:guid}")]
-    public async Task<IActionResult> GetProfile(Guid id)
+    [Authorize(Roles = "Patient")]
+    [HttpGet("history")]
+    public async Task<IActionResult> GetMyVisitHistory()
     {
-        var patient = await _patientService.GetPatientByIdAsync(id);
-        if (patient == null)
-        {
-            return NotFound(new { message = $"Patient with ID {id} was not found." });
-        }
-        return Ok(patient);
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdStr, out var currentUserId))
+            return Unauthorized();
+
+        var family = await _patientService.GetMyFamilyMembersAsync(currentUserId);
+        if (!family.Any())
+            return Ok(Enumerable.Empty<PatientVisitHistoryDto>());
+
+        var familyIds = family.Select(m => m.Id);
+        var combined = await _patientService.GetFamilyVisitHistoryAsync(familyIds);
+
+        return Ok(combined);
     }
 
     /// <summary>
-    /// ENDPOINT: PUT /api/patient/profile/{id}
-    /// Updates patient demographic details.
+    /// ENDPOINT: GET /api/patient/history/{patientId}
+    /// Retrieves past visit history for a specific individual patient ID.
     /// </summary>
-    [Authorize(Roles = "Patient,Nurse,Admin")]
-    [HttpPut("profile/{id:guid}")]
-    public async Task<IActionResult> UpdateProfile(Guid id, [FromBody] UpdatePatientRequest request)
+    [Authorize(Roles = "Patient,Nurse,Doctor,Admin")]
+    [HttpGet("history/{patientId:guid}")]
+    public async Task<IActionResult> GetPatientVisitHistory(Guid patientId)
     {
-        try
-        {
-            var result = await _patientService.UpdatePatientAsync(id, request);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var history = await _patientService.GetPatientVisitHistoryAsync(patientId);
+        return Ok(history);
     }
+
+    #endregion
 }

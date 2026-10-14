@@ -5,6 +5,18 @@ using VitalQ.Entities.DTOs;
 
 namespace VitalQ.API.Controllers;
 
+/// <summary>
+/// CONTROLLER: Hospital Administration & Staff Governance API
+/// Route: /api/admin
+/// 
+/// PURPOSE:
+/// Exposes administrative endpoints for hospital supervisors:
+/// - Section 1: Staff & Admin Account Management
+/// - Section 2: Doctor Roster & Practice Profile
+/// - Section 3: Clinical Department Management
+/// - Section 4: Nursing Station Management
+/// - Section 5: Patient Directory & Clinical Lookup
+/// </summary>
 [Authorize(Roles = "Admin")]
 [ApiController]
 [Route("api/admin")]
@@ -17,9 +29,7 @@ public class AdminController : ControllerBase
         _adminService = adminService;
     }
 
-    // ==========================================
-    // ADMIN / STAFF USER CREATION
-    // ==========================================
+    #region 1. Staff & Admin Account Management
 
     /// <summary>
     /// List all staff and admin accounts with their credentials (GET /api/admin/users).
@@ -46,9 +56,9 @@ public class AdminController : ControllerBase
         {
             return Conflict(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return StatusCode(500, new { message = "An error occurred while creating the user.", details = ex.Message });
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while creating the user account." });
         }
     }
 
@@ -67,18 +77,18 @@ public class AdminController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return StatusCode(500, new { message = "An error occurred while updating the user.", details = ex.Message });
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while updating the user account." });
         }
     }
 
-    // ==========================================
-    // DOCTOR MANAGEMENT
-    // ==========================================
+    #endregion
+
+    #region 2. Doctor Roster & Practice Profile
 
     /// <summary>
-    /// List all doctors with their user and department details.
+    /// List all doctors with their user and department details (GET /api/admin/doctors).
     /// </summary>
     [HttpGet("doctors")]
     public async Task<IActionResult> GetDoctors()
@@ -106,14 +116,14 @@ public class AdminController : ControllerBase
         {
             return Conflict(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return StatusCode(500, new { message = "An error occurred while creating the doctor.", details = ex.Message });
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while creating the doctor profile." });
         }
     }
 
     /// <summary>
-    /// Update doctor details (PUT /api/admin/doctors/{id})
+    /// Update doctor details (PUT /api/admin/doctors/{id}).
     /// </summary>
     [HttpPut("doctors/{id}")]
     public async Task<IActionResult> UpdateDoctor(Guid id, [FromBody] UpdateDoctorRequest request)
@@ -131,14 +141,14 @@ public class AdminController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return StatusCode(500, new { message = "An error occurred while updating the doctor.", details = ex.Message });
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while updating the doctor profile." });
         }
     }
 
     /// <summary>
-    /// Quick toggle between Available and OnLeave (§07 Admin portal).
+    /// Quick toggle between Available and OnLeave (PATCH /api/admin/doctors/{id}/status).
     /// </summary>
     [HttpPatch("doctors/{id}/status")]
     public async Task<IActionResult> ToggleDoctorStatus(Guid id, [FromBody] UpdateDoctorStatusRequest request)
@@ -152,14 +162,18 @@ public class AdminController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while updating doctor status." });
+        }
     }
 
-    // ==========================================
-    // DEPARTMENT MANAGEMENT
-    // ==========================================
+    #endregion
+
+    #region 3. Clinical Department Management
 
     /// <summary>
-    /// List all departments (GET /api/admin/departments)
+    /// List all departments (GET /api/admin/departments).
     /// </summary>
     [HttpGet("departments")]
     public async Task<IActionResult> GetDepartments()
@@ -169,7 +183,7 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new department with unique code prefix (POST /api/admin/departments)
+    /// Create a new department with unique code prefix (POST /api/admin/departments).
     /// </summary>
     [HttpPost("departments")]
     public async Task<IActionResult> CreateDepartment([FromBody] CreateDepartmentRequest request)
@@ -183,14 +197,14 @@ public class AdminController : ControllerBase
         {
             return Conflict(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return StatusCode(500, new { message = "An error occurred while creating the department.", details = ex.Message });
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while creating the department." });
         }
     }
 
     /// <summary>
-    /// Update department details (PUT /api/admin/departments/{id})
+    /// Update department details (PUT /api/admin/departments/{id}).
     /// </summary>
     [HttpPut("departments/{id}")]
     public async Task<IActionResult> UpdateDepartment(Guid id, [FromBody] UpdateDepartmentRequest request)
@@ -204,18 +218,18 @@ public class AdminController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return StatusCode(500, new { message = "An error occurred while updating the department.", details = ex.Message });
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while updating the department." });
         }
     }
 
-    // ==========================================
-    // NURSING STATION MANAGEMENT
-    // ==========================================
+    #endregion
+
+    #region 4. Nursing Station Management
 
     /// <summary>
-    /// List all nursing stations, optionally filtered by department (GET /api/admin/nursing-stations?departmentId=...)
+    /// List all nursing stations, optionally filtered by department (GET /api/admin/nursing-stations?departmentId=...).
     /// </summary>
     [HttpGet("nursing-stations")]
     public async Task<IActionResult> GetNursingStations([FromQuery] Guid? departmentId = null)
@@ -225,7 +239,7 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new nursing desk (POST /api/admin/nursing-stations)
+    /// Create a new nursing desk (POST /api/admin/nursing-stations).
     /// </summary>
     [HttpPost("nursing-stations")]
     public async Task<IActionResult> CreateNursingStation([FromBody] CreateNursingStationRequest request)
@@ -239,14 +253,14 @@ public class AdminController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return StatusCode(500, new { message = "An error occurred while creating the nursing station.", details = ex.Message });
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while creating the nursing station." });
         }
     }
 
     /// <summary>
-    /// Update nursing desk details (PUT /api/admin/nursing-stations/{id})
+    /// Update nursing desk details (PUT /api/admin/nursing-stations/{id}).
     /// </summary>
     [HttpPut("nursing-stations/{id}")]
     public async Task<IActionResult> UpdateNursingStation(Guid id, [FromBody] UpdateNursingStationRequest request)
@@ -264,18 +278,18 @@ public class AdminController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return StatusCode(500, new { message = "An error occurred while updating the nursing station.", details = ex.Message });
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while updating the nursing station." });
         }
     }
 
-    // ==========================================
-    // PATIENT DIRECTORY
-    // ==========================================
+    #endregion
+
+    #region 5. Patient Directory & Clinical Lookup
 
     /// <summary>
-    /// Browse registered patients (up to 50), with optional database-wide search by MRN, Name, or Phone (GET /api/admin/patients?search=...)
+    /// Browse registered patients (up to 50), with indexed B-tree search (GET /api/admin/patients?search=...).
     /// </summary>
     [HttpGet("patients")]
     public async Task<IActionResult> GetPatients([FromQuery] string? search = null)
@@ -285,7 +299,7 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Get a single patient's full profile and visit history (GET /api/admin/patients/{id})
+    /// Get a single patient's full profile and visit history (GET /api/admin/patients/{id}).
     /// </summary>
     [HttpGet("patients/{id}")]
     public async Task<IActionResult> GetPatientById(Guid id)
@@ -297,4 +311,6 @@ public class AdminController : ControllerBase
         }
         return Ok(patient);
     }
+
+    #endregion
 }

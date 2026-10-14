@@ -6,6 +6,17 @@ using VitalQ.Entities.DTOs;
 
 namespace VitalQ.API.Controllers;
 
+/// <summary>
+/// CONTROLLER: Authentication & Security Session API
+/// Route: /api/auth
+/// 
+/// PURPOSE:
+/// Manages user authentication, token rotation, and secure cookie lifecycle:
+/// - Section 1: Authentication & Session Initiation (Login with rate limiting)
+/// - Section 2: Token Lifecycle & Rotation (Refresh token rotation)
+/// - Section 3: Session Revocation & Sign-out (Dual-mode claims/cookie logout)
+/// - Section 4: Secure Cookie Helpers (HttpOnly SameSite cookie handling)
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
@@ -16,6 +27,8 @@ public class AuthController : ControllerBase
     {
         _authService = authService;
     }
+
+    #region 1. Authentication & Session Initiation
 
     /// <summary>
     /// User login with plain-text password (POST /api/auth/login).
@@ -36,6 +49,10 @@ public class AuthController : ControllerBase
 
         return Ok(result);
     }
+
+    #endregion
+
+    #region 2. Token Lifecycle & Rotation
 
     /// <summary>
     /// Exchange refresh token for a new access token (POST /api/auth/refresh).
@@ -59,6 +76,10 @@ public class AuthController : ControllerBase
 
         return Ok(result);
     }
+
+    #endregion
+
+    #region 3. Session Revocation & Sign-out
 
     /// <summary>
     /// Logout and invalidate refresh token (POST /api/auth/logout).
@@ -96,7 +117,10 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Logged out successfully" });
     }
 
-    // --- HELPER: Set Secure HttpOnly Cookie ---
+    #endregion
+
+    #region 4. Secure Cookie Helpers
+
     private void SetCookie(string refreshToken)
     {
         // 1. HttpOnly: Inaccessible to JavaScript (protects against XSS token exfiltration).
@@ -111,4 +135,6 @@ public class AuthController : ControllerBase
             Path = "/"
         });
     }
+
+    #endregion
 }

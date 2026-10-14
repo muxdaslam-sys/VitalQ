@@ -7,14 +7,14 @@ namespace VitalQ.BusinessLogic.Interfaces;
 /// 
 /// PURPOSE:
 /// Defines all patient-facing actions for the mobile phone app and web browser portal:
-/// - Online self-registration (phone + date of birth credentials)
-/// - Managing family dependents (adding children, spouse, or elderly parents)
-/// - Booking outpatient (OPD) doctor consultation slots
-/// - Tracking live queue tokens and real-time waiting position
-/// - Reviewing past completed visits and doctor diagnosis advice
+/// - Section 1: Demographics & Family Profiles (Online registration, family members, profile management)
+/// - Section 2: Appointment Booking & Live Queue Tracking (Slots booking, active tokens, cancellation)
+/// - Section 3: Consultation & Clinical History (Single-query batch visit history)
 /// </summary>
 public interface IPatientService
 {
+    #region 1. Demographics & Family Profiles
+
     /// <summary>
     /// Registers a new patient account online using their phone number and date of birth.
     /// Returns a JWT session token for immediate login.
@@ -49,19 +49,9 @@ public interface IPatientService
     /// </summary>
     Task<PatientResponse> UpdatePatientAsync(Guid patientId, UpdatePatientRequest request);
 
-    /// <summary>
-    /// Retrieves past completed outpatient visits for an individual patient.
-    /// </summary>
-    Task<IEnumerable<PatientVisitHistoryDto>> GetPatientVisitHistoryAsync(Guid patientId);
+    #endregion
 
-    /// <summary>
-    /// BATCH QUERY: Retrieves past visit history for multiple family members in a single SQL query.
-    /// 
-    /// WHY IS THIS CRITICAL FOR SCALABILITY?
-    /// Instead of running multiple parallel database queries (which crashes EF Core's non-thread-safe DbContext),
-    /// this method runs a single SQL "WHERE PatientId IN (...)" query using the indexed date column.
-    /// </summary>
-    Task<IEnumerable<PatientVisitHistoryDto>> GetFamilyVisitHistoryAsync(IEnumerable<Guid> patientIds);
+    #region 2. Appointment Booking & Live Queue Tracking
 
     /// <summary>
     /// Books a consultation slot with a doctor today and issues an atomic, concurrency-safe token slip.
@@ -84,4 +74,20 @@ public interface IPatientService
     /// Records the cancellation reason directly on the token's consultation notes.
     /// </summary>
     Task<QueueTokenResponse> CancelMyTokenAsync(Guid tokenId, Guid currentUserId, string? reason = null);
+
+    #endregion
+
+    #region 3. Consultation & Clinical History
+
+    /// <summary>
+    /// Retrieves past completed outpatient visits for an individual patient.
+    /// </summary>
+    Task<IEnumerable<PatientVisitHistoryDto>> GetPatientVisitHistoryAsync(Guid patientId);
+
+    /// <summary>
+    /// BATCH QUERY: Retrieves past visit history for multiple family members in a single SQL query.
+    /// </summary>
+    Task<IEnumerable<PatientVisitHistoryDto>> GetFamilyVisitHistoryAsync(IEnumerable<Guid> patientIds);
+
+    #endregion
 }
