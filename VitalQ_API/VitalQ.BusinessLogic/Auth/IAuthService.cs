@@ -4,14 +4,7 @@ using VitalQ.Entities.Models;
 namespace VitalQ.BusinessLogic.Interfaces;
 
 /// <summary>
-/// CONTRACT: Authentication & Security Token Lifecycle Service
-/// 
-/// PURPOSE:
-/// Defines core authentication and session token operations:
-/// - Section 1: Authentication & Session Initiation
-/// - Section 2: Token Lifecycle & Rotation
-/// - Section 3: Session Revocation & Sign-out
-/// - Section 4: Cryptographic Token Generation
+/// Defines authentication and session operations: login, token rotation, session revocation, and JWT generation.
 /// </summary>
 public interface IAuthService
 {

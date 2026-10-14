@@ -3,14 +3,7 @@ using VitalQ.Entities.DTOs;
 namespace VitalQ.BusinessLogic.Interfaces;
 
 /// <summary>
-/// CONTRACT: Nurse Station & Clinical Triage Service
-/// 
-/// PURPOSE:
-/// Powers clinical reception, walk-in patient intake, and CTAS vitals evaluation:
-/// - Section 1: Patient Lookup & Identification
-/// - Section 2: Walk-In Registration & Identity Linking
-/// - Section 3: Reception Desk Token Issuance
-/// - Section 4: Clinical Triage & Vital Signs Intake
+/// Defines nurse station workflows: patient search, walk-in registration, token issuance, and clinical triage.
 /// </summary>
 public interface INurseService
 {

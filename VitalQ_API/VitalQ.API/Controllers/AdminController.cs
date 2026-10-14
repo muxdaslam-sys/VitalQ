@@ -6,16 +6,7 @@ using VitalQ.Entities.DTOs;
 namespace VitalQ.API.Controllers;
 
 /// <summary>
-/// CONTROLLER: Hospital Administration & Staff Governance API
-/// Route: /api/admin
-/// 
-/// PURPOSE:
-/// Exposes administrative endpoints for hospital supervisors:
-/// - Section 1: Staff & Admin Account Management
-/// - Section 2: Doctor Roster & Practice Profile
-/// - Section 3: Clinical Department Management
-/// - Section 4: Nursing Station Management
-/// - Section 5: Patient Directory & Clinical Lookup
+/// Exposes administrative endpoints: staff accounts, doctors, departments, nursing stations, and patient directory.
 /// </summary>
 [Authorize(Roles = "Admin")]
 [ApiController]

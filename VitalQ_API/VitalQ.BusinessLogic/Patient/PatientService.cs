@@ -9,13 +9,7 @@ using VitalQ.Entities.Models;
 namespace VitalQ.BusinessLogic.Services;
 
 /// <summary>
-/// SERVICE: Patient Portal Core Business Logic
-/// 
-/// PURPOSE:
-/// Powers all patient-facing workflows on mobile and PC browsers:
-/// - Section 1: Demographics & Family Profiles (Self-registration, family dependents, profile updates)
-/// - Section 2: Live Appointments & Queue (Booking slots, tracking position ahead & ETAs, cancellation)
-/// - Section 3: Consultation History (Single-query batch past visits with doctor advice)
+/// Implements patient portal services: demographics, family profiles, appointment booking, live queue, and visit history.
 /// </summary>
 public class PatientService : IPatientService
 {

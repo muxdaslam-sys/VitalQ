@@ -8,30 +8,48 @@ namespace VitalQ.BusinessLogic.Interfaces;
 /// </summary>
 public interface IDoctorService
 {
-    // 1. Get doctor profile for the authenticated doctor user
+    /// <summary>
+    /// Retrieves the doctor clinical profile linked to an authenticated user ID.
+    /// </summary>
     Task<DoctorResponse?> GetDoctorByUserIdAsync(Guid userId);
 
-    // 2. Get live priority-sorted queue for the doctor's screen
+    /// <summary>
+    /// Retrieves the live priority-sorted queue for a doctor's consultation room.
+    /// </summary>
     Task<IEnumerable<QueueTokenResponse>> GetMyQueueAsync(Guid doctorId);
 
-    // 3. Get the patient currently inside the consultation room
+    /// <summary>
+    /// Retrieves the patient currently called into the doctor's consultation room.
+    /// </summary>
     Task<QueueTokenResponse?> GetCurrentCalledPatientAsync(Guid doctorId);
 
-    // 4. Call next patient into the room (Guarded by optimistic concurrency)
+    /// <summary>
+    /// Calls the next highest-priority patient into the consultation room.
+    /// </summary>
     Task<QueueTokenResponse?> CallNextPatientAsync(Guid doctorId);
 
-    // 5. Skip patient if they do not enter the room
+    /// <summary>
+    /// Marks a called patient as skipped if they are absent.
+    /// </summary>
     Task<QueueTokenResponse> SkipPatientAsync(Guid tokenId, Guid doctorUserId);
 
-    // 6. Return skipped patient back to active queue when they arrive
+    /// <summary>
+    /// Returns a skipped patient back to the active waiting queue.
+    /// </summary>
     Task<QueueTokenResponse> RequeuePatientAsync(Guid tokenId, Guid doctorUserId);
 
-    // 7. Complete consultation with notes and diagnosis
+    /// <summary>
+    /// Completes the consultation with clinical diagnosis and prescription notes.
+    /// </summary>
     Task<QueueTokenResponse> CompleteConsultationAsync(Guid tokenId, Guid doctorUserId, CompleteConsultationRequest request);
 
-    // 8. Background engine recalculation for priority aging (returns true if any scores changed)
+    /// <summary>
+    /// Recalculates dynamic wait-time priority scores across all waiting tokens.
+    /// </summary>
     Task<bool> RecalculateQueueScoresAsync();
 
-    // 9. Auto-sweep unvisited stale tokens from previous days
+    /// <summary>
+    /// Sweeps and marks unvisited stale tokens from past days as expired.
+    /// </summary>
     Task<int> ExpireStaleTokensAsync();
 }

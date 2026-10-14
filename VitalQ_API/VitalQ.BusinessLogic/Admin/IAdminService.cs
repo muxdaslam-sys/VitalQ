@@ -3,15 +3,7 @@ using VitalQ.Entities.DTOs;
 namespace VitalQ.BusinessLogic.Interfaces;
 
 /// <summary>
-/// CONTRACT: Hospital Administration & Staff Governance Service
-/// 
-/// PURPOSE:
-/// Defines core administrative controls across hospital operational units:
-/// - Section 1: Staff & Admin Account Management
-/// - Section 2: Doctor Roster & Practice Profile
-/// - Section 3: Clinical Department Management
-/// - Section 4: Nursing Station Management
-/// - Section 5: Patient Directory & Clinical Lookup
+/// Defines administrative operations: staff accounts, doctors, departments, nursing stations, and patient directory.
 /// </summary>
 public interface IAdminService
 {

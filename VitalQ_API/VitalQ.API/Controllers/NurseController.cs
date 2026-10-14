@@ -7,15 +7,7 @@ using VitalQ.Entities.DTOs;
 namespace VitalQ.API.Controllers;
 
 /// <summary>
-/// CONTROLLER: Dedicated Nurse Station & Reception Desk API
-/// Route: /api/nurse
-/// 
-/// PURPOSE:
-/// Exposes clinical reception, walk-in token issuance, and CTAS vitals intake endpoints:
-/// - Section 1: Patient Lookup & Identification
-/// - Section 2: Walk-In Registration & Identity Linking
-/// - Section 3: Reception Desk Token Issuance
-/// - Section 4: Clinical Triage & Vital Signs Intake
+/// Exposes nurse station endpoints: patient lookup, walk-in registration, token issuance, and clinical triage.
 /// </summary>
 [Authorize(Roles = "Nurse,Admin")]
 [ApiController]

@@ -7,15 +7,7 @@ using VitalQ.Entities.Models;
 namespace VitalQ.BusinessLogic.Services;
 
 /// <summary>
-/// SERVICE: Hospital Administration & Staff Governance
-/// 
-/// PURPOSE:
-/// Powers all administrative workflows across clinical and operational departments:
-/// - Section 1: Staff & Admin Account Management (Admin & Nurse credentials)
-/// - Section 2: Doctor Roster & Practice Profile (Doctor accounts, schedules, availability status)
-/// - Section 3: Clinical Department Management (OPD departments, token counters, floor maps)
-/// - Section 4: Nursing Station Management (Triage desks & intake stations)
-/// - Section 5: Patient Directory & Clinical Lookup (B-Tree indexed lookup of patient charts & visit history)
+/// Implements administrative workflows: staff accounts, doctors, departments, nursing stations, and patient directory.
 /// </summary>
 public class AdminService : IAdminService
 {

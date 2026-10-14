@@ -3,13 +3,7 @@ using VitalQ.Entities.DTOs;
 namespace VitalQ.BusinessLogic.Interfaces;
 
 /// <summary>
-/// CONTRACT: Patient Portal Service
-/// 
-/// PURPOSE:
-/// Defines all patient-facing actions for the mobile phone app and web browser portal:
-/// - Section 1: Demographics & Family Profiles (Online registration, family members, profile management)
-/// - Section 2: Appointment Booking & Live Queue Tracking (Slots booking, active tokens, cancellation)
-/// - Section 3: Consultation & Clinical History (Single-query batch visit history)
+/// Defines patient-facing workflows: self-registration, family profiles, appointment booking, live queue, and visit history.
 /// </summary>
 public interface IPatientService
 {

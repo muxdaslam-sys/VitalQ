@@ -9,15 +9,7 @@ using VitalQ.Entities.Models;
 namespace VitalQ.BusinessLogic.Services;
 
 /// <summary>
-/// SERVICE: Nurse Station & Clinical Triage Service
-/// 
-/// PURPOSE:
-/// Powers clinical reception, walk-in token issuance, and CTAS vitals intake:
-/// - Section 1: Patient Lookup & Identification (Token, MRN, Phone, or Name search)
-/// - Section 2: Walk-In Registration & Identity Linking (Issue MRN + online login credentials)
-/// - Section 3: Reception Desk Token Issuance (Counter slip generation)
-/// - Section 4: Clinical Triage & Vital Signs Intake (CTAS scoring & doctor queue activation)
-/// - Section 5: Internal Clinical Rules & Entity Mapping (CTAS algorithms & wayfinding instruction generator)
+/// Implements nurse station services: patient lookup, walk-in registration, counter token issuance, and clinical triage.
 /// </summary>
 public class NurseService : INurseService
 {

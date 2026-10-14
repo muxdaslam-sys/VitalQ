@@ -8,14 +8,7 @@ using VitalQ.Entities.DTOs;
 namespace VitalQ.API.Controllers;
 
 /// <summary>
-/// CONTROLLER: Dedicated Patient Outpatient Portal API
-/// Route: /api/patient
-/// 
-/// PURPOSE:
-/// Serves all HTTP requests from the patient's mobile phone browser and PC desktop portal:
-/// - Section 1: Demographics & Family Profiles (Self-registration, family members, profile management)
-/// - Section 2: Appointment Booking & Live Queue Tracking (Slots booking, active tokens, cancellation)
-/// - Section 3: Consultation & Clinical History (Batch and individual encounter records)
+/// Exposes patient outpatient portal endpoints: demographics, family profiles, appointment booking, and visit history.
 /// </summary>
 [ApiController]
 [Route("api/patient")]

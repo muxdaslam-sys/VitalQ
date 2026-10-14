@@ -20,9 +20,9 @@ public class DoctorService : IDoctorService
         _context = context;
     }
 
-    // =========================================================================
-    // 1. GET DOCTOR PROFILE BY USER ID
-    // =========================================================================
+    /// <summary>
+    /// Retrieves the doctor profile linked to the specified user ID.
+    /// </summary>
     public async Task<DoctorResponse?> GetDoctorByUserIdAsync(Guid userId)
     {
         var doctor = await _context.Doctors
@@ -49,9 +49,9 @@ public class DoctorService : IDoctorService
         };
     }
 
-    // =========================================================================
-    // 2. GET DOCTOR'S LIVE QUEUE
-    // =========================================================================
+    /// <summary>
+    /// Retrieves the live consultation queue for a doctor, partitioned into called, waiting, and skipped.
+    /// </summary>
     public async Task<IEnumerable<QueueTokenResponse>> GetMyQueueAsync(Guid doctorId)
     {
         var todayUtc = DateTime.UtcNow.Date;
@@ -103,9 +103,9 @@ public class DoctorService : IDoctorService
         return result;
     }
 
-    // =========================================================================
-    // 3. GET PATIENT CURRENTLY INSIDE THE ROOM
-    // =========================================================================
+    /// <summary>
+    /// Retrieves the patient currently called into the doctor's consultation room.
+    /// </summary>
     public async Task<QueueTokenResponse?> GetCurrentCalledPatientAsync(Guid doctorId)
     {
         var todayUtc = DateTime.UtcNow.Date;
@@ -127,9 +127,9 @@ public class DoctorService : IDoctorService
         return token == null ? null : MapToResponse(token, 0, 0);
     }
 
-    // =========================================================================
-    // 4. CALL NEXT PATIENT (Optimistic Concurrency via RowVersion)
-    // =========================================================================
+    /// <summary>
+    /// Calls the next highest-priority waiting patient into the consultation room.
+    /// </summary>
     public async Task<QueueTokenResponse?> CallNextPatientAsync(Guid doctorId)
     {
         var doctor = await _context.Doctors
@@ -183,9 +183,9 @@ public class DoctorService : IDoctorService
         return MapToResponse(nextToken, 0, 0);
     }
 
-    // =========================================================================
-    // 5. SKIP PATIENT (Patient did not enter room)
-    // =========================================================================
+    /// <summary>
+    /// Marks a called patient as skipped if they do not enter the room.
+    /// </summary>
     public async Task<QueueTokenResponse> SkipPatientAsync(Guid tokenId, Guid doctorUserId)
     {
         var token = await _context.QueueTokens
@@ -211,9 +211,9 @@ public class DoctorService : IDoctorService
         return MapToResponse(token, 0, 0);
     }
 
-    // =========================================================================
-    // 6. REQUEUE PATIENT (Patient arrived after being skipped)
-    // =========================================================================
+    /// <summary>
+    /// Requeues a previously skipped patient back into the waiting line.
+    /// </summary>
     public async Task<QueueTokenResponse> RequeuePatientAsync(Guid tokenId, Guid doctorUserId)
     {
         var token = await _context.QueueTokens
@@ -239,9 +239,9 @@ public class DoctorService : IDoctorService
         return MapToResponse(token, 0, 0);
     }
 
-    // =========================================================================
-    // 7. COMPLETE CONSULTATION
-    // =========================================================================
+    /// <summary>
+    /// Completes consultation and logs clinical notes and diagnosis.
+    /// </summary>
     public async Task<QueueTokenResponse> CompleteConsultationAsync(Guid tokenId, Guid doctorUserId, CompleteConsultationRequest request)
     {
         var token = await _context.QueueTokens
@@ -269,9 +269,9 @@ public class DoctorService : IDoctorService
         return MapToResponse(token, 0, 0);
     }
 
-    // =========================================================================
-    // 8. RECALCULATE QUEUE SCORES (Aging engine loop)
-    // =========================================================================
+    /// <summary>
+    /// Recalculates dynamic priority scores and applies 60-minute anti-starvation SLA auto-escalation.
+    /// </summary>
     public async Task<bool> RecalculateQueueScoresAsync()
     {
         var todayUtc = DateTime.UtcNow.Date;
@@ -319,9 +319,9 @@ public class DoctorService : IDoctorService
         return hasChanges;
     }
 
-    // =========================================================================
-    // 9. EXPIRE STALE TOKENS (Auto-sweeps unvisited tokens from previous days)
-    // =========================================================================
+    /// <summary>
+    /// Sweeps and marks unvisited consultation tokens from prior dates as expired.
+    /// </summary>
     public async Task<int> ExpireStaleTokensAsync()
     {
         var todayUtc = DateTime.UtcNow.Date;

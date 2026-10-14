@@ -12,14 +12,7 @@ using VitalQ.Entities.Models;
 namespace VitalQ.BusinessLogic.Services;
 
 /// <summary>
-/// SERVICE: Authentication & Security Token Lifecycle
-/// 
-/// PURPOSE:
-/// High-throughput JWT authentication and refresh token management:
-/// - Section 1: Authentication & Session Initiation (Login verification)
-/// - Section 2: Token Lifecycle & Rotation (Sliding refresh token rotation)
-/// - Section 3: Session Revocation & Sign-out (Atomic EF Core 8 ExecuteUpdateAsync session termination)
-/// - Section 4: Cryptographic Token Generation & Internal Helpers (Cached HMAC-SHA256 signing)
+/// Implements authentication and session management: login verification, token rotation, session revocation, and JWT generation.
 /// </summary>
 public class AuthService : IAuthService
 {

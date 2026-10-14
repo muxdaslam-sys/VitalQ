@@ -5,8 +5,7 @@ using VitalQ.BusinessLogic.Interfaces;
 namespace VitalQ.API.BackgroundServices;
 
 /// <summary>
-/// Background worker running every 60 seconds (§08 Recalculation, Page 7 & 18).
-/// Recalculates priority scores with aging formula and broadcasts live updates over SignalR.
+/// Periodic background service running every 60 seconds to expire stale tokens, recalculate priority scores, and broadcast SignalR updates.
 /// </summary>
 public class AgingWorker : BackgroundService
 {

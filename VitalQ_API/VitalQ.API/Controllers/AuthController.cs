@@ -7,15 +7,7 @@ using VitalQ.Entities.DTOs;
 namespace VitalQ.API.Controllers;
 
 /// <summary>
-/// CONTROLLER: Authentication & Security Session API
-/// Route: /api/auth
-/// 
-/// PURPOSE:
-/// Manages user authentication, token rotation, and secure cookie lifecycle:
-/// - Section 1: Authentication & Session Initiation (Login with rate limiting)
-/// - Section 2: Token Lifecycle & Rotation (Refresh token rotation)
-/// - Section 3: Session Revocation & Sign-out (Dual-mode claims/cookie logout)
-/// - Section 4: Secure Cookie Helpers (HttpOnly SameSite cookie handling)
+/// Exposes authentication endpoints: login with rate limiting, refresh token rotation, and secure sign-out.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
