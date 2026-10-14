@@ -1,0 +1,37 @@
+using System;
+using System.Collections.Generic;
+
+namespace VitalQ.Entities.Models;
+
+public partial class User
+{
+    public Guid Id { get; set; }
+
+    public string Username { get; set; } = null!;
+
+    public string Password { get; set; } = null!;
+
+    public string FullName { get; set; } = null!;
+
+    public string PhoneNumber { get; set; } = null!;
+
+    public string Role { get; set; } = null!;
+
+    public bool IsActive { get; set; }
+
+    public DateTime CreatedAtUtc { get; set; }
+
+    public string? RefreshToken { get; set; }
+
+    public DateTime? RefreshTokenExpiryTime { get; set; }
+
+    public Guid? NursingStationId { get; set; }
+
+    public virtual Doctor? Doctor { get; set; }
+
+    public virtual Patient? Patient { get; set; }
+
+    public virtual NursingStation? NursingStation { get; set; }
+
+    public virtual ICollection<TriageAssessment> TriageAssessments { get; set; } = new List<TriageAssessment>();
+}
