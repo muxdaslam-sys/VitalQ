@@ -96,10 +96,18 @@ export class NurseService {
    * Client-side instant CTAS evaluation preview.
    */
   evaluateLevel(spo2: number, sys: number, hr: number, temp: number, pain: number): 'Red' | 'Yellow' | 'Green' {
-    if (spo2 < 90 || sys < 90 || sys > 180 || hr > 120 || hr < 40 || temp > 39.5 || pain === 10) {
+    if (spo2 < 90 || sys < 90 || sys > 200 || hr > 140 || hr < 40 || temp > 40.0 || pain === 10) {
       return 'Red';
     }
-    if (spo2 <= 94 || sys >= 160 || hr >= 100 || temp >= 38.0 || pain >= 6) {
+    if (
+      (spo2 >= 90 && spo2 <= 94) ||
+      (sys >= 90 && sys <= 99) ||
+      (sys >= 160 && sys <= 200) ||
+      (hr >= 110 && hr <= 140) ||
+      (hr >= 40 && hr < 50) ||
+      (temp >= 38.5 && temp <= 40.0) ||
+      pain >= 6
+    ) {
       return 'Yellow';
     }
     return 'Green';

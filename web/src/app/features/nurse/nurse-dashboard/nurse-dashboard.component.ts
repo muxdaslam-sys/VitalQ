@@ -14,7 +14,8 @@ import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetection
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, Subject, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { NurseService } from '../../../core/services/nurse.service';
@@ -52,6 +53,33 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   private router = inject(Router);
 
   private subs = new Subscription();
+  private searchSubject = new Subject<string>();
+
+  constructor() {
+    const searchSub = this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(query => {
+        const q = query.trim();
+        if (q.length < 2) {
+          this.isSearching.set(false);
+          this.searchResults.set([]);
+          return of([]);
+        }
+        this.isSearching.set(true);
+        return this.nurseService.searchPatients(q).pipe(
+          catchError(() => {
+            this.toast.error('Patient search encountered an error.');
+            return of([]);
+          })
+        );
+      })
+    ).subscribe(results => {
+      this.searchResults.set(results);
+      this.isSearching.set(false);
+    });
+    this.subs.add(searchSub);
+  }
 
   // --------------------------------------------------------------------------
   // 2. DASHBOARD REACTIVE STATE
@@ -59,6 +87,10 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   stats = signal<NurseDashboardStatsResponse | null>(null);
   pendingTriage = signal<QueueToken[]>([]);
   isSubmitting = signal<boolean>(false);
+  isRefreshing = signal<boolean>(false);
+
+  /** Active Intake Hub View Tab: 'arrivals' (Station Desk) vs 'directory' (Hospital Patient Lookup) */
+  activeTab = signal<'arrivals' | 'directory'>('arrivals');
 
   // --------------------------------------------------------------------------
   // 3. DOCTOR QUEUE MODAL STATE
@@ -71,6 +103,10 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   // --------------------------------------------------------------------------
   // 4. UNIFIED PATIENT INTAKE & SEARCH STATE
   // --------------------------------------------------------------------------
+  /** Local in-table filter query for the Station Arrivals table */
+  stationFilterQuery = signal<string>('');
+
+  /** Hospital-wide patient directory search query (Tab 2) */
   searchQuery = signal<string>('');
   searchResults = signal<PatientSearchResult[]>([]);
   isSearching = signal<boolean>(false);
@@ -80,9 +116,9 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   patientTokens = signal<QueueToken[]>([]);
   isLoadingPatientTokens = signal<boolean>(false);
 
-  /** Filtered station triage queue based on search input */
+  /** Filtered station triage queue based on local table filter input */
   filteredStationQueue = computed(() => {
-    const q = this.searchQuery().trim().toLowerCase();
+    const q = this.stationFilterQuery().trim().toLowerCase();
     const queue = this.pendingTriage();
     if (!q) return queue;
     return queue.filter(t =>
@@ -221,11 +257,15 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   // 8. DATA LOADING
   // --------------------------------------------------------------------------
   loadDashboard(showLoader = true): void {
+    if (showLoader) this.isRefreshing.set(true);
     this.nurseService.getDashboardStats().subscribe({
       next: data => {
         this.stats.set(data);
+        setTimeout(() => this.isRefreshing.set(false), 400);
       },
-      error: () => {}
+      error: () => {
+        this.isRefreshing.set(false);
+      }
     });
   }
 
@@ -270,24 +310,15 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   // --------------------------------------------------------------------------
   // 10. UNIFIED INTAKE & PATIENT SELECTION
   // --------------------------------------------------------------------------
-  onSearchInput(): void {
-    const q = this.searchQuery().trim();
-    if (q.length < 2) {
-      this.searchResults.set([]);
-      return;
-    }
+  onSearchInput(value: string): void {
+    this.searchQuery.set(value);
+    this.searchSubject.next(value);
+  }
 
-    this.isSearching.set(true);
-    this.nurseService.searchPatients(q).subscribe({
-      next: results => {
-        this.searchResults.set(results);
-        this.isSearching.set(false);
-      },
-      error: () => {
-        this.searchResults.set([]);
-        this.isSearching.set(false);
-      }
-    });
+  clearSearch(): void {
+    this.searchQuery.set('');
+    this.searchResults.set([]);
+    this.isSearching.set(false);
   }
 
   selectPatient(patient: PatientSearchResult): void {
@@ -390,8 +421,17 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     this.queuePositionData.set(null);
   }
 
+  isTokenTriagable(token: QueueToken | undefined | null): boolean {
+    if (!token) return false;
+    return token.status === 'Booked' || token.status === 'Waiting';
+  }
+
   // BUTTON 3: [🩺 Triage Assessment]
   openTriageModal(token: QueueToken): void {
+    if (token.status === 'Completed' || token.status === 'Cancelled') {
+      this.toast.warning(`Cannot triage a token that is already ${token.status.toLowerCase()}.`);
+      return;
+    }
     this.triageToken.set(token);
     this.vitalsForm = {
       spO2: 98,
@@ -499,6 +539,11 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
 
     if (!this.walkInForm.doctorId) {
       this.toast.warning('Please select an on-duty doctor.');
+      return;
+    }
+
+    if (this.walkInForm.isEmergencyCodeRed && !this.walkInForm.clinicalNotes?.trim()) {
+      this.toast.warning('Emergency clinical remarks are mandatory for Immediate Code-Red Bypass.');
       return;
     }
 
