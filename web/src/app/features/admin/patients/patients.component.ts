@@ -5,8 +5,8 @@
 import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { Subject, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AdminService } from '../../../core/services/admin.service';
 import { ToastService } from '../../../core/services/toast.service';
@@ -41,15 +41,26 @@ export class PatientsComponent implements OnInit {
   selectedGender = signal<'all' | 'Male' | 'Female'>('all');
   selectedPatient = signal<PatientDetailResponse | null>(null);
   isLoading = signal(false);
+  isLoadingPatientDetails = signal(false);
 
   constructor() {
-    // 300ms debounce to prevent hammering the server while the user types
+    // 300ms debounce + switchMap to cancel obsolete in-flight requests and avoid race conditions
     this.searchSubject.pipe(
       debounceTime(300),
       distinctUntilChanged(),
+      switchMap(term => {
+        this.isLoading.set(true);
+        return this.adminService.getPatients(term).pipe(
+          catchError(() => {
+            this.toast.error('Failed to load patient directory.');
+            return of([]);
+          })
+        );
+      }),
       takeUntilDestroyed()
-    ).subscribe(term => {
-      this.loadPatients(term);
+    ).subscribe(p => {
+      this.patients.set(p);
+      this.isLoading.set(false);
     });
   }
 
@@ -108,6 +119,19 @@ export class PatientsComponent implements OnInit {
   /** Opens full profile and booking history modal for clicked patient */
   selectPatient(p: PatientDetailResponse): void {
     this.selectedPatient.set(p);
+    // On-demand fetch of detailed visit history when modal is opened
+    if (!p.visits || p.visits.length === 0) {
+      this.isLoadingPatientDetails.set(true);
+      this.adminService.getPatientById(p.id).subscribe({
+        next: full => {
+          this.selectedPatient.set(full);
+          this.isLoadingPatientDetails.set(false);
+        },
+        error: () => {
+          this.isLoadingPatientDetails.set(false);
+        }
+      });
+    }
   }
 
   /** Closes patient details modal */

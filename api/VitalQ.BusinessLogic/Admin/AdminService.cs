@@ -609,7 +609,9 @@ public class AdminService : IAdminService
             // C. Patient Name Search (e.g. "Sarah") -> Direct Index Seek on IX_Patients_FullName
             else
             {
-                query = query.Where(p => p.FullName.StartsWith(term) || p.FullName.Contains(term));
+                query = term.Length < 3
+                    ? query.Where(p => p.FullName.StartsWith(term))
+                    : query.Where(p => p.FullName.StartsWith(term) || p.FullName.Contains(term));
             }
         }
 
@@ -628,25 +630,7 @@ public class AdminService : IAdminService
                 IsRegisteredAppUser = p.UserId.HasValue,
                 CreatedAtUtc = p.CreatedAtUtc,
                 TotalCompletedBookings = p.QueueTokens.Count(t => t.Status == "Completed"),
-                Visits = p.QueueTokens
-                    .OrderByDescending(t => t.BookedAtUtc)
-                    .Select(t => new PatientVisitHistoryDto
-                    {
-                        TokenId = t.Id,
-                        TokenNumber = t.TokenNumber,
-                        PatientId = t.PatientId,
-                        PatientName = p.FullName,
-                        DepartmentName = t.Department.Name,
-                        DoctorName = t.Doctor.User.FullName,
-                        Status = t.Status,
-                        TriageLevel = t.TriageAssessment != null ? t.TriageAssessment.TriageLevel : null,
-                        BookedAtUtc = t.BookedAtUtc,
-                        TriagedAtUtc = t.TriagedAtUtc,
-                        CalledAtUtc = t.CalledAtUtc,
-                        CompletedAtUtc = t.CompletedAtUtc,
-                        ConsultationNotes = t.ConsultationNotes
-                    })
-                    .ToList()
+                Visits = new List<PatientVisitHistoryDto>()
             })
             .ToListAsync();
     }

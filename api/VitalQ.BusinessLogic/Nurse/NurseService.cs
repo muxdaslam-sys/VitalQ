@@ -34,6 +34,11 @@ public class NurseService : INurseService
         }
 
         var q = query.Trim();
+        if (q.Length < 2)
+        {
+            return Enumerable.Empty<PatientSearchResult>();
+        }
+
         var todayUtc = DateTime.UtcNow.Date;
         var tomorrowUtc = todayUtc.AddDays(1);
 
@@ -64,24 +69,17 @@ public class NurseService : INurseService
         {
             patientQuery = patientQuery.Where(p => p.PhoneNumber.StartsWith(q));
         }
-        // 4. If searching by Name
+        // 4. If searching by Name (prioritize StartsWith for B-Tree index seek)
         else
         {
-            patientQuery = patientQuery.Where(p => p.FullName.StartsWith(q) || p.FullName.Contains(q));
+            patientQuery = q.Length < 3
+                ? patientQuery.Where(p => p.FullName.StartsWith(q))
+                : patientQuery.Where(p => p.FullName.StartsWith(q) || p.FullName.Contains(q));
         }
 
-        var patients = await patientQuery
-            .Include(p => p.QueueTokens.Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled"))
+        return await patientQuery
             .Take(15)
-            .ToListAsync();
-
-        return patients.Select(p =>
-        {
-            var activeToken = p.QueueTokens
-                .OrderByDescending(t => t.BookedAtUtc)
-                .FirstOrDefault();
-
-            return new PatientSearchResult
+            .Select(p => new PatientSearchResult
             {
                 PatientId = p.Id,
                 MedicalRecordNumber = p.MedicalRecordNumber,
@@ -89,11 +87,23 @@ public class NurseService : INurseService
                 PhoneNumber = p.PhoneNumber,
                 DateOfBirth = p.DateOfBirth,
                 Gender = p.Gender,
-                ActiveTokenId = activeToken?.Id,
-                ActiveTokenNumber = activeToken?.TokenNumber,
-                ActiveTokenStatus = activeToken?.Status
-            };
-        });
+                ActiveTokenId = p.QueueTokens
+                    .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
+                    .OrderByDescending(t => t.BookedAtUtc)
+                    .Select(t => (Guid?)t.Id)
+                    .FirstOrDefault(),
+                ActiveTokenNumber = p.QueueTokens
+                    .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
+                    .OrderByDescending(t => t.BookedAtUtc)
+                    .Select(t => t.TokenNumber)
+                    .FirstOrDefault(),
+                ActiveTokenStatus = p.QueueTokens
+                    .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
+                    .OrderByDescending(t => t.BookedAtUtc)
+                    .Select(t => t.Status)
+                    .FirstOrDefault()
+            })
+            .ToListAsync();
     }
 
     #endregion
@@ -301,16 +311,17 @@ public class NurseService : INurseService
     private static string CalculateAutomatedTriageLevel(decimal spo2, int systolicBp, int heartRate, decimal temperature, int painScale)
     {
         // 1. Red (Resuscitation / Immediate Life Threat)
-        if (spo2 < 90m || systolicBp < 80 || heartRate > 150 || temperature > 40.5m)
+        if (spo2 < 90m || systolicBp < 90 || systolicBp > 200 || heartRate > 140 || heartRate < 40 || temperature > 40.0m || painScale == 10)
             return "Red";
 
         // 2. Yellow (Urgent / Serious Medical Concern)
         if ((spo2 >= 90m && spo2 <= 94m) ||
-            (systolicBp >= 80 && systolicBp <= 89) ||
-            (heartRate >= 121 && heartRate <= 150) ||
-            heartRate < 45 ||
-            (temperature >= 39.0m && temperature <= 40.5m) ||
-            painScale >= 7)
+            (systolicBp >= 90 && systolicBp <= 99) ||
+            (systolicBp >= 160 && systolicBp <= 200) ||
+            (heartRate >= 110 && heartRate <= 140) ||
+            (heartRate >= 40 && heartRate < 50) ||
+            (temperature >= 38.5m && temperature <= 40.0m) ||
+            painScale >= 6)
             return "Yellow";
 
         // 3. Green (Routine / Standard Ambulatory)
@@ -808,12 +819,16 @@ public class NurseService : INurseService
                 DepartmentId = doctor.DepartmentId,
                 DoctorId = doctor.Id,
                 Status = "Waiting",
-                BaseWeight = 100, // CTAS Red maximum weight
-                PriorityScore = 1000, // Top priority
+                BaseWeight = PriorityScoreCalculator.BaseWeightRed, // 1000: Guaranteed top priority
+                PriorityScore = PriorityScoreCalculator.BaseWeightRed, // 1000: Uncompromised Code-Red score
                 BookedAtUtc = DateTime.UtcNow,
                 TriagedAtUtc = DateTime.UtcNow,
-                ConsultationNotes = request.ClinicalNotes
+                ConsultationNotes = null // Kept clean for physician's consultation notes
             };
+
+            var emergencyReason = string.IsNullOrWhiteSpace(request.ClinicalNotes)
+                ? "⚡ Immediate Emergency Walk-In Bypass (Acute Life Threat)"
+                : $"⚡ Immediate Emergency Bypass: {request.ClinicalNotes.Trim()}";
 
             var assessment = new TriageAssessment
             {
@@ -829,8 +844,8 @@ public class NurseService : INurseService
                 PainScale = 10,
                 TriageLevel = "Red",
                 IsManualOverride = true,
-                OverrideReason = "⚡ Immediate Emergency Walk-In Bypass (Acute Distress)",
-                NurseNotes = request.ClinicalNotes,
+                OverrideReason = emergencyReason,
+                NurseNotes = request.ClinicalNotes?.Trim(),
                 AssessedAtUtc = DateTime.UtcNow
             };
 
@@ -855,7 +870,7 @@ public class NurseService : INurseService
                 BaseWeight = 0,
                 PriorityScore = 0,
                 BookedAtUtc = DateTime.UtcNow,
-                ConsultationNotes = request.ClinicalNotes
+                ConsultationNotes = null // Kept clean for physician's consultation notes
             };
 
             await _context.QueueTokens.AddAsync(token);

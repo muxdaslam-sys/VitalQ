@@ -238,14 +238,14 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
 
   getStatusBadgeClass(status: string): string {
     switch (status) {
-      case 'Booked': return 'bg-amber-50 text-amber-800 border border-amber-200';
-      case 'Waiting': return 'bg-teal-50 text-teal-800 border border-teal-200';
-      case 'Called': return 'bg-emerald-50 text-emerald-800 border border-emerald-300 animate-pulse font-extrabold';
-      case 'Completed': return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
-      case 'Cancelled': return 'bg-rose-50 text-rose-700 border border-rose-200';
-      case 'Expired': return 'bg-slate-100 text-slate-700 border border-slate-300';
-      case 'Skipped': return 'bg-amber-50 text-amber-800 border border-amber-200';
-      default: return 'bg-slate-100 text-slate-700 border border-slate-200';
+      case 'Booked': return 'bg-amber-100 text-amber-900 border border-amber-300 font-extrabold';
+      case 'Waiting': return 'bg-teal-100 text-teal-900 border border-teal-300 font-extrabold';
+      case 'Called': return 'bg-emerald-600 text-white border border-emerald-500 animate-pulse font-extrabold shadow-xs';
+      case 'Completed': return 'bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold';
+      case 'Cancelled': return 'bg-rose-100 text-rose-800 border border-rose-200 font-bold';
+      case 'Expired': return 'bg-slate-100 text-slate-700 border border-slate-300 font-bold';
+      case 'Skipped': return 'bg-amber-100 text-amber-900 border border-amber-300 font-bold';
+      default: return 'bg-slate-100 text-slate-700 border border-slate-200 font-bold';
     }
   }
 

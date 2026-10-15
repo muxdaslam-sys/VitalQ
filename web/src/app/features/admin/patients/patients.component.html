@@ -246,57 +246,64 @@
               Booking History ({{ selectedPatient()?.visits?.length || 0 }})
             </h4>
 
-            <div class="space-y-3">
-              @for (v of selectedPatient()?.visits; track v.tokenId) {
-                <div class="p-4 border rounded-2xl bg-white border-slate-200 space-y-2 shadow-2xs">
-                  <div class="flex items-center justify-between">
-                    <span class="font-mono font-bold text-xs bg-teal-100 text-teal-800 px-2.5 py-0.5 rounded-lg border border-teal-200">
-                      {{ v.tokenNumber }}
-                    </span>
-                    
-                    <!-- Color-Coded Status Badge -->
-                    <span class="text-xs font-bold px-2.5 py-0.5 rounded-full"
-                          [ngClass]="{
-                            'bg-emerald-100 text-emerald-800 border border-emerald-200': v.status === 'Completed',
-                            'bg-blue-100 text-blue-800 border border-blue-200': v.status === 'Waiting' || v.status === 'Called',
-                            'bg-slate-100 text-slate-700 border border-slate-200': v.status === 'Booked',
-                            'bg-rose-100 text-rose-800 border border-rose-200': v.status === 'Cancelled' || v.status === 'Skipped'
-                          }">
-                      {{ v.status }}
-                    </span>
-                  </div>
-
-                  <div class="text-xs text-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                    <span><strong>Attending Doctor:</strong> {{ v.doctorName }} ({{ v.departmentName }})</span>
-                    <span class="text-slate-400 font-mono">{{ v.bookedAtUtc | date:'medium' }}</span>
-                  </div>
-
-                  <!-- CTAS Triage Level (if evaluated) -->
-                  @if (v.triageLevel) {
-                    <p class="text-xs text-slate-600">
-                      <strong>CTAS Urgency:</strong>
-                      <span class="ml-1 font-bold px-2 py-0.5 rounded-full text-[11px]" [ngClass]="{
-                        'bg-rose-100 text-rose-700': v.triageLevel === 'Red',
-                        'bg-amber-100 text-amber-700': v.triageLevel === 'Yellow',
-                        'bg-emerald-100 text-emerald-700': v.triageLevel === 'Green'
-                      }">{{ v.triageLevel }}</span>
-                    </p>
-                  }
-
-                  <!-- Doctor Consultation Notes -->
-                  @if (v.consultationNotes) {
-                    <div class="mt-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
-                      <p class="font-bold text-slate-700 mb-0.5">Doctor Consultation Notes:</p>
-                      <p class="text-slate-600 italic leading-relaxed">{{ v.consultationNotes }}</p>
+            @if (isLoadingPatientDetails()) {
+              <div class="py-8 text-center text-xs text-slate-500 font-semibold space-y-2">
+                <div class="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <p>Loading full consultation history...</p>
+              </div>
+            } @else {
+              <div class="space-y-3">
+                @for (v of selectedPatient()?.visits; track v.tokenId) {
+                  <div class="p-4 border rounded-2xl bg-white border-slate-200 space-y-2 shadow-2xs">
+                    <div class="flex items-center justify-between">
+                      <span class="font-mono font-bold text-xs bg-teal-100 text-teal-800 px-2.5 py-0.5 rounded-lg border border-teal-200">
+                        {{ v.tokenNumber }}
+                      </span>
+                      
+                      <!-- Color-Coded Status Badge -->
+                      <span class="text-xs font-bold px-2.5 py-0.5 rounded-full"
+                            [ngClass]="{
+                              'bg-emerald-100 text-emerald-800 border border-emerald-200': v.status === 'Completed',
+                              'bg-blue-100 text-blue-800 border border-blue-200': v.status === 'Waiting' || v.status === 'Called',
+                              'bg-slate-100 text-slate-700 border border-slate-200': v.status === 'Booked',
+                              'bg-rose-100 text-rose-800 border border-rose-200': v.status === 'Cancelled' || v.status === 'Skipped'
+                            }">
+                        {{ v.status }}
+                      </span>
                     </div>
-                  }
-                </div>
-              } @empty {
-                <div class="py-8 text-center text-slate-400 text-xs">
-                  No past consultation visits recorded for this patient.
-                </div>
-              }
-            </div>
+
+                    <div class="text-xs text-slate-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                      <span><strong>Attending Doctor:</strong> {{ v.doctorName }} ({{ v.departmentName }})</span>
+                      <span class="text-slate-400 font-mono">{{ v.bookedAtUtc | date:'medium' }}</span>
+                    </div>
+
+                    <!-- CTAS Triage Level (if evaluated) -->
+                    @if (v.triageLevel) {
+                      <p class="text-xs text-slate-600">
+                        <strong>CTAS Urgency:</strong>
+                        <span class="ml-1 font-bold px-2 py-0.5 rounded-full text-[11px]" [ngClass]="{
+                          'bg-rose-100 text-rose-700': v.triageLevel === 'Red',
+                          'bg-amber-100 text-amber-700': v.triageLevel === 'Yellow',
+                          'bg-emerald-100 text-emerald-700': v.triageLevel === 'Green'
+                        }">{{ v.triageLevel }}</span>
+                      </p>
+                    }
+
+                    <!-- Doctor Consultation Notes -->
+                    @if (v.consultationNotes) {
+                      <div class="mt-2 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <p class="font-bold text-slate-700 mb-0.5">Doctor Consultation Notes:</p>
+                        <p class="text-slate-600 italic leading-relaxed">{{ v.consultationNotes }}</p>
+                      </div>
+                    }
+                  </div>
+                } @empty {
+                  <div class="py-8 text-center text-slate-400 text-xs">
+                    No past consultation visits recorded for this patient.
+                  </div>
+                }
+              </div>
+            }
           </div>
 
         </div>

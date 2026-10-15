@@ -38,25 +38,27 @@
             <div [class]="currentToken.status === 'Called' 
                   ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white p-6 sm:p-7 shadow-sm animate-pulse'
                   : (currentToken.status === 'Booked' 
-                     ? 'bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-amber-50/90 border-b border-amber-200/80 p-6 sm:p-7 text-slate-900'
-                     : 'bg-gradient-to-r from-teal-50/70 via-slate-50/40 to-teal-50/70 border-b border-teal-200/60 p-6 sm:p-7 text-slate-900')">
+                     ? 'bg-gradient-to-r from-amber-50 via-orange-50/50 to-amber-100/60 border-b border-amber-200/90 p-6 sm:p-7 text-amber-950'
+                     : 'bg-gradient-to-r from-teal-50/80 via-cyan-50/40 to-teal-100/60 border-b border-teal-200/90 p-6 sm:p-7 text-teal-950')">
               
               <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div>
                   <span class="text-[11px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-md border inline-block"
                         [class]="currentToken.status === 'Called' 
                           ? 'bg-white/20 text-white border-white/30' 
-                          : 'bg-teal-100/70 text-teal-800 border-teal-200/80'">
+                          : (currentToken.status === 'Booked' 
+                             ? 'bg-amber-100/90 text-amber-900 border-amber-300' 
+                             : 'bg-teal-100/90 text-teal-900 border-teal-300')">
                     {{ currentToken.departmentName }} &bull; Today's Consultation Pass
                   </span>
                   <div class="flex items-baseline gap-3 mt-2">
                     <span class="font-mono text-3xl sm:text-5xl font-black tracking-tight"
-                          [class]="currentToken.status === 'Called' ? 'text-white' : 'text-slate-900'">
+                          [class]="currentToken.status === 'Called' ? 'text-white' : (currentToken.status === 'Booked' ? 'text-amber-950' : 'text-teal-950')">
                       {{ currentToken.tokenNumber }}
                     </span>
                     <span class="text-xs font-semibold"
-                          [class]="currentToken.status === 'Called' ? 'text-emerald-100' : 'text-slate-500'">
-                      for <strong [class]="currentToken.status === 'Called' ? 'text-white' : 'text-slate-800'">{{ currentToken.patientName }}</strong>
+                          [class]="currentToken.status === 'Called' ? 'text-emerald-100' : (currentToken.status === 'Booked' ? 'text-amber-800' : 'text-teal-800')">
+                      for <strong [class]="currentToken.status === 'Called' ? 'text-white' : 'text-slate-900'">{{ currentToken.patientName }}</strong>
                     </span>
                   </div>
                 </div>
@@ -64,7 +66,9 @@
                 <!-- Status Pill -->
                 <div class="sm:text-right shrink-0">
                   <span class="inline-block px-3.5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider"
-                        [class]="getStatusBadgeClass(currentToken.status)">
+                        [class]="currentToken.status === 'Called' 
+                          ? 'bg-white/25 text-white border border-white/40 shadow-xs' 
+                          : getStatusBadgeClass(currentToken.status)">
                     {{ getStatusDisplay(currentToken.status) }}
                   </span>
                 </div>
@@ -72,7 +76,9 @@
 
               <!-- Estimated Wait / Call Alert Banner -->
               <div class="mt-5 pt-4 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
-                   [class]="currentToken.status === 'Called' ? 'border-white/20 text-white' : 'border-slate-200/80 text-slate-600'">
+                   [class]="currentToken.status === 'Called' 
+                     ? 'border-white/20 text-white' 
+                     : (currentToken.status === 'Booked' ? 'border-amber-200/90 text-amber-900' : 'border-teal-200/90 text-teal-900')">
                 @if (currentToken.status === 'Called') {
                   <div class="flex items-center gap-2 font-black text-sm">
                     <svg class="w-5 h-5 text-amber-300 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -81,13 +87,13 @@
                     <span>DOCTOR IS CALLING NOW &bull; PLEASE ENTER ROOM {{ currentToken.roomNumber }}</span>
                   </div>
                 } @else if (currentToken.status === 'Waiting') {
-                  <div class="flex items-center gap-1.5 text-teal-800 font-bold">
+                  <div class="flex items-center gap-1.5 text-teal-900 font-bold">
                     <svg class="w-4 h-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span>Estimated Wait: <strong class="text-teal-900">~{{ currentToken.estimatedWaitMinutes }} Minutes</strong></span>
+                    <span>Estimated Wait: <strong class="text-teal-950 font-black">~{{ currentToken.estimatedWaitMinutes }} Minutes</strong></span>
                   </div>
-                  <span class="text-[11px] text-slate-500 font-medium">
+                  <span class="text-[11px] text-teal-800 font-semibold">
                     {{ currentToken.patientsAhead }} {{ currentToken.patientsAhead === 1 ? 'patient' : 'patients' }} ahead in line
                   </span>
                 } @else if (currentToken.status === 'Booked') {
@@ -109,29 +115,43 @@
               <div class="grid grid-cols-3 gap-2 text-center text-xs font-bold">
                 <!-- Step 1: Registered -->
                 <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0"
-                       [class]="currentToken.status === 'Booked' ? 'bg-amber-500 text-white shadow-xs' : 'bg-emerald-600 text-white'">
+                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 transition"
+                       [class]="currentToken.status === 'Booked' 
+                         ? 'bg-amber-500 text-white shadow-xs ring-4 ring-amber-100' 
+                         : 'bg-emerald-600 text-white'">
                     {{ currentToken.status === 'Booked' ? '1' : '✓' }}
                   </div>
                   <div class="text-left leading-tight hidden sm:block">
-                    <p class="text-slate-900 font-extrabold text-[11px]">1. Booked</p>
-                    <span class="text-[10px] text-slate-400 font-medium">Token Issued</span>
+                    <p class="font-extrabold text-[11px]"
+                       [class]="currentToken.status === 'Booked' ? 'text-amber-900' : 'text-slate-700'">
+                      1. Booked
+                    </p>
+                    <span class="text-[10px] font-medium"
+                          [class]="currentToken.status === 'Booked' ? 'text-amber-700' : 'text-slate-400'">
+                      Token Issued
+                    </span>
                   </div>
                 </div>
 
                 <!-- Step 2: Nurse Vitals -->
                 <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0"
+                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 transition"
                        [class]="currentToken.status === 'Booked' 
-                         ? 'bg-amber-100 text-amber-800 border border-amber-300' 
-                         : (currentToken.status === 'Waiting' ? 'bg-teal-600 text-white shadow-xs' : 'bg-emerald-600 text-white')">
+                         ? 'bg-slate-200 text-slate-500' 
+                         : (currentToken.status === 'Waiting' 
+                            ? 'bg-teal-600 text-white shadow-xs ring-4 ring-teal-100' 
+                            : 'bg-emerald-600 text-white')">
                     {{ currentToken.status === 'Booked' ? '2' : (currentToken.status === 'Waiting' ? '2' : '✓') }}
                   </div>
                   <div class="text-left leading-tight hidden sm:block">
-                    <p [class]="currentToken.status === 'Booked' ? 'text-amber-800 font-extrabold text-[11px]' : 'text-slate-900 font-extrabold text-[11px]'">
+                    <p class="font-extrabold text-[11px]"
+                       [class]="currentToken.status === 'Waiting' 
+                         ? 'text-teal-900' 
+                         : (currentToken.status === 'Booked' ? 'text-slate-500' : 'text-slate-700')">
                       2. Nurse Vitals
                     </p>
-                    <span class="text-[10px] text-slate-400 font-medium">
+                    <span class="text-[10px] font-medium"
+                          [class]="currentToken.status === 'Waiting' ? 'text-teal-700' : 'text-slate-400'">
                       {{ currentToken.status === 'Booked' ? 'Needs Triage' : 'Vitals Recorded' }}
                     </span>
                   </div>
@@ -139,17 +159,21 @@
 
                 <!-- Step 3: Doctor Consultation -->
                 <div class="flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0"
+                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 transition"
                        [class]="currentToken.status === 'Called' 
-                         ? 'bg-emerald-600 text-white animate-pulse shadow-xs' 
+                         ? 'bg-emerald-600 text-white animate-pulse shadow-xs ring-4 ring-emerald-200' 
                          : (currentToken.status === 'Completed' ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500')">
                     {{ currentToken.status === 'Completed' ? '✓' : '3' }}
                   </div>
                   <div class="text-left leading-tight hidden sm:block">
-                    <p [class]="currentToken.status === 'Called' ? 'text-emerald-700 font-black text-[11px]' : 'text-slate-700 font-extrabold text-[11px]'">
+                    <p class="font-extrabold text-[11px]"
+                       [class]="currentToken.status === 'Called' ? 'text-emerald-700 font-black' : 'text-slate-700'">
                       3. Doctor Room
                     </p>
-                    <span class="text-[10px] text-slate-400 font-medium">Room {{ currentToken.roomNumber || 'TBD' }}</span>
+                    <span class="text-[10px] font-medium"
+                          [class]="currentToken.status === 'Called' ? 'text-emerald-600' : 'text-slate-400'">
+                      Room {{ currentToken.roomNumber || 'TBD' }}
+                    </span>
                   </div>
                 </div>
               </div>

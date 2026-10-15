@@ -1,0 +1,63 @@
+name: VitalQ Continuous Integration
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # =========================================================================
+  # 1. BACKEND CI: .NET 8 Web API & Business Logic Compilation
+  # =========================================================================
+  backend-ci:
+    name: Backend Build (.NET 8)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore NuGet Dependencies
+        run: dotnet restore api/VitalQ.sln
+
+      - name: Build Solution (Release)
+        run: dotnet build api/VitalQ.sln --configuration Release --no-restore --verbosity normal
+
+  # =========================================================================
+  # 2. FRONTEND CI: Angular 19 Production Build & Type Checking
+  # =========================================================================
+  frontend-ci:
+    name: Frontend Build (Angular 19)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Angular Application
+        run: npm run build
