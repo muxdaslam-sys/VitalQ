@@ -30,8 +30,10 @@ import {
   DoctorQueueSummaryDto,
   DoctorDetailedQueueResponse,
   PatientQueuePositionResponse,
-  EmergencyWalkInBookingRequest
+  EmergencyWalkInBookingRequest,
+  ExistingPatientTokenBookingRequest
 } from '../../../shared/models/nurse.model';
+
 import { PatientDetailResponse } from '../../../shared/models/admin.model';
 
 @Component({
@@ -194,8 +196,21 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   walkInSuccessToken = signal<QueueToken | null>(null);
 
   // --------------------------------------------------------------------------
+  // 6b. INSTANT TOKEN BOOKING FOR REGISTERED PATIENTS (NO DATA RE-ENTRY)
+  // --------------------------------------------------------------------------
+  showBookExistingModal = signal<boolean>(false);
+  bookExistingPatient = signal<PatientSearchResult | null>(null);
+  bookExistingForm: ExistingPatientTokenBookingRequest = {
+    doctorId: '',
+    isEmergencyCodeRed: false,
+    clinicalNotes: ''
+  };
+  bookExistingSuccessToken = signal<QueueToken | null>(null);
+
+  // --------------------------------------------------------------------------
   // 7. LIFECYCLE & REAL-TIME SYNC
   // --------------------------------------------------------------------------
+
   ngOnInit(): void {
     this.loadDashboard();
     this.loadPendingTriage();
@@ -339,25 +354,11 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  selectArrivingToken(token: QueueToken): void {
-    const searchItem: PatientSearchResult = {
-      patientId: token.patientId,
-      fullName: token.patientName,
-      phoneNumber: token.patientPhone,
-      medicalRecordNumber: '',
-      dateOfBirth: '',
-      gender: '',
-      activeTokenId: token.id,
-      activeTokenNumber: token.tokenNumber,
-      activeTokenStatus: token.status
-    };
-    this.selectPatient(searchItem);
-  }
-
   clearSelectedPatient(): void {
     this.selectedPatient.set(null);
     this.patientTokens.set([]);
   }
+
 
   // --------------------------------------------------------------------------
   // 11. THE 3 ACTION BUTTON HANDLERS
@@ -574,7 +575,73 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  // --------------------------------------------------------------------------
+  // 13. INSTANT TOKEN BOOKING FOR REGISTERED PATIENTS
+  // --------------------------------------------------------------------------
+  openBookExistingModal(patient: PatientSearchResult): void {
+    const defaultDocId = this.stats()?.doctors?.[0]?.doctorId || '';
+    this.bookExistingPatient.set(patient);
+    this.bookExistingForm = {
+      doctorId: defaultDocId,
+      isEmergencyCodeRed: false,
+      clinicalNotes: ''
+    };
+    this.bookExistingSuccessToken.set(null);
+    this.showBookExistingModal.set(true);
+  }
+
+  closeBookExistingModal(): void {
+    this.showBookExistingModal.set(false);
+    this.bookExistingPatient.set(null);
+    this.bookExistingSuccessToken.set(null);
+  }
+
+  submitBookExisting(): void {
+    const patient = this.bookExistingPatient();
+    if (!patient) return;
+
+    if (!this.bookExistingForm.doctorId) {
+      this.toast.warning('Please select an on-duty doctor.');
+      return;
+    }
+
+    if (this.bookExistingForm.isEmergencyCodeRed && !this.bookExistingForm.clinicalNotes?.trim()) {
+      this.toast.warning('Emergency clinical remarks are mandatory for Immediate Code-Red Bypass.');
+      return;
+    }
+
+    this.isSubmitting.set(true);
+    this.nurseService.bookTokenForExistingPatient(patient.patientId, this.bookExistingForm).subscribe({
+      next: token => {
+        this.isSubmitting.set(false);
+        this.bookExistingSuccessToken.set(token);
+        const msg = this.bookExistingForm.isEmergencyCodeRed
+          ? `⚡ CODE-RED EMERGENCY: Slip ${token.tokenNumber} issued and pushed to FRONT of Dr. ${token.doctorName}'s queue!`
+          : `Consultation token ${token.tokenNumber} issued for ${patient.fullName}!`;
+        this.toast.success(msg);
+        this.loadDashboard();
+        this.loadPendingTriage();
+        if (this.selectedPatient()?.patientId === patient.patientId) {
+          this.selectPatient(patient);
+        }
+      },
+      error: err => {
+        this.isSubmitting.set(false);
+        this.toast.error(err.error?.message || 'Failed to issue token for existing patient.');
+      }
+    });
+  }
+
+  startTriageForExistingToken(): void {
+    const token = this.bookExistingSuccessToken();
+    if (token) {
+      this.closeBookExistingModal();
+      this.openTriageModal(token);
+    }
+  }
+
   logout(): void {
     this.auth.logout().subscribe(() => this.router.navigate(['/login']));
   }
 }
+
