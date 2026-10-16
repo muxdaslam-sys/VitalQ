@@ -123,7 +123,7 @@ public class NurseController : ControllerBase
 
     #endregion
 
-    #region 5. Dashboard KPIs & Live Doctor Queues
+    #region 3. Dashboard KPIs & Live Doctor Queues
 
     /// <summary>
     /// Aggregates today's clinic metrics and doctor live queue roster (GET /api/nurse/dashboard/stats).
@@ -205,6 +205,10 @@ public class NurseController : ControllerBase
             return NotFound(new { message = ex.Message });
         }
     }
+
+    #endregion
+
+    #region 4. Emergency Walk-In & Fast-Track Intake
 
     /// <summary>
     /// Enhanced walk-in intake with automatic patient deduplication and Code-Red bypass option (POST /api/nurse/tokens/walk-in-emergency).

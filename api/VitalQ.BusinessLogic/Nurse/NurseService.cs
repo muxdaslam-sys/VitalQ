@@ -306,111 +306,7 @@ public class NurseService : INurseService
 
     #endregion
 
-    #region 5. Internal Clinical Rules & Entity Mapping
-
-    private static string CalculateAutomatedTriageLevel(decimal spo2, int systolicBp, int heartRate, decimal temperature, int painScale)
-    {
-        // 1. Red (Resuscitation / Immediate Life Threat)
-        if (spo2 < 90m || systolicBp < 90 || systolicBp > 200 || heartRate > 140 || heartRate < 40 || temperature > 40.0m || painScale == 10)
-            return "Red";
-
-        // 2. Yellow (Urgent / Serious Medical Concern)
-        if ((spo2 >= 90m && spo2 <= 94m) ||
-            (systolicBp >= 90 && systolicBp <= 99) ||
-            (systolicBp >= 160 && systolicBp <= 200) ||
-            (heartRate >= 110 && heartRate <= 140) ||
-            (heartRate >= 40 && heartRate < 50) ||
-            (temperature >= 38.5m && temperature <= 40.0m) ||
-            painScale >= 6)
-            return "Yellow";
-
-        // 3. Green (Routine / Standard Ambulatory)
-        return "Green";
-    }
-
-    private static int CalculateBaseWeight(string triageLevel) => triageLevel switch
-    {
-        "Red" => 1000,
-        "Yellow" => 500,
-        "Green" => 100,
-        _ => 100
-    };
-
-    private static string NormalizePhone(string rawPhone)
-    {
-        if (string.IsNullOrWhiteSpace(rawPhone))
-            throw new ArgumentException("Phone number is required.");
-        var cleaned = Regex.Replace(rawPhone.Trim(), @"[^\d]", "");
-        if (cleaned.Length < 7 || cleaned.Length > 15)
-            throw new ArgumentException("Please enter a valid phone number (7 to 15 digits).");
-        return cleaned;
-    }
-
-    private static void ValidateDateOfBirth(DateOnly dob)
-    {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        if (dob >= today)
-            throw new ArgumentException("Date of birth must be in the past.");
-        if (dob < today.AddYears(-130))
-            throw new ArgumentException("Please provide a valid date of birth.");
-    }
-
-    private static QueueTokenResponse MapToTokenResponse(QueueToken t, Patient? p, Doctor? d)
-    {
-        // Resolve Nursing Station from TriageAssessment (if triaged) or from Department (if awaiting triage)
-        var station = t.TriageAssessment?.NursingStation 
-            ?? d?.Department?.NursingStations?.FirstOrDefault(s => s.IsActive)
-            ?? t.Department?.NursingStations?.FirstOrDefault(s => s.IsActive);
-
-        var stationName = station?.StationName ?? "Nursing Triage Desk";
-        var stationFloor = station?.LocationFloor ?? d?.Department?.LocationFloor ?? t.Department?.LocationFloor ?? "Floor 1";
-        var room = d?.RoomNumber ?? "Consultation Room";
-        var doctorName = d?.User?.FullName ?? "Doctor";
-
-        // Generate contextual wayfinding instruction based on current queue stage
-        var nextStepInstruction = t.Status switch
-        {
-            "Booked" => $"Please report to {stationName} ({stationFloor}) for Vital Signs Intake.",
-            "Waiting" => $"Vitals recorded ({t.TriageAssessment?.TriageLevel ?? "Green"}). Please wait in the lounge outside Room {room} ({stationFloor}).",
-            "Called" => $"Please enter Room {room} for your consultation with Dr. {doctorName}.",
-            "Completed" => "Consultation completed. Thank you for visiting VitalQ.",
-            "Cancelled" => "Appointment was cancelled.",
-            _ => $"Please proceed to {stationFloor}."
-        };
-
-        return new QueueTokenResponse
-        {
-            Id = t.Id,
-            TokenNumber = t.TokenNumber,
-            PatientId = t.PatientId,
-            PatientName = p?.FullName ?? string.Empty,
-            PatientPhone = p?.PhoneNumber ?? string.Empty,
-            DepartmentId = t.DepartmentId,
-            DepartmentName = d?.Department?.Name ?? t.Department?.Name ?? string.Empty,
-            DepartmentCode = d?.Department?.Code ?? t.Department?.Code ?? string.Empty,
-            DoctorId = t.DoctorId,
-            DoctorName = doctorName,
-            RoomNumber = room,
-            Status = t.Status,
-            PriorityScore = t.PriorityScore,
-            BaseWeight = t.BaseWeight,
-            TriageLevel = t.TriageAssessment?.TriageLevel,
-            BookedAtUtc = t.BookedAtUtc,
-            TriagedAtUtc = t.TriagedAtUtc,
-            CalledAtUtc = t.CalledAtUtc,
-            CompletedAtUtc = t.CompletedAtUtc,
-            ConsultationNotes = t.ConsultationNotes,
-            RowVersion = t.RowVersion ?? Array.Empty<byte>(),
-            NursingStationId = station?.Id,
-            NursingStationName = stationName,
-            LocationFloor = stationFloor,
-            NextStepInstruction = nextStepInstruction
-        };
-    }
-
-    #endregion
-
-    #region 5. Dashboard KPIs & Live Doctor Queues
+    #region 3. Dashboard KPIs & Live Doctor Queues
 
     /// <summary>
     /// Aggregates today's clinic metrics and live doctor roster with single-trip SQL aggregation.
@@ -752,6 +648,10 @@ public class NurseService : INurseService
         };
     }
 
+    #endregion
+
+    #region 4. Emergency Walk-In & Fast-Track Intake
+
     /// <summary>
     /// Registers or resolves existing patient, generates walk-in token, and optionally executes Code-Red emergency bypass.
     /// </summary>
@@ -827,8 +727,8 @@ public class NurseService : INurseService
             };
 
             var emergencyReason = string.IsNullOrWhiteSpace(request.ClinicalNotes)
-                ? "⚡ Immediate Emergency Walk-In Bypass (Acute Life Threat)"
-                : $"⚡ Immediate Emergency Bypass: {request.ClinicalNotes.Trim()}";
+                ? "Immediate Emergency Walk-In Bypass (Acute Life Threat)"
+                : $"Immediate Emergency Bypass: {request.ClinicalNotes.Trim()}";
 
             var assessment = new TriageAssessment
             {
@@ -966,6 +866,128 @@ public class NurseService : INurseService
 
             return MapToTokenResponse(token, patient, doctor);
         }
+    }
+
+    #endregion
+
+    #region 5. Clinical Decision Support & Entity Mapping
+
+    /// <summary>
+    /// Evaluates 5 core vital signs against Canadian Triage and Acuity Scale (CTAS) threshold rules:
+    /// - Red (Immediate Resuscitation): SpO2 &lt; 90%, BP extreme, HR &gt; 140 or &lt; 40, Temp &gt; 40.0C, Pain 10/10.
+    /// - Yellow (Urgent Assessment): SpO2 90-94%, borderline vitals, severe fever, Pain &gt;= 6/10.
+    /// - Green (Standard Ambulatory): Hemodynamically stable parameters.
+    /// </summary>
+    private static string CalculateAutomatedTriageLevel(decimal spo2, int systolicBp, int heartRate, decimal temperature, int painScale)
+    {
+        // 1. Red (Resuscitation / Immediate Life Threat)
+        if (spo2 < 90m || systolicBp < 90 || systolicBp > 200 || heartRate > 140 || heartRate < 40 || temperature > 40.0m || painScale == 10)
+            return "Red";
+
+        // 2. Yellow (Urgent / Serious Medical Concern)
+        if ((spo2 >= 90m && spo2 <= 94m) ||
+            (systolicBp >= 90 && systolicBp <= 99) ||
+            (systolicBp >= 160 && systolicBp <= 200) ||
+            (heartRate >= 110 && heartRate <= 140) ||
+            (heartRate >= 40 && heartRate < 50) ||
+            (temperature >= 38.5m && temperature <= 40.0m) ||
+            painScale >= 6)
+            return "Yellow";
+
+        // 3. Green (Routine / Standard Ambulatory)
+        return "Green";
+    }
+
+    /// <summary>
+    /// Translates clinical triage level into base queue urgency weights for the priority sorting engine.
+    /// </summary>
+    private static int CalculateBaseWeight(string triageLevel) => triageLevel switch
+    {
+        "Red" => 1000,
+        "Yellow" => 500,
+        "Green" => 100,
+        _ => 100
+    };
+
+    /// <summary>
+    /// Strips non-digit formatting characters from telephone input and validates digit length.
+    /// </summary>
+    private static string NormalizePhone(string rawPhone)
+    {
+        if (string.IsNullOrWhiteSpace(rawPhone))
+            throw new ArgumentException("Phone number is required.");
+        var cleaned = Regex.Replace(rawPhone.Trim(), @"[^\d]", "");
+        if (cleaned.Length < 7 || cleaned.Length > 15)
+            throw new ArgumentException("Please enter a valid phone number (7 to 15 digits).");
+        return cleaned;
+    }
+
+    /// <summary>
+    /// Verifies date of birth is logically within the past century and not in the future.
+    /// </summary>
+    private static void ValidateDateOfBirth(DateOnly dob)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (dob >= today)
+            throw new ArgumentException("Date of birth must be in the past.");
+        if (dob < today.AddYears(-130))
+            throw new ArgumentException("Please provide a valid date of birth.");
+    }
+
+    /// <summary>
+    /// Projects QueueToken entity into QueueTokenResponse with resolved nursing station and live wayfinding guidance.
+    /// </summary>
+    private static QueueTokenResponse MapToTokenResponse(QueueToken t, Patient? p, Doctor? d)
+    {
+        // Resolve Nursing Station from TriageAssessment (if triaged) or from Department (if awaiting triage)
+        var station = t.TriageAssessment?.NursingStation 
+            ?? d?.Department?.NursingStations?.FirstOrDefault(s => s.IsActive)
+            ?? t.Department?.NursingStations?.FirstOrDefault(s => s.IsActive);
+
+        var stationName = station?.StationName ?? "Nursing Triage Desk";
+        var stationFloor = station?.LocationFloor ?? d?.Department?.LocationFloor ?? t.Department?.LocationFloor ?? "Floor 1";
+        var room = d?.RoomNumber ?? "Consultation Room";
+        var doctorName = d?.User?.FullName ?? "Doctor";
+
+        // Generate contextual wayfinding instruction based on current queue stage
+        var nextStepInstruction = t.Status switch
+        {
+            "Booked" => $"Please report to {stationName} ({stationFloor}) for Vital Signs Intake.",
+            "Waiting" => $"Vitals recorded ({t.TriageAssessment?.TriageLevel ?? "Green"}). Please wait in the lounge outside Room {room} ({stationFloor}).",
+            "Called" => $"Please enter Room {room} for your consultation with Dr. {doctorName}.",
+            "Completed" => "Consultation completed. Thank you for visiting VitalQ.",
+            "Cancelled" => "Appointment was cancelled.",
+            _ => $"Please proceed to {stationFloor}."
+        };
+
+        return new QueueTokenResponse
+        {
+            Id = t.Id,
+            TokenNumber = t.TokenNumber,
+            PatientId = t.PatientId,
+            PatientName = p?.FullName ?? string.Empty,
+            PatientPhone = p?.PhoneNumber ?? string.Empty,
+            DepartmentId = t.DepartmentId,
+            DepartmentName = d?.Department?.Name ?? t.Department?.Name ?? string.Empty,
+            DepartmentCode = d?.Department?.Code ?? t.Department?.Code ?? string.Empty,
+            DoctorId = t.DoctorId,
+            DoctorName = doctorName,
+            RoomNumber = room,
+            Status = t.Status,
+            PriorityScore = t.PriorityScore,
+            BaseWeight = t.BaseWeight,
+            TriageLevel = t.TriageAssessment?.TriageLevel,
+            BookedAtUtc = t.BookedAtUtc,
+            TriagedAtUtc = t.TriagedAtUtc,
+            CalledAtUtc = t.CalledAtUtc,
+            CompletedAtUtc = t.CompletedAtUtc,
+            ConsultationNotes = t.ConsultationNotes,
+            RowVersion = t.RowVersion ?? Array.Empty<byte>(),
+            NursingStationId = station?.Id,
+            NursingStationName = stationName,
+            LocationFloor = stationFloor,
+            NextStepInstruction = nextStepInstruction
+        };
     }
 
     #endregion

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 
 namespace VitalQ.Entities.DTOs;
 
+#region 1. Dashboard Metrics & Doctor Queue Roster
+
 /// <summary>
 /// Top-level KPI stats and doctor live queue roster returned for the Nurse Command Center.
 /// GET /api/nurse/dashboard/stats
@@ -65,6 +67,10 @@ public class DoctorQueueItemDto
     public TriageAssessmentResponse? TriageAssessment { get; set; }
 }
 
+#endregion
+
+#region 2. Patient Real-Time Queue Position & Visualizer
+
 /// <summary>
 /// Detailed queue status and live line visualizer for a specific patient token.
 /// GET /api/nurse/tokens/{tokenId}/queue-position
@@ -95,6 +101,10 @@ public class PatientQueuePositionResponse
     public List<DoctorQueueItemDto> DoctorLiveQueue { get; set; } = new();
 }
 
+#endregion
+
+#region 3. Emergency Walk-in & Existing Patient Token Booking Payloads
+
 /// <summary>
 /// Direct Emergency Walk-in booking payload with Code-Red bypass option.
 /// </summary>
@@ -118,4 +128,6 @@ public class ExistingPatientTokenBookingRequest
     public bool IsEmergencyCodeRed { get; set; }
     public string? ClinicalNotes { get; set; }
 }
+
+#endregion
 
