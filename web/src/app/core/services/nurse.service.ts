@@ -8,12 +8,14 @@ import {
   NurseDashboardStatsResponse,
   DoctorDetailedQueueResponse,
   PatientQueuePositionResponse,
-  EmergencyWalkInBookingRequest
+  EmergencyWalkInBookingRequest,
+  ExistingPatientTokenBookingRequest
 } from '../../shared/models/nurse.model';
 import { PatientDetailResponse } from '../../shared/models/admin.model';
 
 @Injectable({ providedIn: 'root' })
 export class NurseService {
+
   private http = inject(HttpClient);
   private baseUrl = `${environment.apiUrl}/nurse`;
 
@@ -91,6 +93,15 @@ export class NurseService {
   processEmergencyWalkIn(request: EmergencyWalkInBookingRequest): Observable<QueueToken> {
     return this.http.post<QueueToken>(`${this.baseUrl}/tokens/walk-in-emergency`, request);
   }
+
+  /**
+   * Issues a token for an existing registered patient with optional Code-Red emergency bypass.
+   * Eliminates re-entering demographics.
+   */
+  bookTokenForExistingPatient(patientId: string, request: ExistingPatientTokenBookingRequest): Observable<QueueToken> {
+    return this.http.post<QueueToken>(`${this.baseUrl}/patients/${patientId}/book-token`, request);
+  }
+
 
   /**
    * Client-side instant CTAS evaluation preview.

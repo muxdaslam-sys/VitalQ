@@ -73,3 +73,10 @@ export interface EmergencyWalkInBookingRequest {
   clinicalNotes?: string;
 }
 
+export interface ExistingPatientTokenBookingRequest {
+  doctorId: string;
+  isEmergencyCodeRed: boolean;
+  clinicalNotes?: string;
+}
+
+
