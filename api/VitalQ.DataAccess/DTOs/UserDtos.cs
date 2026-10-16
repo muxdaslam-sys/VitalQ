@@ -2,9 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace VitalQ.Entities.DTOs;
 
-// ==========================================
-// 1. DATA RETURNED TO CLIENTS (RESPONSES)
-// ==========================================
+#region 1. Response Models (Returned to Clients)
 
 /// <summary>
 /// Safe user profile returned in responses. Never includes passwords.
@@ -42,12 +40,12 @@ public class AuthResponse
     public UserResponse User { get; set; } = null!;
 }
 
-// ==========================================
-// 2. DATA SENT FROM CLIENTS (REQUESTS)
-// ==========================================
+#endregion
+
+#region 2. Request Models (Sent from Clients)
 
 /// <summary>
-/// Login credentials. (POST /api/auth/login)
+/// Login credentials payload (POST /api/auth/login).
 /// </summary>
 public class LoginRequest
 {
@@ -99,3 +97,5 @@ public class UpdateUserRequest
     public string? Password { get; set; }
     public bool IsActive { get; set; }
 }
+
+#endregion

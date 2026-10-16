@@ -6,7 +6,14 @@ using VitalQ.Entities.DTOs;
 namespace VitalQ.API.Controllers;
 
 /// <summary>
-/// Exposes administrative endpoints: staff accounts, doctors, departments, nursing stations, and patient directory.
+/// Exposes administrative endpoints for hospital managers:
+/// - Real-time system KPI statistics
+/// - Staff & administrative account management
+/// - Doctor rosters and practice profiles
+/// - Clinical department hierarchy
+/// - Nursing triage desks
+/// - Master patient directory lookup
+/// All endpoints are restricted to authenticated users holding the "Admin" role.
 /// </summary>
 [Authorize(Roles = "Admin")]
 [ApiController]
@@ -19,6 +26,28 @@ public class AdminController : ControllerBase
     {
         _adminService = adminService;
     }
+
+    #region 0. Dashboard Stats & Analytics
+
+    /// <summary>
+    /// Aggregated KPI counts for the Admin Dashboard overview (GET /api/admin/dashboard/stats).
+    /// Executes fast SQL count aggregations in a single round-trip without serializing large entity lists.
+    /// </summary>
+    [HttpGet("dashboard/stats")]
+    public async Task<IActionResult> GetDashboardStats()
+    {
+        try
+        {
+            var stats = await _adminService.GetDashboardStatsAsync();
+            return Ok(stats);
+        }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while fetching dashboard statistics." });
+        }
+    }
+
+    #endregion
 
     #region 1. Staff & Admin Account Management
 
@@ -33,7 +62,8 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Create an Admin or Staff user account (POST /api/admin/users).
+    /// Create an Admin or Nurse staff user account (POST /api/admin/users).
+    /// Passwords are intentionally stored in plain text per hospital deployment requirements.
     /// </summary>
     [HttpPost("users")]
     public async Task<IActionResult> CreateAdminUser([FromBody] CreateUserRequest request)
@@ -42,6 +72,10 @@ public class AdminController : ControllerBase
         {
             var user = await _adminService.CreateAdminUserAsync(request);
             return Ok(user);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
@@ -68,6 +102,14 @@ public class AdminController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
         catch (Exception)
         {
             return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while updating the user account." });
@@ -89,7 +131,7 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Add a new doctor with login credentials (POST /api/admin/doctors).
+    /// Add a new doctor with login credentials and clinical practice settings (POST /api/admin/doctors).
     /// </summary>
     [HttpPost("doctors")]
     public async Task<IActionResult> CreateDoctor([FromBody] CreateDoctorRequest request)
@@ -101,7 +143,7 @@ public class AdminController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return BadRequest(new { message = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
@@ -114,7 +156,7 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Update doctor details (PUT /api/admin/doctors/{id}).
+    /// Update doctor details and credentials (PUT /api/admin/doctors/{id}).
     /// </summary>
     [HttpPut("doctors/{id}")]
     public async Task<IActionResult> UpdateDoctor(Guid id, [FromBody] UpdateDoctorRequest request)
@@ -130,7 +172,7 @@ public class AdminController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception)
         {
@@ -242,7 +284,11 @@ public class AdminController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
         }
         catch (Exception)
         {
@@ -267,7 +313,7 @@ public class AdminController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return NotFound(new { message = ex.Message });
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception)
         {

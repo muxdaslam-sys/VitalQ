@@ -76,7 +76,9 @@
               <td class="py-3 px-4">
                 <div class="flex items-center gap-3">
                   <div class="w-9 h-9 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold text-sm shrink-0 border border-teal-200">
-                    🏢
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
                   </div>
                   <div class="min-w-0 flex-1">
                     <p class="font-bold text-slate-900 leading-snug break-words text-sm" [title]="dept.name">{{ dept.name }}</p>
@@ -108,7 +110,10 @@
                   <!-- Top: Edit Button -->
                   <button (click)="openEditModal(dept)"
                           class="px-2.5 py-1 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-xs transition inline-flex items-center gap-1 shadow-2xs whitespace-nowrap">
-                    <span>✏️</span> Edit
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    <span>Edit</span>
                   </button>
 
                   <!-- Down: Status Badge -->
@@ -124,7 +129,11 @@
             <tr>
               <td colspan="5" class="py-14 text-center">
                 <div class="max-w-xs mx-auto text-center space-y-2">
-                  <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center text-xl">🏢</div>
+                  <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  </div>
                   <p class="font-bold text-slate-700 text-sm">No departments found</p>
                   <p class="text-xs text-slate-400">Try modifying your search or click below to configure a new department.</p>
                   <button (click)="openModal()" class="mt-2 text-xs font-bold text-teal-600 hover:text-teal-700 underline">
@@ -146,7 +155,11 @@
         <!-- 1. High-Contrast Header Bar -->
         <div class="px-6 py-4 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
           <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center text-base shadow-xs">🏢</div>
+            <div class="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-xs">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
             <div>
               <h3 class="text-base font-bold text-slate-900 leading-tight">Add Department</h3>
               <p class="text-xs text-slate-500">Define routing prefix code and clinical location</p>
@@ -195,7 +208,11 @@
         <!-- 1. High-Contrast Header Bar -->
         <div class="px-6 py-4 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
           <div class="flex items-center gap-2.5">
-            <div class="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center text-base shadow-xs">✏️</div>
+            <div class="w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-xs">
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </div>
             <div>
               <h3 class="text-base font-bold text-slate-900 leading-tight">Edit Department</h3>
               <p class="text-xs text-slate-500">Update department details and operational status</p>

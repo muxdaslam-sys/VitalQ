@@ -1,3 +1,15 @@
+/**
+ * ============================================================================
+ * COMPONENT: PatientHistoryComponent (Medical Consultation History & Records)
+ * ============================================================================
+ * 
+ * PURPOSE:
+ * Displays the complete clinical encounter timeline (completed visits, doctor
+ * diagnosis notes, cancellation reasons, and triage records) for the patient
+ * and their registered family dependents.
+ * ============================================================================
+ */
+
 import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -15,16 +27,36 @@ import { PatientVisitHistory, PatientProfile } from '../../../shared/models/pati
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PatientHistoryComponent implements OnInit {
+  //#region 1. Dependencies & Services
+
   private patientService = inject(PatientService);
 
+  //#endregion
+
+  //#region 2. Reactive State & Filters
+
+  /** Raw list of all past visits across the family */
   visits = signal<PatientVisitHistory[]>([]);
+
+  /** Registered family dependents for filter pills */
   familyMembers = signal<PatientProfile[]>([]);
+
+  /** Loading indicator during initial fetch */
   loading = signal<boolean>(true);
 
-  // Filters
+  /** Active family member filter (null = all records) */
   selectedFilterId = signal<string | null>(null);
+
+  /** Search keyword filter */
   searchTerm = signal<string>('');
 
+  //#endregion
+
+  //#region 3. Computed Filtered Records
+
+  /**
+   * Dynamically filters encounters based on selected family member and search keyword.
+   */
   filteredVisits = computed(() => {
     let list = this.visits();
     const filterId = this.selectedFilterId();
@@ -45,10 +77,17 @@ export class PatientHistoryComponent implements OnInit {
     return list;
   });
 
+  //#endregion
+
+  //#region 4. Lifecycle & Batch Fetching
+
   ngOnInit(): void {
     this.loadHistoryData();
   }
 
+  /**
+   * Concurrently loads encounter history and family profiles using forkJoin.
+   */
   loadHistoryData(): void {
     this.loading.set(true);
     forkJoin({
@@ -64,10 +103,20 @@ export class PatientHistoryComponent implements OnInit {
     });
   }
 
+  //#endregion
+
+  //#region 5. UI Helpers & Formatting
+
+  /**
+   * Calculates total visits completed by a specific family dependent.
+   */
   getMemberVisitCount(memberId: string): number {
     return this.visits().filter(v => v.patientId === memberId).length;
   }
 
+  /**
+   * Returns human-readable label for encounter status.
+   */
   getStatusDisplay(status: string): string {
     switch (status) {
       case 'Completed': return 'Visit Completed';
@@ -78,6 +127,9 @@ export class PatientHistoryComponent implements OnInit {
     }
   }
 
+  /**
+   * Returns badge style classes based on encounter outcome.
+   */
   getStatusBadgeClass(status: string): string {
     switch (status) {
       case 'Completed':
@@ -93,6 +145,9 @@ export class PatientHistoryComponent implements OnInit {
     }
   }
 
+  /**
+   * Returns badge style classes based on nurse triage urgency.
+   */
   getTriageBadgeClass(level?: string): string {
     switch (level) {
       case 'Red':
@@ -105,4 +160,6 @@ export class PatientHistoryComponent implements OnInit {
         return 'bg-teal-50 text-teal-700 border-teal-200';
     }
   }
+
+  //#endregion
 }

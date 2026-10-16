@@ -68,6 +68,7 @@ public class PublicService : IPublicService
                     UserId = d.UserId,
                     DoctorName = d.User.FullName,
                     Username = d.User.Username,
+                    PhoneNumber = d.User.PhoneNumber,
                     DepartmentId = d.DepartmentId,
                     DepartmentName = d.Department.Name,
                     Specialization = d.Specialization,

@@ -7,6 +7,10 @@ namespace VitalQ.BusinessLogic.Interfaces;
 /// </summary>
 public interface IAdminService
 {
+    #region 0. Dashboard Stats & Analytics
+    Task<AdminDashboardStatsResponse> GetDashboardStatsAsync();
+    #endregion
+
     #region 1. Staff & Admin Account Management
     Task<StaffUserResponse> CreateAdminUserAsync(CreateUserRequest request);
     Task<IEnumerable<StaffUserResponse>> GetAllStaffUsersAsync();

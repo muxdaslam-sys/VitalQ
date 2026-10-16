@@ -31,7 +31,7 @@ public interface INurseService
     Task<TriageAssessmentResponse?> GetTriageAssessmentAsync(Guid tokenId);
     #endregion
 
-    #region 5. Dashboard KPIs & Live Doctor Queues
+    #region 3. Dashboard KPIs & Live Doctor Queues
     /// <summary>
     /// Aggregates today's OPD metrics and doctor live queue roster for the station.
     /// </summary>
@@ -56,10 +56,18 @@ public interface INurseService
     /// Computes real-time line position, wait estimates, and doctor queue visualizer for a patient token.
     /// </summary>
     Task<PatientQueuePositionResponse> GetPatientQueuePositionAsync(Guid tokenId);
+    #endregion
 
+    #region 4. Emergency Walk-In & Fast-Track Intake
     /// <summary>
     /// Registers or resolves existing patient, generates walk-in token, and optionally executes Code-Red emergency bypass.
     /// </summary>
     Task<QueueTokenResponse> ProcessEmergencyWalkInAsync(EmergencyWalkInBookingRequest request, Guid nurseUserId, Guid? nursingStationId);
+
+    /// <summary>
+    /// Issues a token for an existing registered patient with optional Code-Red emergency bypass without re-entering demographics.
+    /// </summary>
+    Task<QueueTokenResponse> BookTokenForExistingPatientAsync(Guid patientId, ExistingPatientTokenBookingRequest request, Guid nurseUserId, Guid? nursingStationId);
     #endregion
 }
+

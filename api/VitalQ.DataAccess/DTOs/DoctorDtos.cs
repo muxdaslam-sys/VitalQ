@@ -16,6 +16,7 @@ public class DoctorResponse
     public string DoctorName { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
+    public string PhoneNumber { get; set; } = string.Empty;
     public Guid DepartmentId { get; set; }
     public string DepartmentName { get; set; } = string.Empty;
     public string Specialization { get; set; } = null!;

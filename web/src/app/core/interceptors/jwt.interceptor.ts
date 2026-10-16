@@ -1,12 +1,23 @@
 /**
- * jwtInterceptor: Attaches Bearer authentication headers and withCredentials to outbound HTTP requests,
- * and recovers gracefully from 401 Unauthorized responses with deduplicated refresh token rotation.
+ * ============================================================================
+ * INTERCEPTOR: jwtInterceptor (Bearer Token Injection & 401 Silent Recovery)
+ * ============================================================================
+ * 
+ * PURPOSE:
+ * 1. Attaches `withCredentials: true` to all outbound HTTP requests for HttpOnly cookie exchange.
+ * 2. Injects `Authorization: Bearer <token>` for protected endpoints.
+ * 3. Catches 401 Unauthorized responses and seamlessly replays the request using
+ *    a freshly rotated token via `AuthService.refreshToken()`.
+ * 4. Tags replayed requests with `X-VitalQ-Retry: true` to prevent cyclic loops.
+ * ============================================================================
  */
 
 import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
+
+//#region Functional Interceptor Implementation
 
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
@@ -59,3 +70,5 @@ export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
     })
   );
 };
+
+//#endregion

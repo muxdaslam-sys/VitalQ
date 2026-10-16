@@ -2,9 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace VitalQ.Entities.DTOs;
 
-// ==========================================
-// 1. DATA RETURNED TO CLIENTS (RESPONSES)
-// ==========================================
+#region 1. Data Returned to Clients (Responses)
 
 /// <summary>
 /// Returned when viewing recorded triage vitals and clinical assessment.
@@ -36,9 +34,9 @@ public class TriageAssessmentResponse
     public DateTime AssessedAtUtc { get; set; }
 }
 
-// ==========================================
-// 2. DATA SENT FROM CLIENTS (REQUESTS)
-// ==========================================
+#endregion
+
+#region 2. Data Sent from Clients (Requests)
 
 /// <summary>
 /// Submitted by a nurse at the nursing desk when recording patient vitals.
@@ -77,3 +75,5 @@ public class TriageRequest
 
     public string? NurseNotes { get; set; }
 }
+
+#endregion

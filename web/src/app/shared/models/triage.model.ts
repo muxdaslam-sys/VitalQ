@@ -1,3 +1,8 @@
+// #region 1. Clinical Triage Intake Request
+
+/**
+ * Payload submitted by nurse at the triage desk when recording patient vital signs.
+ */
 export interface TriageRequest {
   nursingStationId?: string | null;
   spO2: number;
@@ -12,6 +17,13 @@ export interface TriageRequest {
   nurseNotes?: string | null;
 }
 
+// #endregion
+
+// #region 2. Clinical Triage Assessment Response
+
+/**
+ * Recorded clinical assessment entity including assigned nurse and CTAS urgency score.
+ */
 export interface TriageAssessment {
   id: string;
   queueTokenId: string;
@@ -32,6 +44,13 @@ export interface TriageAssessment {
   assessedAtUtc: string;
 }
 
+// #endregion
+
+// #region 3. Intake Patient Search Result
+
+/**
+ * Search result item returned when looking up patients by Token, MRN, Name, or Phone.
+ */
 export interface PatientSearchResult {
   patientId: string;
   medicalRecordNumber: string;
@@ -43,3 +62,5 @@ export interface PatientSearchResult {
   activeTokenNumber?: string;
   activeTokenStatus?: string;
 }
+
+// #endregion

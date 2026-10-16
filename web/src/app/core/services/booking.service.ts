@@ -1,6 +1,12 @@
 /**
- * BookingService: Manages outpatient consultation booking, department and doctor lookups,
- * and token cancellation.
+ * ============================================================================
+ * SERVICE: BookingService (Outpatient Consultation & Live Queue Management)
+ * ============================================================================
+ * 
+ * PURPOSE:
+ * Manages outpatient consultation booking, clinical department and doctor queries,
+ * active token cancellation, and anonymous walk-in paper slip tracking.
+ * ============================================================================
  */
 
 import { Injectable, inject } from '@angular/core';
@@ -13,11 +19,17 @@ export type { Department, Doctor, QueueToken, BookTokenRequest };
 
 @Injectable({ providedIn: 'root' })
 export class BookingService {
+  //#region Dependencies & API Configuration
+
   /** Injected Angular HTTP client for making REST API calls */
   private http = inject(HttpClient);
 
   /** Base API endpoint URL from environment configuration (e.g. http://localhost:5089/api) */
   private api = environment.apiUrl;
+
+  //#endregion
+
+  //#region 1. Department & Doctor Clinical Lookups
 
   /**
    * Retrieves all active clinical departments in the hospital.
@@ -38,6 +50,10 @@ export class BookingService {
   getDoctorsByDepartment(deptId: string): Observable<Doctor[]> {
     return this.http.get<Doctor[]>(`${this.api}/public/departments/${deptId}/doctors`);
   }
+
+  //#endregion
+
+  //#region 2. Appointment Booking & Token Management
 
   /**
    * Books a new consultation slot and generates a collision-free daily sequence slip.
@@ -73,6 +89,10 @@ export class BookingService {
     });
   }
 
+  //#endregion
+
+  //#region 3. Anonymous Public Tracker
+
   /**
    * Public anonymous tracker for walk-in patients holding a physical paper slip.
    * Endpoint: GET /api/public/track/{tokenNumber}
@@ -84,4 +104,6 @@ export class BookingService {
     const cleanToken = encodeURIComponent(tokenNumber.trim().toUpperCase());
     return this.http.get<QueueToken>(`${this.api}/public/track/${cleanToken}`);
   }
+
+  //#endregion
 }

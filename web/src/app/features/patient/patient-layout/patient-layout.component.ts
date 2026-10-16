@@ -31,6 +31,8 @@ import { ToastContainerComponent } from '../../../shared/components/toast-contai
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PatientLayoutComponent {
+  //#region 1. Dependencies & Services
+
   /** Injected singleton AuthService providing current user profile and session methods */
   auth = inject(AuthService);
 
@@ -39,6 +41,10 @@ export class PatientLayoutComponent {
 
   /** Injected ElementRef for detecting clicks outside the profile dropdown */
   private elRef = inject(ElementRef);
+
+  //#endregion
+
+  //#region 2. Reactive State & Dropdown Controls
 
   /** State controlling visibility of user profile popover menu */
   isDropdownOpen = signal<boolean>(false);
@@ -57,6 +63,10 @@ export class PatientLayoutComponent {
       this.closeDropdown();
     }
   }
+
+  //#endregion
+
+  //#region 3. User Identity & Session Controls
 
   /**
    * Generates uppercase 2-letter initials for user avatar display.
@@ -80,4 +90,6 @@ export class PatientLayoutComponent {
       this.router.navigate(['/login']);
     });
   }
+
+  //#endregion
 }

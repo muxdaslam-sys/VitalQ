@@ -67,7 +67,7 @@ export class DoctorsComponent implements OnInit {
 
   /** Form state model for updating an existing physician */
   editDoc: UpdateDoctorRequest = {
-    fullName: '', password: '', departmentId: '', specialization: '',
+    fullName: '', phoneNumber: '', password: '', departmentId: '', specialization: '',
     roomNumber: '', status: 'Available', avgConsultationMinutes: 10
   };
 
@@ -82,13 +82,14 @@ export class DoctorsComponent implements OnInit {
     const dept = this.selectedDepartmentId();
     const status = this.selectedStatus();
 
-    // 1. Text Search Filter (name, specialization, room, username)
+    // 1. Text Search Filter (name, specialization, room, username, phone)
     if (query) {
       list = list.filter(d => 
         d.doctorName.toLowerCase().includes(query) ||
         d.specialization.toLowerCase().includes(query) ||
         d.username.toLowerCase().includes(query) ||
-        d.roomNumber.toLowerCase().includes(query)
+        d.roomNumber.toLowerCase().includes(query) ||
+        (d.phoneNumber && d.phoneNumber.toLowerCase().includes(query))
       );
     }
 
@@ -196,6 +197,7 @@ export class DoctorsComponent implements OnInit {
     this.editingDoctorId.set(doc.id);
     this.editDoc = {
       fullName: doc.doctorName,
+      phoneNumber: doc.phoneNumber || '',
       password: '', // Blank by default so password is not overwritten unless desired
       departmentId: doc.departmentId,
       specialization: doc.specialization,

@@ -144,7 +144,11 @@ public class PatientController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
-        catch (Exception ex) when (ex is InvalidOperationException || ex is ArgumentException)
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });
         }

@@ -1,33 +1,33 @@
-<div class="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800">
-  <!-- 1. Top Enterprise Header Bar -->
-  <header class="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between shadow-xs sticky top-0 z-30">
+<div class="min-h-screen bg-slate-100/70 flex flex-col font-sans text-slate-800">
+  <!-- 1. Top Enterprise Command Center Header Bar -->
+  <header class="bg-slate-900 border-b border-slate-800 px-6 py-3.5 flex items-center justify-between shadow-md sticky top-0 z-30">
     <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-600 to-teal-700 text-white flex items-center justify-center font-bold text-lg shadow-md shadow-teal-600/20">
+      <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-600 text-white flex items-center justify-center font-bold text-lg shadow-md shadow-teal-500/20">
         <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>
       </div>
       <div>
         <div class="flex items-center gap-2">
-          <h1 class="text-base font-bold text-slate-900 leading-tight">{{ auth.currentUser()?.fullName || 'Triage Nurse' }}</h1>
-          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">Clinical Desk</span>
+          <h1 class="text-base font-bold text-white leading-tight">{{ auth.currentUser()?.fullName || 'Triage Nurse' }}</h1>
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-950/80 text-teal-300 border border-teal-700/60">Clinical Desk</span>
         </div>
-        <p class="text-xs text-slate-400">VitalQ Hospital OPD · Vital Signs & Triage Command Center</p>
+        <p class="text-xs text-slate-400">VitalQ Hospital OPD · Vital Signs Intake & Triage Command Center</p>
       </div>
     </div>
 
     <div class="flex items-center gap-3">
       <!-- Locked Station Badge (SBAC) -->
-      <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-teal-50 border border-teal-200/80 text-teal-900 text-xs font-bold shadow-xs">
-        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      <div class="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700 text-teal-300 text-xs font-bold shadow-xs">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
         <span>Station: {{ auth.currentUser()?.nursingStationName || 'General OPD Desk' }}</span>
       </div>
 
       <!-- Quick Refresh Button with Sync Animation -->
       <button (click)="loadDashboard(); loadPendingTriage()" 
               [title]="isRefreshing() ? 'Syncing...' : 'Manual Sync (Auto-Sync Active via WebSockets)'"
-              class="text-xs font-bold text-slate-700 hover:text-teal-700 border border-slate-200 hover:border-teal-300 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 bg-white shadow-2xs cursor-pointer">
-        <svg class="w-3.5 h-3.5 text-slate-500 transition-transform duration-500" 
+              class="text-xs font-bold text-slate-200 hover:text-white border border-slate-700 hover:border-slate-500 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 bg-slate-800 shadow-xs cursor-pointer">
+        <svg class="w-3.5 h-3.5 text-slate-400 transition-transform duration-500" 
              [class.animate-spin]="isRefreshing()" 
              fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -37,8 +37,8 @@
 
       <!-- Logout Button -->
       <button (click)="logout()" title="Sign out"
-              class="text-xs font-bold text-slate-700 hover:text-rose-600 border border-slate-200 hover:border-rose-200 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 bg-white shadow-2xs cursor-pointer">
-        <svg class="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              class="text-xs font-bold text-slate-300 hover:text-rose-400 border border-slate-700 hover:border-rose-800/80 hover:bg-rose-950/30 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 bg-slate-800 shadow-xs cursor-pointer">
+        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
         </svg>
         <span>Logout</span>
@@ -49,66 +49,67 @@
   <!-- Main Container -->
   <main class="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full space-y-6">
 
-    <!-- 2. Dashboard KPI Metric Cards (4 Modern Accent Cards) -->
+    <!-- 2. Dashboard KPI Metric Cards (Rich Tinted Clinical Telemetry Cards) -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3.5 sm:gap-4">
-      <!-- Card 1: Doctors On Duty -->
-      <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 border-t-4 border-t-indigo-500 shadow-xs flex items-center gap-3.5 hover:shadow-sm transition">
-        <div class="w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+      <!-- Card 1: Doctors On Duty (Indigo) -->
+      <div class="bg-gradient-to-br from-indigo-50/90 via-white to-indigo-50/30 p-4 sm:p-5 rounded-3xl border border-indigo-200/90 border-t-4 border-t-indigo-600 shadow-xs flex items-center gap-3.5 hover:shadow-md transition">
+        <div class="w-11 h-11 rounded-2xl bg-indigo-100/90 text-indigo-700 flex items-center justify-center shrink-0 shadow-xs">
           <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         </div>
         <div>
-          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Doctors Duty</p>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-indigo-600/80">Doctors Duty</p>
           <p class="text-xl font-bold text-slate-900 leading-snug">
-            {{ stats()?.doctorsPresent ?? 0 }} <span class="text-xs font-semibold text-emerald-600">On Duty</span>
+            {{ stats()?.doctorsPresent ?? 0 }} <span class="text-xs font-bold text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded-md border border-emerald-300">On Duty</span>
           </p>
-          <p class="text-[10px] text-slate-400">{{ stats()?.doctorsAbsent ?? 0 }} on leave</p>
+          <p class="text-[10px] text-slate-500 font-medium">{{ stats()?.doctorsAbsent ?? 0 }} on scheduled leave</p>
         </div>
       </div>
 
-      <!-- Card 2: Total Bookings Today -->
-      <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 border-t-4 border-t-sky-500 shadow-xs flex items-center gap-3.5 hover:shadow-sm transition">
-        <div class="w-11 h-11 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+      <!-- Card 2: Total Bookings Today (Sky) -->
+      <div class="bg-gradient-to-br from-sky-50/90 via-white to-sky-50/30 p-4 sm:p-5 rounded-3xl border border-sky-200/90 border-t-4 border-t-sky-600 shadow-xs flex items-center gap-3.5 hover:shadow-md transition">
+        <div class="w-11 h-11 rounded-2xl bg-sky-100/90 text-sky-700 flex items-center justify-center shrink-0 shadow-xs">
           <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
           </svg>
         </div>
         <div>
-          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Bookings</p>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-sky-600/80">Total Bookings</p>
           <p class="text-xl font-bold text-slate-900 leading-snug">{{ stats()?.totalBookingsToday ?? 0 }}</p>
-          <p class="text-[10px] text-slate-400">Patients booked today</p>
+          <p class="text-[10px] text-slate-500 font-medium">Patients booked today</p>
         </div>
       </div>
 
-      <!-- Card 3: Awaiting Vitals (Station Desk) -->
-      <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 border-t-4 border-t-amber-500 shadow-xs flex items-center gap-3.5 hover:shadow-sm transition">
-        <div class="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+      <!-- Card 3: Awaiting Vitals (Amber) -->
+      <div class="bg-gradient-to-br from-amber-50/90 via-white to-amber-50/30 p-4 sm:p-5 rounded-3xl border border-amber-200/90 border-t-4 border-t-amber-600 shadow-xs flex items-center gap-3.5 hover:shadow-md transition">
+        <div class="w-11 h-11 rounded-2xl bg-amber-100/90 text-amber-700 flex items-center justify-center shrink-0 shadow-xs">
           <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
         <div>
-          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Awaiting Vitals</p>
-          <p class="text-xl font-bold text-amber-600 leading-snug">{{ pendingTriage().length }}</p>
-          <p class="text-[10px] text-slate-400">Waiting at your desk</p>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-amber-700">Awaiting Vitals</p>
+          <p class="text-xl font-bold text-amber-700 leading-snug">{{ pendingTriage().length }}</p>
+          <p class="text-[10px] text-amber-800/80 font-medium">Waiting at your desk</p>
         </div>
       </div>
 
-      <!-- Card 4: Consultations Completed -->
-      <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 border-t-4 border-t-emerald-500 shadow-xs flex items-center gap-3.5 hover:shadow-sm transition">
-        <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+      <!-- Card 4: Consultations Completed (Emerald) -->
+      <div class="bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/30 p-4 sm:p-5 rounded-3xl border border-emerald-200/90 border-t-4 border-t-emerald-600 shadow-xs flex items-center gap-3.5 hover:shadow-md transition">
+        <div class="w-11 h-11 rounded-2xl bg-emerald-100/90 text-emerald-700 flex items-center justify-center shrink-0 shadow-xs">
           <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
         <div>
-          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Consultations Done</p>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Consultations Done</p>
           <p class="text-xl font-bold text-slate-900 leading-snug">{{ stats()?.totalCompletedToday ?? 0 }}</p>
-          <p class="text-[10px] text-slate-400">{{ stats()?.totalTriagedToday ?? 0 }} total triaged today</p>
+          <p class="text-[10px] text-slate-500 font-medium">{{ stats()?.totalTriagedToday ?? 0 }} total triaged today</p>
         </div>
       </div>
     </div>
+
 
     <!-- 3. Doctor-Wise Live Queue Telemetry Board -->
     <div class="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
@@ -175,53 +176,53 @@
     <div class="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-6">
       
       <!-- Intake Desk Header & Action Bar -->
-      <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+      <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div class="flex items-center gap-2">
             <h2 class="text-base font-bold text-slate-900 leading-tight">Patient Intake & Triage Command Hub</h2>
             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 text-teal-800 border border-teal-200">OPD Station</span>
           </div>
-          <p class="text-xs text-slate-400 mt-0.5">Manage arrived station patients awaiting vital signs, or look up hospital patient charts</p>
+          <p class="text-xs text-slate-500 mt-0.5">Manage arrived station tokens awaiting vitals, or search the hospital master archive to issue tokens</p>
         </div>
 
-        <!-- Emergency Walk-In Trigger Button -->
+        <!-- Emergency Walk-In Trigger Button (For Brand New / Unregistered Patients) -->
         <button (click)="openWalkInModal()"
                 class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-amber-500/20 transition flex items-center justify-center gap-2 self-start lg:self-auto shrink-0 cursor-pointer">
           <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
           </svg>
-          <span>Emergency Walk-In Slip</span>
+          <span>+ Emergency Walk-In (New Patient Registration)</span>
         </button>
       </div>
 
       <!-- Tab Navigation Switcher -->
       <div class="flex items-center gap-2 border-b border-slate-200 pb-2">
-        <!-- Tab 1: Station Arrivals -->
+        <!-- Tab 1: Today's Station Desk Arrivals -->
         <button (click)="activeTab.set('arrivals')"
-                class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer"
+                class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer"
                 [ngClass]="activeTab() === 'arrivals' 
-                  ? 'bg-teal-600 text-white shadow-xs' 
+                  ? 'bg-slate-900 text-white shadow-xs' 
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700'">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>Station Arrivals Queue</span>
+          <span>Today's Desk Arrivals (Station Queue)</span>
           <span class="px-2 py-0.5 rounded-full text-[10px] font-black"
-                [ngClass]="activeTab() === 'arrivals' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'">
+                [ngClass]="activeTab() === 'arrivals' ? 'bg-teal-500 text-white' : 'bg-slate-200 text-slate-700'">
             {{ pendingTriage().length }}
           </span>
         </button>
 
-        <!-- Tab 2: Hospital Patient Directory -->
+        <!-- Tab 2: Hospital Master Patient Directory -->
         <button (click)="activeTab.set('directory')"
-                class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer"
+                class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer"
                 [ngClass]="activeTab() === 'directory' 
-                  ? 'bg-teal-600 text-white shadow-xs' 
+                  ? 'bg-slate-900 text-white shadow-xs' 
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700'">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          <span>Patient Master Directory &amp; Chart Lookup</span>
+          <span>Master Patient Directory &amp; Chart Search</span>
         </button>
       </div>
 
@@ -230,7 +231,7 @@
       <!-- ===================================================================== -->
       @if (activeTab() === 'arrivals') {
         <div class="space-y-4 animate-fadeIn">
-          <!-- In-Table Quick Filter (No Dropdown Overlap!) -->
+          <!-- In-Table Quick Filter -->
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
             <div class="relative flex-1 max-w-md">
               <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -241,16 +242,18 @@
               <input type="text"
                      [ngModel]="stationFilterQuery()"
                      (ngModelChange)="stationFilterQuery.set($event)"
-                     placeholder="Filter station arrivals by Token #, Patient Name, or Doctor..."
-                     class="w-full pl-10 pr-8 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none bg-slate-50/70 font-medium">
+                     placeholder="Search today's desk arrivals by Token #, Name, Phone, or MRN..."
+                     class="w-full pl-10 pr-8 py-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none bg-slate-50/70 font-medium">
               @if (stationFilterQuery()) {
-                <button (click)="stationFilterQuery.set('')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 text-xs font-bold">
-                  ✕
+                <button (click)="stationFilterQuery.set('')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition cursor-pointer" title="Clear filter">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               }
             </div>
 
-            <span class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 text-center">
+            <span class="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 text-center">
               Showing {{ filteredStationQueue().length }} of {{ pendingTriage().length }} Arrived
             </span>
           </div>
@@ -270,18 +273,18 @@
             <div class="overflow-x-auto rounded-2xl border border-slate-200">
               <table class="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr class="bg-slate-100 text-slate-600 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
+                  <tr class="bg-slate-100 text-slate-700 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
                     <th class="py-3 px-4">Token #</th>
                     <th class="py-3 px-4">Patient Demographics</th>
                     <th class="py-3 px-4">Assigned Doctor</th>
                     <th class="py-3 px-4">Booked Time</th>
                     <th class="py-3 px-4">Current Status</th>
-                    <th class="py-3 px-4 text-right">Intake Actions</th>
+                    <th class="py-3 px-4 text-right">Desk Actions</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                   @for (token of filteredStationQueue(); track token.id) {
-                    <tr class="hover:bg-teal-50/40 transition">
+                    <tr class="odd:bg-white even:bg-slate-50/70 hover:bg-teal-50/50 transition">
                       <!-- Token Number -->
                       <td class="py-3 px-4 whitespace-nowrap">
                         <span class="font-mono font-bold text-xs text-slate-900 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
@@ -292,7 +295,7 @@
                       <!-- Patient Name & Phone -->
                       <td class="py-3 px-4 whitespace-nowrap">
                         <p class="font-bold text-slate-900 leading-tight">{{ token.patientName }}</p>
-                        <p class="text-xs text-slate-400 font-mono mt-0.5">{{ token.patientPhone }}</p>
+                        <p class="text-xs text-slate-500 font-mono mt-0.5">{{ token.patientPhone }}</p>
                       </td>
 
                       <!-- Doctor & Room -->
@@ -319,27 +322,27 @@
                         </span>
                       </td>
 
-                      <!-- Direct Row Actions -->
+                      <!-- Direct Row Actions (3 Desk Actions) -->
                       <td class="py-3 px-4 whitespace-nowrap text-right">
                         <div class="inline-flex items-center gap-1.5 justify-end">
                           <!-- Action 1: Patient Chart -->
                           <button (click)="openFullDetails(token.patientId)"
-                                  title="Patient Medical Profile"
+                                  title="View Full Medical Details"
                                   class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer">
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            <span class="hidden md:inline">Chart</span>
+                            <span class="hidden md:inline">Details</span>
                           </button>
 
                           <!-- Action 2: Queue Status -->
                           <button (click)="openQueueStatus(token)"
-                                  title="Track Queue Line Position"
+                                  title="View Queue Line Position & Wait Time"
                                   class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer">
                             <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                               <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span class="hidden md:inline">Queue</span>
+                            <span class="hidden md:inline">Status</span>
                           </button>
 
                           <!-- Action 3: Triage / Re-triage / Completed Guard -->
@@ -349,7 +352,7 @@
                               <svg class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                               </svg>
-                              <span>Take Vitals</span>
+                              <span>Triage</span>
                             </button>
                           } @else if (token.status === 'Waiting') {
                             <button (click)="openTriageModal(token)"
@@ -357,8 +360,11 @@
                               Re-triage
                             </button>
                           } @else if (token.status === 'Completed') {
-                            <span class="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-100 text-slate-500">
-                              Completed ✓
+                            <span class="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-100 text-slate-500 inline-flex items-center gap-1">
+                              <span>Completed</span>
+                              <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                              </svg>
                             </span>
                           } @else {
                             <span class="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-100 text-slate-400">
@@ -403,8 +409,10 @@
                   <span class="text-xs text-teal-600 font-bold animate-pulse">Searching...</span>
                 }
                 @if (searchQuery()) {
-                  <button (click)="clearSearch()" class="text-xs text-slate-400 hover:text-slate-700 font-bold px-1.5 py-0.5 rounded cursor-pointer">
-                    ✕
+                  <button (click)="clearSearch()" class="text-slate-400 hover:text-slate-700 p-1 rounded-lg transition cursor-pointer" title="Clear search">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
                 }
               </div>
@@ -414,11 +422,11 @@
           <!-- Master Search Results List -->
           @if (searchResults().length > 0) {
             <div class="space-y-2">
-              <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Search Results (Click to load medical chart)</p>
+              <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Matching Registered Patients</p>
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 @for (patient of searchResults(); track patient.patientId) {
                   <div (click)="selectPatient(patient)"
-                       class="p-4 rounded-2xl border border-slate-200 hover:border-teal-400 bg-white hover:bg-teal-50/40 cursor-pointer transition shadow-2xs space-y-2">
+                       class="p-4 rounded-2xl border border-slate-200 hover:border-teal-500 bg-white hover:bg-teal-50/40 cursor-pointer transition shadow-2xs space-y-3">
                     <div class="flex items-start justify-between gap-2">
                       <div>
                         <h4 class="font-bold text-sm text-slate-900 leading-tight">{{ patient.fullName }}</h4>
@@ -426,20 +434,57 @@
                       </div>
                       @if (patient.activeTokenNumber) {
                         <span class="px-2 py-0.5 rounded-lg text-xs font-bold font-mono bg-teal-100 text-teal-800 border border-teal-200">
-                          {{ patient.activeTokenNumber }}
+                          Token: {{ patient.activeTokenNumber }}
                         </span>
                       }
                     </div>
                     <p class="text-xs text-slate-500">Phone: {{ patient.phoneNumber }} · DOB: {{ patient.dateOfBirth }} ({{ patient.gender }})</p>
+                    <div class="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <span class="text-[11px] font-semibold text-teal-700 inline-flex items-center gap-1">
+                        <span>View Record</span>
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </span>
+                      <button (click)="$event.stopPropagation(); openBookExistingModal(patient)"
+                              class="px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold shadow-xs transition cursor-pointer flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span>Book Token</span>
+                      </button>
+                    </div>
                   </div>
                 }
               </div>
             </div>
           }
 
+          <!-- No Patient Found State -> Direct Link to Emergency Walk-In -->
+          @if (searchQuery().trim().length >= 2 && !isSearching() && searchResults().length === 0) {
+            <div class="p-6 bg-slate-50 border border-slate-200 rounded-2xl text-center space-y-3 animate-fadeIn">
+              <div class="w-10 h-10 rounded-full bg-slate-200 text-slate-500 mx-auto flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <p class="font-bold text-slate-800 text-sm">No registered patient found matching "{{ searchQuery() }}"</p>
+                <p class="text-xs text-slate-500 mt-0.5">This patient may not have a hospital record yet. You can register them as an emergency walk-in.</p>
+              </div>
+              <button (click)="openWalkInModal()"
+                      class="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-bold shadow-xs transition inline-flex items-center gap-1.5 cursor-pointer">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                <span>+ Emergency Walk-In (New Patient Registration)</span>
+              </button>
+            </div>
+          }
+
           <!-- Selected Patient Medical Drawer -->
           @if (selectedPatient()) {
-            <div class="bg-gradient-to-r from-teal-50/70 via-slate-50 to-teal-50/70 border-2 border-teal-300 rounded-3xl p-5 shadow-xs animate-fadeIn space-y-4">
+            <div class="bg-gradient-to-r from-slate-900/5 via-teal-50/50 to-slate-900/5 border-2 border-teal-300 rounded-3xl p-5 shadow-xs animate-fadeIn space-y-4">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
                   <div class="w-12 h-12 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-bold text-xl shadow-xs">
@@ -463,8 +508,11 @@
                 </div>
 
                 <button (click)="clearSelectedPatient()"
-                        class="self-start sm:self-auto text-xs font-bold text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 transition shadow-2xs cursor-pointer">
-                  Dismiss ✕
+                        class="self-start sm:self-auto text-xs font-bold text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 transition shadow-2xs cursor-pointer inline-flex items-center gap-1.5">
+                  <span>Dismiss</span>
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
 
@@ -472,6 +520,15 @@
               <div class="p-4 bg-white rounded-2xl border border-teal-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-3">
                 <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Patient Actions:</span>
                 <div class="flex items-center gap-2 flex-wrap">
+                  <!-- DIRECT 1-CLICK TOKEN BOOKING FOR REGISTERED PATIENT -->
+                  <button (click)="openBookExistingModal(selectedPatient()!)"
+                          class="px-4 py-2 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-600/20 transition flex items-center gap-1.5 cursor-pointer">
+                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Issue Today's Token</span>
+                  </button>
+
                   <!-- Action 1: Full Details -->
                   <button (click)="openFullDetails(selectedPatient()!.patientId)"
                           class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer">
@@ -495,7 +552,7 @@
                   <!-- Action 3: Triage Assessment (Guarded) -->
                   @if (patientTokens().length > 0 && isTokenTriagable(patientTokens()[0])) {
                     <button (click)="openTriageModal(patientTokens()[0])"
-                            class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+                            class="px-4 py-2 bg-teal-800 hover:bg-teal-900 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer">
                       <svg class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                       </svg>
@@ -515,9 +572,12 @@
                 } @else if (patientTokens().length === 0) {
                   <div class="bg-white p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
                     <span class="text-slate-500">No active appointment tokens found for this patient today.</span>
-                    <button (click)="openWalkInModal()"
-                            class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold transition cursor-pointer">
-                      + Issue Emergency Walk-In Slip
+                    <button (click)="openBookExistingModal(selectedPatient()!)"
+                            class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs">
+                      <svg class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>+ Issue Today's Token</span>
                     </button>
                   </div>
                 } @else {
@@ -555,8 +615,11 @@
                         <div class="flex items-center gap-2">
                           <button (click)="openQueueStatus(token)"
                                   title="View Live Position"
-                                  class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition cursor-pointer">
-                            ⏱️ Position
+                                  class="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition cursor-pointer inline-flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Position</span>
                           </button>
 
                           @if (token.status === 'Booked') {
@@ -569,11 +632,19 @@
                                     class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer">
                               Re-triage
                             </button>
+                          } @else if (token.status === 'Completed') {
+                            <span class="text-xs text-slate-500 font-bold px-2.5 py-1 bg-slate-100 rounded-xl inline-flex items-center gap-1">
+                              <span>Completed</span>
+                              <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                              </svg>
+                            </span>
                           } @else {
-                            <span class="text-xs text-slate-400 font-bold px-2 py-1 bg-slate-100 rounded-xl">
-                              Completed ✓
+                            <span class="text-xs text-slate-400 font-bold px-2.5 py-1 bg-slate-100 rounded-xl">
+                              {{ token.status }}
                             </span>
                           }
+
                         </div>
                       </div>
                     }
@@ -585,6 +656,7 @@
         </div>
       }
     </div>
+
   </main>
 
   <!-- ========================================================================= -->
@@ -611,7 +683,11 @@
               <p class="text-xs text-slate-500">{{ selectedDoctorQueue()?.specialization }} · Room {{ selectedDoctorQueue()?.roomNumber }}</p>
             </div>
           </div>
-          <button (click)="closeDoctorModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition font-bold text-lg cursor-pointer">&times;</button>
+          <button (click)="closeDoctorModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition cursor-pointer" title="Close">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         <!-- Modal Queue List Body -->
@@ -756,7 +832,11 @@
               <p class="text-xs text-slate-300">Permanent Hospital Chart &amp; Past Consultations</p>
             </div>
           </div>
-          <button (click)="closeDetailsModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-white flex items-center justify-center transition font-bold text-lg cursor-pointer">&times;</button>
+          <button (click)="closeDetailsModal()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer" title="Close">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         <!-- Body -->
@@ -868,7 +948,11 @@
               <p class="text-xs text-blue-100">Dr. {{ queuePositionData()?.doctorName }} · Room {{ queuePositionData()?.roomNumber }} ({{ queuePositionData()?.specialization }})</p>
             </div>
           </div>
-          <button (click)="closeQueueModal()" class="w-8 h-8 rounded-lg text-blue-200 hover:text-white flex items-center justify-center transition font-bold text-lg cursor-pointer">&times;</button>
+          <button (click)="closeQueueModal()" class="w-8 h-8 rounded-lg text-blue-200 hover:text-white flex items-center justify-center transition cursor-pointer" title="Close">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         <!-- Body -->
@@ -879,7 +963,11 @@
             <!-- Real-Time Position Indicator Hero Banner -->
             @if (queuePositionData()?.status === 'Called') {
               <div class="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-300 text-emerald-950 flex items-center gap-3">
-                <span class="text-2xl animate-pulse">📢</span>
+                <div class="w-10 h-10 rounded-xl bg-emerald-200 text-emerald-800 flex items-center justify-center shrink-0 animate-pulse">
+                  <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                  </svg>
+                </div>
                 <div>
                   <p class="font-bold text-sm">Patient Is Currently Inside Consultation Room!</p>
                   <p class="text-xs opacity-90">Dr. {{ queuePositionData()?.doctorName }} is seeing this patient in Room {{ queuePositionData()?.roomNumber }}.</p>
@@ -910,7 +998,11 @@
               </div>
             } @else if (queuePositionData()?.status === 'Booked') {
               <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center gap-3">
-                <span class="text-xl">⏱️</span>
+                <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
                 <div>
                   <p class="font-bold text-sm">Awaiting Triage Vitals</p>
                   <p class="text-xs text-amber-700">Patient has not yet completed vital signs intake. Complete triage to activate them in the doctor's prioritized queue.</p>
@@ -962,8 +1054,11 @@
                           <div class="flex items-center gap-1.5">
                             <p class="font-bold text-xs text-slate-900 leading-tight">{{ item.patientName }}</p>
                             @if (item.tokenId === queuePositionData()?.tokenId) {
-                              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white animate-pulse">
-                                👉 This Patient
+                              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500 text-white animate-pulse inline-flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                                <span>This Patient</span>
                               </span>
                             }
                           </div>
@@ -1025,7 +1120,11 @@
               <p class="text-xs text-slate-500">Token <span class="font-mono font-bold text-teal-700">{{ triageToken()?.tokenNumber }}</span> · {{ triageToken()?.patientName }}</p>
             </div>
           </div>
-          <button (click)="closeTriageModal()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition font-bold text-lg cursor-pointer">&times;</button>
+          <button (click)="closeTriageModal()" class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition cursor-pointer" title="Close">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         <form (ngSubmit)="submitTriage()">
@@ -1038,9 +1137,19 @@
                    'bg-emerald-50 border-emerald-200 text-emerald-900': effectiveLevel() === 'Green'
                  }">
               <div class="flex items-center gap-2">
-                <span class="text-xl">
-                  {{ effectiveLevel() === 'Red' ? '🚨' : effectiveLevel() === 'Yellow' ? '⚠️' : '✅' }}
-                </span>
+                @if (effectiveLevel() === 'Red') {
+                  <svg class="w-5 h-5 text-red-600 animate-pulse shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                } @else if (effectiveLevel() === 'Yellow') {
+                  <svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                } @else {
+                  <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                }
                 <div>
                   <p class="text-xs font-bold leading-tight">Automated CTAS Urgency Level</p>
                   <p class="text-[11px] opacity-80">
@@ -1119,9 +1228,9 @@
                     <label class="block text-[11px] font-bold text-slate-600 mb-1">Override Urgency Level</label>
                     <select [(ngModel)]="vitalsForm.overrideTriageLevel" name="overrideLevel"
                             class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-xs font-bold bg-white focus:ring-2 focus:ring-teal-500">
-                      <option value="Red">🚨 Red (Emergency Priority)</option>
-                      <option value="Yellow">⚠️ Yellow (Urgent Priority)</option>
-                      <option value="Green">✅ Green (Routine Priority)</option>
+                      <option value="Red">Red (Emergency Priority)</option>
+                      <option value="Yellow">Yellow (Urgent Priority)</option>
+                      <option value="Green">Green (Routine Priority)</option>
                     </select>
                   </div>
                   <div>
@@ -1155,7 +1264,10 @@
                 <span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                 <span>Saving Vitals...</span>
               } @else {
-                <span>Submit &amp; Activate in Queue &rarr;</span>
+                <span>Submit &amp; Activate in Queue</span>
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
               }
             </button>
           </div>
@@ -1181,12 +1293,16 @@
             </div>
             <div>
               <h3 class="text-base font-bold leading-tight">
-                {{ walkInForm.isEmergencyCodeRed ? '⚡ Code-Red Emergency Walk-In' : 'Emergency Walk-In Intake' }}
+                {{ walkInForm.isEmergencyCodeRed ? 'Code-Red Emergency Walk-In' : 'Emergency Walk-In Intake' }}
               </h3>
               <p class="text-xs opacity-90">Auto-scoped to {{ auth.currentUser()?.nursingStationName || 'Station' }} Clinic</p>
             </div>
           </div>
-          <button (click)="closeWalkInModal()" class="w-7 h-7 rounded-lg text-white/80 hover:text-white flex items-center justify-center transition font-bold text-lg cursor-pointer">&times;</button>
+          <button (click)="closeWalkInModal()" class="w-7 h-7 rounded-lg text-white/80 hover:text-white flex items-center justify-center transition cursor-pointer" title="Close">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         @if (!walkInSuccessToken()) {
@@ -1206,7 +1322,9 @@
                 @if (existingPatientMatch()) {
                   <div class="mt-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-2 text-xs text-emerald-900 animate-fadeIn">
                     <div class="flex items-center gap-1.5">
-                      <span>✓</span>
+                      <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                      </svg>
                       <span><strong>Returning Patient:</strong> {{ existingPatientMatch()?.fullName }} ({{ existingPatientMatch()?.medicalRecordNumber || 'MRN On File' }})</span>
                     </div>
                     <span class="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded font-bold">Auto-filled</span>
@@ -1252,7 +1370,7 @@
                 </select>
               </div>
 
-              <!-- ⚡ IMMEDIATE CODE-RED EMERGENCY BYPASS TOGGLE -->
+              <!-- IMMEDIATE CODE-RED EMERGENCY BYPASS TOGGLE -->
               <div class="p-3.5 rounded-2xl border-2 transition space-y-2"
                    [ngClass]="walkInForm.isEmergencyCodeRed ? 'bg-red-50 border-red-400 ring-2 ring-red-200' : 'bg-slate-50 border-slate-200'">
                 <label class="flex items-start gap-3 cursor-pointer select-none">
@@ -1261,7 +1379,10 @@
                   <div>
                     <span class="text-xs font-bold flex items-center gap-1.5"
                           [ngClass]="walkInForm.isEmergencyCodeRed ? 'text-red-900' : 'text-slate-700'">
-                      <span>⚡ Immediate Code-Red Emergency (Acute Collapse / Critical)</span>
+                      <svg class="w-4 h-4 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span>Immediate Code-Red Emergency (Acute Collapse / Critical)</span>
                     </span>
                     <p class="text-[11px] mt-0.5"
                        [ngClass]="walkInForm.isEmergencyCodeRed ? 'text-red-700 font-medium' : 'text-slate-400'">
@@ -1274,8 +1395,11 @@
               <!-- EMERGENCY CLINICAL REMARKS: ONLY VISIBLE WHEN CODE-RED IS CHECKED! -->
               @if (walkInForm.isEmergencyCodeRed) {
                 <div class="p-3.5 bg-red-50/80 rounded-2xl border border-red-300 animate-fadeIn space-y-1.5">
-                  <label class="block text-xs font-bold text-red-900">
-                    🚨 Emergency Clinical Remarks (Mandatory for Code-Red Bypass) *
+                  <label class="block text-xs font-bold text-red-900 flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>Emergency Clinical Remarks (Mandatory for Code-Red Bypass) *</span>
                   </label>
                   <textarea [(ngModel)]="walkInForm.clinicalNotes" name="walkInNotes" rows="2" required
                             placeholder="State presenting clinical emergency (e.g. Acute chest pain with diaphoresis, unconscious, anaphylaxis)..."
@@ -1298,9 +1422,22 @@
                   <span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                   <span>Issuing Slip...</span>
                 } @else if (walkInForm.isEmergencyCodeRed) {
-                  <span>⚡ Issue Code-Red Slip (Priority #1) &rarr;</span>
+                  <span class="inline-flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-white shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span>Issue Code-Red Slip (Priority #1)</span>
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </span>
                 } @else {
-                  <span>Issue Walk-in Slip &rarr;</span>
+                  <span class="inline-flex items-center gap-1.5">
+                    <span>Issue Walk-in Slip</span>
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </span>
                 }
               </button>
             </div>
@@ -1308,14 +1445,22 @@
         } @else {
           <!-- Walk-in Success Slip -->
           <div class="p-6 text-center space-y-4 animate-fadeIn">
-            <div class="w-14 h-14 rounded-full mx-auto flex items-center justify-center text-3xl font-bold"
+            <div class="w-14 h-14 rounded-full mx-auto flex items-center justify-center"
                  [ngClass]="walkInForm.isEmergencyCodeRed ? 'bg-red-100 text-red-600 ring-4 ring-red-200' : 'bg-emerald-100 text-emerald-600'">
-              {{ walkInForm.isEmergencyCodeRed ? '🚨' : '✓' }}
+              @if (walkInForm.isEmergencyCodeRed) {
+                <svg class="w-8 h-8 text-red-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              } @else {
+                <svg class="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+              }
             </div>
 
             <div>
               <h4 class="font-bold text-lg text-slate-900">
-                {{ walkInForm.isEmergencyCodeRed ? '⚡ Code-Red Token Issued!' : 'Walk-In Token Issued!' }}
+                {{ walkInForm.isEmergencyCodeRed ? 'Code-Red Token Issued!' : 'Walk-In Token Issued!' }}
               </h4>
               <p class="text-xs text-slate-500 mt-0.5">
                 {{ walkInForm.isEmergencyCodeRed 
@@ -1350,7 +1495,207 @@
               @if (!walkInForm.isEmergencyCodeRed) {
                 <button (click)="startTriageForWalkIn()"
                         class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer">
-                  <span>Take Vitals Now &rarr;</span>
+                  <span>Take Vitals Now</span>
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- MODAL 6: INSTANT TOKEN BOOKING FOR REGISTERED PATIENTS                     -->
+  <!-- ========================================================================= -->
+  @if (showBookExistingModal()) {
+    <div teleportToBody class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+      <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn">
+        <!-- Header -->
+        <div class="px-6 py-4 text-white flex items-center justify-between transition-colors"
+             [ngClass]="bookExistingForm.isEmergencyCodeRed ? 'bg-red-600' : 'bg-teal-700'">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center text-base">
+              <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-base font-bold leading-tight">
+                {{ bookExistingForm.isEmergencyCodeRed ? 'Code-Red Token Booking' : 'Issue Today\'s Token' }}
+              </h3>
+              <p class="text-xs opacity-90">Instant Token Issuance · Registered Patient</p>
+            </div>
+          </div>
+          <button (click)="closeBookExistingModal()" class="w-7 h-7 rounded-lg text-white/80 hover:text-white flex items-center justify-center transition cursor-pointer" title="Close">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        @if (!bookExistingSuccessToken()) {
+          <form (ngSubmit)="submitBookExisting()">
+            <div class="p-5 sm:p-6 space-y-4">
+
+              <!-- Registered Patient Info Card (Read-Only) -->
+              <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-900">{{ bookExistingPatient()?.fullName }}</span>
+                  <span class="font-mono text-xs font-bold px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700">
+                    {{ bookExistingPatient()?.medicalRecordNumber || 'MRN On File' }}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500">
+                  Phone: {{ bookExistingPatient()?.phoneNumber }} · DOB: {{ bookExistingPatient()?.dateOfBirth }} ({{ calculateAge(bookExistingPatient()?.dateOfBirth) }}) · Gender: {{ bookExistingPatient()?.gender }}
+                </p>
+              </div>
+
+              <!-- Assign to On-Duty Doctor -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Assign to On-Duty Doctor *</label>
+                <select [(ngModel)]="bookExistingForm.doctorId" name="bookExistingDoctor" required
+                        class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 bg-slate-50/50 font-bold text-slate-900">
+                  @for (doc of stats()?.doctors; track doc.doctorId) {
+                    <option [value]="doc.doctorId">
+                      Dr. {{ doc.doctorName }} ({{ doc.specialization }} · Room {{ doc.roomNumber }} - {{ doc.status }})
+                    </option>
+                  }
+                </select>
+              </div>
+
+              <!-- IMMEDIATE CODE-RED EMERGENCY BYPASS TOGGLE -->
+              <div class="p-3.5 rounded-2xl border-2 transition space-y-2"
+                   [ngClass]="bookExistingForm.isEmergencyCodeRed ? 'bg-red-50 border-red-400 ring-2 ring-red-200' : 'bg-slate-50 border-slate-200'">
+                <label class="flex items-start gap-3 cursor-pointer select-none">
+                  <input type="checkbox" [(ngModel)]="bookExistingForm.isEmergencyCodeRed" name="isCodeRedExisting"
+                         class="mt-1 w-5 h-5 rounded text-red-600 focus:ring-red-500 border-red-300 cursor-pointer">
+                  <div>
+                    <span class="text-xs font-bold flex items-center gap-1.5"
+                          [ngClass]="bookExistingForm.isEmergencyCodeRed ? 'text-red-900' : 'text-slate-700'">
+                      <svg class="w-4 h-4 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span>Immediate Code-Red Emergency (Acute Collapse / Critical)</span>
+                    </span>
+                    <p class="text-[11px] mt-0.5"
+                       [ngClass]="bookExistingForm.isEmergencyCodeRed ? 'text-red-700 font-medium' : 'text-slate-400'">
+                      Check this if patient has severe acute life-threatening trauma or distress. Vitals will be bypassed, token assigned CTAS Red (Urgency Weight 1000), and placed at POSITION #1 in doctor queue!
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              <!-- Emergency Clinical Remarks for Code Red -->
+              @if (bookExistingForm.isEmergencyCodeRed) {
+                <div class="p-3.5 bg-red-50/80 rounded-2xl border border-red-300 animate-fadeIn space-y-1.5">
+                  <label class="block text-xs font-bold text-red-900 flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>Emergency Clinical Remarks (Mandatory for Code-Red Bypass) *</span>
+                  </label>
+                  <textarea [(ngModel)]="bookExistingForm.clinicalNotes" name="existingClinicalNotes" rows="2" required
+                            placeholder="State presenting clinical emergency (e.g. Acute chest pain with diaphoresis, respiratory failure)..."
+                            class="w-full px-3 py-2 border border-red-300 rounded-xl text-xs bg-white text-slate-800 focus:ring-2 focus:ring-red-500 focus:outline-none"></textarea>
+                  <p class="text-[10px] text-red-600 font-medium">This remark will be recorded on the patient's triage assessment as the clinical emergency reason.</p>
+                </div>
+              }
+            </div>
+
+            <!-- Actions -->
+            <div class="px-6 py-3.5 bg-slate-100 border-t border-slate-200 flex justify-end gap-2.5">
+              <button type="button" (click)="closeBookExistingModal()" [disabled]="isSubmitting()"
+                      class="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-200 transition cursor-pointer">
+                Cancel
+              </button>
+              <button type="submit" [disabled]="isSubmitting()"
+                      class="px-5 py-2 rounded-xl text-xs font-bold shadow-md transition flex items-center gap-2 cursor-pointer"
+                      [ngClass]="bookExistingForm.isEmergencyCodeRed ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/30 animate-pulse' : 'bg-teal-600 hover:bg-teal-700 text-white shadow-teal-600/20'">
+                @if (isSubmitting()) {
+                  <span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  <span>Issuing Token...</span>
+                } @else if (bookExistingForm.isEmergencyCodeRed) {
+                  <span class="inline-flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-white shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span>Issue Code-Red Token (Priority #1)</span>
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </span>
+                } @else {
+                  <span class="inline-flex items-center gap-1.5">
+                    <span>Issue Token</span>
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                  </span>
+                }
+              </button>
+            </div>
+          </form>
+        } @else {
+          <!-- Token Success Slip -->
+          <div class="p-6 text-center space-y-4 animate-fadeIn">
+            <div class="w-14 h-14 rounded-full mx-auto flex items-center justify-center"
+                 [ngClass]="bookExistingForm.isEmergencyCodeRed ? 'bg-red-100 text-red-600 ring-4 ring-red-200' : 'bg-emerald-100 text-emerald-600'">
+              @if (bookExistingForm.isEmergencyCodeRed) {
+                <svg class="w-8 h-8 text-red-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              } @else {
+                <svg class="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+              }
+            </div>
+
+            <div>
+              <h4 class="font-bold text-lg text-slate-900">
+                {{ bookExistingForm.isEmergencyCodeRed ? 'Code-Red Token Issued!' : 'Consultation Token Issued!' }}
+              </h4>
+              <p class="text-xs text-slate-500 mt-0.5">
+                {{ bookExistingForm.isEmergencyCodeRed 
+                   ? 'Patient has bypassed triage and is placed at Position #1 in doctor line.' 
+                   : 'Patient has been checked into the clinic desk. Take vitals to activate them in the queue.' }}
+              </p>
+            </div>
+
+            <!-- Printed Token Display -->
+            <div class="p-4 rounded-2xl border text-center space-y-1 font-mono"
+                 [ngClass]="bookExistingForm.isEmergencyCodeRed ? 'bg-red-50 border-red-300' : 'bg-slate-50 border-slate-200'">
+              <span class="text-xs font-bold uppercase tracking-wider block"
+                    [ngClass]="bookExistingForm.isEmergencyCodeRed ? 'text-red-700' : 'text-slate-500'">
+                Consultation Token #
+              </span>
+              <span class="text-2xl font-black block"
+                    [ngClass]="bookExistingForm.isEmergencyCodeRed ? 'text-red-900' : 'text-slate-900'">
+                {{ bookExistingSuccessToken()?.tokenNumber }}
+              </span>
+              <span class="text-xs font-sans text-slate-600 block">
+                {{ bookExistingSuccessToken()?.patientName }} · Dr. {{ bookExistingSuccessToken()?.doctorName }} (Room {{ bookExistingSuccessToken()?.roomNumber }})
+              </span>
+            </div>
+
+            <!-- Success Actions -->
+            <div class="flex items-center justify-center gap-3 pt-2">
+              <button (click)="closeBookExistingModal()"
+                      class="px-5 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer">
+                Done
+              </button>
+
+              @if (!bookExistingForm.isEmergencyCodeRed) {
+                <button (click)="startTriageForExistingToken()"
+                        class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+                  <span>Take Vitals Now</span>
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
                 </button>
               }
             </div>
@@ -1361,3 +1706,4 @@
   }
 
 </div>
+

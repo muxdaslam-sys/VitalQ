@@ -8,14 +8,18 @@ import {
   NurseDashboardStatsResponse,
   DoctorDetailedQueueResponse,
   PatientQueuePositionResponse,
-  EmergencyWalkInBookingRequest
+  EmergencyWalkInBookingRequest,
+  ExistingPatientTokenBookingRequest
 } from '../../shared/models/nurse.model';
 import { PatientDetailResponse } from '../../shared/models/admin.model';
 
 @Injectable({ providedIn: 'root' })
 export class NurseService {
+
   private http = inject(HttpClient);
   private baseUrl = `${environment.apiUrl}/nurse`;
+
+  // #region 1. Dashboard Metrics & Doctor Queues
 
   /**
    * Aggregates today's clinic metrics and live doctor roster.
@@ -30,6 +34,10 @@ export class NurseService {
   getDoctorQueue(doctorId: string): Observable<DoctorDetailedQueueResponse> {
     return this.http.get<DoctorDetailedQueueResponse>(`${this.baseUrl}/doctors/${doctorId}/queue`);
   }
+
+  // #endregion
+
+  // #region 2. Clinical Triage & Vital Signs Intake
 
   /**
    * Lists patients booked today awaiting vital signs intake.
@@ -56,6 +64,10 @@ export class NurseService {
   getTriageAssessment(tokenId: string): Observable<TriageAssessment> {
     return this.http.get<TriageAssessment>(`${this.baseUrl}/triage/${tokenId}`);
   }
+
+  // #endregion
+
+  // #region 3. Patient Lookup & Intake Modals
 
   /**
    * Searches patients by Phone, MRN, Name, or Token Number.
@@ -85,6 +97,10 @@ export class NurseService {
     return this.http.get<PatientQueuePositionResponse>(`${this.baseUrl}/tokens/${tokenId}/queue-position`);
   }
 
+  // #endregion
+
+  // #region 4. Walk-in & Emergency Token Booking
+
   /**
    * Enhanced walk-in intake with automatic patient deduplication and Code-Red bypass option.
    */
@@ -93,7 +109,19 @@ export class NurseService {
   }
 
   /**
-   * Client-side instant CTAS evaluation preview.
+   * Issues a token for an existing registered patient with optional Code-Red emergency bypass.
+   * Eliminates re-entering demographics.
+   */
+  bookTokenForExistingPatient(patientId: string, request: ExistingPatientTokenBookingRequest): Observable<QueueToken> {
+    return this.http.post<QueueToken>(`${this.baseUrl}/patients/${patientId}/book-token`, request);
+  }
+
+  // #endregion
+
+  // #region 5. Client-Side Clinical Decision Support
+
+  /**
+   * Client-side instant CTAS evaluation preview for triage form visual feedback.
    */
   evaluateLevel(spo2: number, sys: number, hr: number, temp: number, pain: number): 'Red' | 'Yellow' | 'Green' {
     if (spo2 < 90 || sys < 90 || sys > 200 || hr > 140 || hr < 40 || temp > 40.0 || pain === 10) {
@@ -112,4 +140,6 @@ export class NurseService {
     }
     return 'Green';
   }
+
+  // #endregion
 }

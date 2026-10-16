@@ -4,10 +4,10 @@
  * - Live KPI summary (Bookings, Triaged, Completed, Doctors on Duty)
  * - Doctor Roster with click-to-expand live priority queue
  * - Unified Patient Intake Hub with 3 Action Modals:
- *     1. [📋 Full Details] -> Medical Chart, MRN, Past consultation notes
- *     2. [⏱️ Queue Status] -> Exact # position, wait time, Doctor live line visualizer
- *     3. [🩺 Triage Assessment] -> 5 Vitals intake, CTAS Red/Yellow/Green engine
- * - Smart Emergency Walk-In with existing patient recognition & ⚡ Code-Red Bypass
+ *     1. [Full Details] -> Medical Chart, MRN, Past consultation notes
+ *     2. [Queue Status] -> Exact # position, wait time, Doctor live line visualizer
+ *     3. [Triage Assessment] -> 5 Vitals intake, CTAS Red/Yellow/Green engine
+ * - Smart Emergency Walk-In with existing patient recognition & Code-Red Bypass
  */
 
 import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
@@ -30,8 +30,10 @@ import {
   DoctorQueueSummaryDto,
   DoctorDetailedQueueResponse,
   PatientQueuePositionResponse,
-  EmergencyWalkInBookingRequest
+  EmergencyWalkInBookingRequest,
+  ExistingPatientTokenBookingRequest
 } from '../../../shared/models/nurse.model';
+
 import { PatientDetailResponse } from '../../../shared/models/admin.model';
 
 @Component({
@@ -43,9 +45,7 @@ import { PatientDetailResponse } from '../../../shared/models/admin.model';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class NurseDashboardComponent implements OnInit, OnDestroy {
-  // --------------------------------------------------------------------------
-  // 1. DEPENDENCY INJECTION
-  // --------------------------------------------------------------------------
+  // #region 1. Dependency Injection & State Initialization
   auth = inject(AuthService);
   private nurseService = inject(NurseService);
   private signalR = inject(SignalRService);
@@ -80,10 +80,9 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     });
     this.subs.add(searchSub);
   }
+  // #endregion
 
-  // --------------------------------------------------------------------------
-  // 2. DASHBOARD REACTIVE STATE
-  // --------------------------------------------------------------------------
+  // #region 2. Dashboard Reactive State & View Modes
   stats = signal<NurseDashboardStatsResponse | null>(null);
   pendingTriage = signal<QueueToken[]>([]);
   isSubmitting = signal<boolean>(false);
@@ -91,18 +90,16 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
 
   /** Active Intake Hub View Tab: 'arrivals' (Station Desk) vs 'directory' (Hospital Patient Lookup) */
   activeTab = signal<'arrivals' | 'directory'>('arrivals');
+  // #endregion
 
-  // --------------------------------------------------------------------------
-  // 3. DOCTOR QUEUE MODAL STATE
-  // --------------------------------------------------------------------------
+  // #region 3. Doctor Roster & Modal State
   showDoctorModal = signal<boolean>(false);
   isLoadingDoctorQueue = signal<boolean>(false);
   selectedDoctorQueue = signal<DoctorDetailedQueueResponse | null>(null);
   expandedTokenId = signal<string | null>(null);
+  // #endregion
 
-  // --------------------------------------------------------------------------
-  // 4. UNIFIED PATIENT INTAKE & SEARCH STATE
-  // --------------------------------------------------------------------------
+  // #region 4. Unified Patient Intake & Search State
   /** Local in-table filter query for the Station Arrivals table */
   stationFilterQuery = signal<string>('');
 
@@ -128,10 +125,9 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
       t.doctorName.toLowerCase().includes(q)
     );
   });
+  // #endregion
 
-  // --------------------------------------------------------------------------
-  // 5. THE 3 PATIENT ACTION MODALS
-  // --------------------------------------------------------------------------
+  // #region 5. Action Modals State (Details, Queue, Triage)
   // Action 1: Full Details Modal
   showDetailsModal = signal<boolean>(false);
   isLoadingDetails = signal<boolean>(false);
@@ -176,10 +172,9 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     }
     return this.computedLevel();
   });
+  // #endregion
 
-  // --------------------------------------------------------------------------
-  // 6. ENHANCED EMERGENCY WALK-IN STATE
-  // --------------------------------------------------------------------------
+  // #region 6. Emergency Walk-In & Instant Booking State
   showWalkInModal = signal<boolean>(false);
   walkInForm: EmergencyWalkInBookingRequest = {
     fullName: '',
@@ -193,9 +188,18 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   existingPatientMatch = signal<PatientSearchResult | null>(null);
   walkInSuccessToken = signal<QueueToken | null>(null);
 
-  // --------------------------------------------------------------------------
-  // 7. LIFECYCLE & REAL-TIME SYNC
-  // --------------------------------------------------------------------------
+  // Instant token booking for registered patients without demographic re-entry
+  showBookExistingModal = signal<boolean>(false);
+  bookExistingPatient = signal<PatientSearchResult | null>(null);
+  bookExistingForm: ExistingPatientTokenBookingRequest = {
+    doctorId: '',
+    isEmergencyCodeRed: false,
+    clinicalNotes: ''
+  };
+  bookExistingSuccessToken = signal<QueueToken | null>(null);
+  // #endregion
+
+  // #region 7. Lifecycle & Real-Time Sync
   ngOnInit(): void {
     this.loadDashboard();
     this.loadPendingTriage();
@@ -253,9 +257,7 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  // --------------------------------------------------------------------------
-  // 8. DATA LOADING
-  // --------------------------------------------------------------------------
+  // #region 8. Dashboard Data Loading
   loadDashboard(showLoader = true): void {
     if (showLoader) this.isRefreshing.set(true);
     this.nurseService.getDashboardStats().subscribe({
@@ -275,10 +277,9 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
       error: () => this.pendingTriage.set([])
     });
   }
+  // #endregion
 
-  // --------------------------------------------------------------------------
-  // 9. DOCTOR QUEUE ACTIONS
-  // --------------------------------------------------------------------------
+  // #region 9. Doctor Queue Inspection Actions
   openDoctorQueue(doc: DoctorQueueSummaryDto): void {
     this.isLoadingDoctorQueue.set(true);
     this.showDoctorModal.set(true);
@@ -306,10 +307,9 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   toggleTokenDetails(tokenId: string): void {
     this.expandedTokenId.update(curr => (curr === tokenId ? null : tokenId));
   }
+  // #endregion
 
-  // --------------------------------------------------------------------------
-  // 10. UNIFIED INTAKE & PATIENT SELECTION
-  // --------------------------------------------------------------------------
+  // #region 10. Unified Intake Desk & Patient Selection
   onSearchInput(value: string): void {
     this.searchQuery.set(value);
     this.searchSubject.next(value);
@@ -339,31 +339,14 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  selectArrivingToken(token: QueueToken): void {
-    const searchItem: PatientSearchResult = {
-      patientId: token.patientId,
-      fullName: token.patientName,
-      phoneNumber: token.patientPhone,
-      medicalRecordNumber: '',
-      dateOfBirth: '',
-      gender: '',
-      activeTokenId: token.id,
-      activeTokenNumber: token.tokenNumber,
-      activeTokenStatus: token.status
-    };
-    this.selectPatient(searchItem);
-  }
-
   clearSelectedPatient(): void {
     this.selectedPatient.set(null);
     this.patientTokens.set([]);
   }
+  // #endregion
 
-  // --------------------------------------------------------------------------
-  // 11. THE 3 ACTION BUTTON HANDLERS
-  // --------------------------------------------------------------------------
-
-  // BUTTON 1: [📋 Full Details]
+  // #region 11. Patient Action Modals Handlers
+  // Action Modal 1: Full Details & Medical Chart
   openFullDetails(patientId: string): void {
     this.isLoadingDetails.set(true);
     this.showDetailsModal.set(true);
@@ -385,7 +368,7 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     this.patientDetails.set(null);
   }
 
-  // BUTTON 2: [⏱️ Queue Status]
+  // Action Modal 2: Queue Status & Doctor Line Visualizer
   openQueueStatus(tokenOrId: QueueToken | { id: string } | string): void {
     const tokenId = typeof tokenOrId === 'string' ? tokenOrId : tokenOrId.id;
     this.isLoadingQueue.set(true);
@@ -426,7 +409,7 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     return token.status === 'Booked' || token.status === 'Waiting';
   }
 
-  // BUTTON 3: [🩺 Triage Assessment]
+  // Action Modal 3: Triage Assessment & Vital Signs Intake
   openTriageModal(token: QueueToken): void {
     if (token.status === 'Completed' || token.status === 'Cancelled') {
       this.toast.warning(`Cannot triage a token that is already ${token.status.toLowerCase()}.`);
@@ -480,10 +463,9 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
       }
     });
   }
+  // #endregion
 
-  // --------------------------------------------------------------------------
-  // 12. ENHANCED EMERGENCY WALK-IN WITH SMART PHONE MATCH & CODE RED
-  // --------------------------------------------------------------------------
+  // #region 12. Enhanced Emergency Walk-In Intake
   openWalkInModal(): void {
     const defaultDocId = this.stats()?.doctors?.[0]?.doctorId || '';
     this.walkInForm = {
@@ -553,7 +535,7 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
         this.isSubmitting.set(false);
         this.walkInSuccessToken.set(token);
         const msg = this.walkInForm.isEmergencyCodeRed
-          ? `⚡ CODE-RED EMERGENCY: Slip ${token.tokenNumber} issued and pushed to FRONT of Dr. ${token.doctorName}'s queue!`
+          ? `[CODE-RED EMERGENCY]: Slip ${token.tokenNumber} issued and pushed to FRONT of Dr. ${token.doctorName}'s queue!`
           : `Walk-in slip ${token.tokenNumber} issued successfully!`;
         this.toast.success(msg);
         this.loadDashboard();
@@ -573,8 +555,76 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
       this.openTriageModal(token);
     }
   }
+  // #endregion
 
+  // #region 13. Instant Token Booking for Registered Patients
+  openBookExistingModal(patient: PatientSearchResult): void {
+    const defaultDocId = this.stats()?.doctors?.[0]?.doctorId || '';
+    this.bookExistingPatient.set(patient);
+    this.bookExistingForm = {
+      doctorId: defaultDocId,
+      isEmergencyCodeRed: false,
+      clinicalNotes: ''
+    };
+    this.bookExistingSuccessToken.set(null);
+    this.showBookExistingModal.set(true);
+  }
+
+  closeBookExistingModal(): void {
+    this.showBookExistingModal.set(false);
+    this.bookExistingPatient.set(null);
+    this.bookExistingSuccessToken.set(null);
+  }
+
+  submitBookExisting(): void {
+    const patient = this.bookExistingPatient();
+    if (!patient) return;
+
+    if (!this.bookExistingForm.doctorId) {
+      this.toast.warning('Please select an on-duty doctor.');
+      return;
+    }
+
+    if (this.bookExistingForm.isEmergencyCodeRed && !this.bookExistingForm.clinicalNotes?.trim()) {
+      this.toast.warning('Emergency clinical remarks are mandatory for Immediate Code-Red Bypass.');
+      return;
+    }
+
+    this.isSubmitting.set(true);
+    this.nurseService.bookTokenForExistingPatient(patient.patientId, this.bookExistingForm).subscribe({
+      next: token => {
+        this.isSubmitting.set(false);
+        this.bookExistingSuccessToken.set(token);
+        const msg = this.bookExistingForm.isEmergencyCodeRed
+          ? `[CODE-RED EMERGENCY]: Slip ${token.tokenNumber} issued and pushed to FRONT of Dr. ${token.doctorName}'s queue!`
+          : `Consultation token ${token.tokenNumber} issued for ${patient.fullName}!`;
+        this.toast.success(msg);
+        this.loadDashboard();
+        this.loadPendingTriage();
+        if (this.selectedPatient()?.patientId === patient.patientId) {
+          this.selectPatient(patient);
+        }
+      },
+      error: err => {
+        this.isSubmitting.set(false);
+        this.toast.error(err.error?.message || 'Failed to issue token for existing patient.');
+      }
+    });
+  }
+
+  startTriageForExistingToken(): void {
+    const token = this.bookExistingSuccessToken();
+    if (token) {
+      this.closeBookExistingModal();
+      this.openTriageModal(token);
+    }
+  }
+  // #endregion
+
+  // #region 14. Session Management
   logout(): void {
     this.auth.logout().subscribe(() => this.router.navigate(['/login']));
   }
+  // #endregion
 }
+
