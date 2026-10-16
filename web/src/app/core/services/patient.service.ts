@@ -1,6 +1,12 @@
 /**
- * PatientService: Manages patient demographic profiles, family dependents,
- * and outpatient visit history.
+ * ============================================================================
+ * SERVICE: PatientService (Patient Demographics & Encounter History)
+ * ============================================================================
+ * 
+ * PURPOSE:
+ * Manages patient demographic profiles, family dependents, self-registration,
+ * and comprehensive outpatient consultation history.
+ * ============================================================================
  */
 
 import { Injectable, inject } from '@angular/core';
@@ -13,11 +19,17 @@ export type { PatientProfile, AddFamilyMemberRequest, PatientVisitHistory, SelfR
 
 @Injectable({ providedIn: 'root' })
 export class PatientService {
+  //#region Dependencies & API Configuration
+
   /** Injected Angular HTTP client for patient profile REST calls */
   private http = inject(HttpClient);
 
   /** Base API endpoint URL for patient services (e.g. http://localhost:5089/api/patient) */
   private api = `${environment.apiUrl}/patient`;
+
+  //#endregion
+
+  //#region 1. Family Members & Dependents
 
   /**
    * Retrieves all family member profiles linked to the authenticated user's mobile number.
@@ -39,6 +51,10 @@ export class PatientService {
     return this.http.post<PatientProfile>(`${this.api}/family`, request);
   }
 
+  //#endregion
+
+  //#region 2. Clinical History & Medical Records
+
   /**
    * BATCH HISTORY: Retrieves completed OPD consultation encounters for the authenticated user and their family.
    * Endpoint: GET /api/patient/history
@@ -47,4 +63,6 @@ export class PatientService {
   getMyHistory(): Observable<PatientVisitHistory[]> {
     return this.http.get<PatientVisitHistory[]>(`${this.api}/history`);
   }
+
+  //#endregion
 }
