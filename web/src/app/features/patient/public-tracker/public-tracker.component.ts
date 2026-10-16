@@ -33,27 +33,42 @@ import { QueueToken } from '../../../shared/models/queue.model';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PublicTrackerComponent implements OnInit, OnDestroy {
+  //#region 1. Dependencies & Services
+
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private bookingService = inject(BookingService);
   private signalR = inject(SignalRService);
 
-  // --------------------------------------------------------------------------
-  // REACTIVE STATE (SIGNALS)
-  // --------------------------------------------------------------------------
+  //#endregion
+
+  //#region 2. Reactive State Signals
+
+  /** Token search text input (e.g. CARD-104) */
   tokenInput = signal<string>('');
+
+  /** Active token data payload */
   token = signal<QueueToken | null>(null);
+
+  /** Loading indicator during token search */
   isLoading = signal<boolean>(false);
+
+  /** Error feedback message if token not found */
   errorMessage = signal<string | null>(null);
+
+  /** Flag ensuring the summon chime rings only once per call */
   hasCalledAlerted = signal<boolean>(false);
 
-  /** Cleanup registry for active subscriptions */
+  /** Internal subscription registry */
   private subs: Subscription[] = [];
+
+  /** Currently subscribed SignalR token group */
   private currentJoinedTokenId: string | null = null;
 
-  // --------------------------------------------------------------------------
-  // LIFECYCLE HOOKS
-  // --------------------------------------------------------------------------
+  //#endregion
+
+  //#region 3. Lifecycle Hooks & URL Deep-Linking
+
   ngOnInit(): void {
     // 1. Establish SignalR WebSocket connection for real-time live push
     this.initSignalR();
@@ -77,15 +92,22 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
     }
   }
 
-  // --------------------------------------------------------------------------
-  // SEARCH & DATA FETCHING
-  // --------------------------------------------------------------------------
+  //#endregion
+
+  //#region 4. Search & Token Query
+
+  /**
+   * Submits search form by updating URL query parameter.
+   */
   onSearch(): void {
     const raw = this.tokenInput().trim().toUpperCase();
     if (!raw) return;
     this.router.navigate([], { relativeTo: this.route, queryParams: { token: raw } });
   }
 
+  /**
+   * Queries public backend API for token status today.
+   */
   fetchToken(tokenNumber: string): void {
     this.isLoading.set(true);
     this.errorMessage.set(null);
@@ -115,9 +137,10 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
     });
   }
 
-  // --------------------------------------------------------------------------
-  // SIGNALR REAL-TIME SYNC & AUDIO NOTIFICATION
-  // --------------------------------------------------------------------------
+  //#endregion
+
+  //#region 5. Real-Time SignalR Sync & Hospital Chime
+
   private initSignalR(): void {
     this.signalR.startConnection().then(() => {
       if (this.token()) {
@@ -157,7 +180,8 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
    */
   private playChime(): void {
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const audioCtx = new AudioCtx();
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'sine';
@@ -173,4 +197,6 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
       // Audio autoplay gracefully handled
     }
   }
+
+  //#endregion
 }
