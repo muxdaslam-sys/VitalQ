@@ -23,6 +23,8 @@ import { AuthService } from './auth.service';
 
 @Injectable({ providedIn: 'root' })
 export class IdleTimeoutService {
+  //#region 1. Dependencies & Timing Configuration
+
   private auth = inject(AuthService);
   private ngZone = inject(NgZone);
 
@@ -34,6 +36,10 @@ export class IdleTimeoutService {
 
   /** Flag ensuring listeners are registered only once per application lifecycle */
   private isWatching = false;
+
+  //#endregion
+
+  //#region 2. Listener Registration & Zone Isolation
 
   /**
    * Begins tracking clinical user input across the workstation.
@@ -53,6 +59,10 @@ export class IdleTimeoutService {
       });
     });
   }
+
+  //#endregion
+
+  //#region 3. Timer Countdown & Auto-Lock Handlers
 
   /**
    * Resets the 15-minute countdown clock upon verified user input.
@@ -82,4 +92,6 @@ export class IdleTimeoutService {
       });
     }
   }
+
+  //#endregion
 }

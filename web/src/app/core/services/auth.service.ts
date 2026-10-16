@@ -1,6 +1,12 @@
 /**
- * AuthService: Manages user authentication, token storage, token rotation,
- * session revocation, and role-based navigation.
+ * ============================================================================
+ * SERVICE: AuthService (Central Authentication & Session Authority)
+ * ============================================================================
+ * 
+ * PURPOSE:
+ * Manages user credentials verification, local token storage, silent background
+ * token rotation with concurrency mutex locks, session revocation, and role-based routing.
+ * ============================================================================
  */
 
 import { Injectable, inject, signal, computed } from '@angular/core';
@@ -10,11 +16,12 @@ import { Observable, tap, catchError, of, throwError, shareReplay, finalize } fr
 import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest, UserResponse } from '../../shared/models/auth.model';
 import { SelfRegisterRequest } from '../../shared/models/patient.model';
-
 import { SignalRService } from './signalr.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  //#region 1. Dependencies & API Configuration
+
   /** Injected Angular HTTP client for authentication endpoints */
   private http = inject(HttpClient);
 
@@ -25,11 +32,11 @@ export class AuthService {
   private signalR = inject(SignalRService);
 
   /** Base URL for authentication controller (e.g. http://localhost:5089/api/auth) */
-  private authUrl = environment.apiUrl + '/auth';
+  private authUrl = `${environment.apiUrl}/auth`;
 
-  // --------------------------------------------------------------------------
-  // REACTIVE STATE SIGNALS
-  // --------------------------------------------------------------------------
+  //#endregion
+
+  //#region 2. Reactive State Signals & Computed Accessors
 
   /** Current logged-in user profile, initialized from local storage cache */
   currentUser = signal<UserResponse | null>(this.getStoredUser());
@@ -43,9 +50,9 @@ export class AuthService {
   /** Computed hospital role string ('Admin' | 'Doctor' | 'Nurse' | 'Patient') */
   userRole = computed(() => this.currentUser()?.role || null);
 
-  // --------------------------------------------------------------------------
-  // CONCURRENCY MUTEX STATE
-  // --------------------------------------------------------------------------
+  //#endregion
+
+  //#region 3. Concurrency-Safe Token Rotation Mutex
 
   /**
    * Mutex lock observable:
@@ -54,36 +61,6 @@ export class AuthService {
    * Reset to `null` via `finalize` once all subscribers receive the refreshed token.
    */
   private refreshInProgress$: Observable<AuthResponse> | null = null;
-
-  /**
-   * Authenticates user credentials against the backend API.
-   * Endpoint: POST /api/auth/login
-   * Automatically sets local session and updates signals on success.
-   * 
-   * @param credentials Username/Phone and Password payload.
-   */
-  login(credentials: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.authUrl}/login`, credentials, { withCredentials: true }).pipe(
-      tap(res => {
-        this.setSession(res);
-      })
-    );
-  }
-
-  /**
-   * Registers a first-time online patient with their phone and DOB.
-   * Endpoint: POST /api/patient/self-register
-   * Creates an official patient chart, permanent MRN, user identity, and establishes a JWT session.
-   * 
-   * @param request Self-registration payload with FullName, PhoneNumber, DateOfBirth, Gender.
-   */
-  selfRegister(request: SelfRegisterRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${environment.apiUrl}/patient/self-register`, request, { withCredentials: true }).pipe(
-      tap(res => {
-        this.setSession(res);
-      })
-    );
-  }
 
   /**
    * Concurrency-Safe Silent Token Refresh:
@@ -120,6 +97,44 @@ export class AuthService {
     return this.refreshInProgress$;
   }
 
+  //#endregion
+
+  //#region 4. Authentication & Registration Operations
+
+  /**
+   * Authenticates user credentials against the backend API.
+   * Endpoint: POST /api/auth/login
+   * Automatically sets local session and updates signals on success.
+   * 
+   * @param credentials Username/Phone and Password payload.
+   */
+  login(credentials: LoginRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.authUrl}/login`, credentials, { withCredentials: true }).pipe(
+      tap(res => {
+        this.setSession(res);
+      })
+    );
+  }
+
+  /**
+   * Registers a first-time online patient with their phone and DOB.
+   * Endpoint: POST /api/patient/self-register
+   * Creates an official patient chart, permanent MRN, user identity, and establishes a JWT session.
+   * 
+   * @param request Self-registration payload with FullName, PhoneNumber, DateOfBirth, Gender.
+   */
+  selfRegister(request: SelfRegisterRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/patient/self-register`, request, { withCredentials: true }).pipe(
+      tap(res => {
+        this.setSession(res);
+      })
+    );
+  }
+
+  //#endregion
+
+  //#region 5. Session Revocation & Sign-out
+
   /**
    * Terminates the current session on both client and server.
    * Endpoint: POST /api/auth/logout
@@ -141,6 +156,10 @@ export class AuthService {
     );
   }
 
+  //#endregion
+
+  //#region 6. Role Routing & Storage Helpers
+
   /**
    * Determines the authorized landing home route for a specific user role.
    * 
@@ -159,7 +178,7 @@ export class AuthService {
   /**
    * Persists authentication tokens and user profile to storage and signals.
    */
-  private setSession(authResult: AuthResponse) {
+  private setSession(authResult: AuthResponse): void {
     localStorage.setItem('vq_token', authResult.accessToken);
     localStorage.setItem('vq_user', JSON.stringify(authResult.user));
     this.accessToken.set(authResult.accessToken);
@@ -169,7 +188,7 @@ export class AuthService {
   /**
    * Purges cached session tokens and resets reactive signals.
    */
-  private clearSession() {
+  private clearSession(): void {
     localStorage.removeItem('vq_token');
     localStorage.removeItem('vq_user');
     this.accessToken.set(null);
@@ -188,4 +207,6 @@ export class AuthService {
       return null;
     }
   }
+
+  //#endregion
 }
