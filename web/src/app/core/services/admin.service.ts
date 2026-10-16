@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
+  AdminDashboardStatsResponse,
   DoctorResponse, CreateDoctorRequest, UpdateDoctorRequest,
   DepartmentResponse, CreateDepartmentRequest, UpdateDepartmentRequest,
   NursingStationResponse, CreateNursingStationRequest, UpdateNursingStationRequest,
@@ -10,12 +11,29 @@ import {
   StaffUserResponse, CreateUserRequest, UpdateUserRequest
 } from '../../shared/models/admin.model';
 
+/**
+ * Service orchestrating all Administrative API communications.
+ * Handles hospital staff, doctors, clinic departments, nursing desks, and patient directories.
+ */
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private http = inject(HttpClient);
   private baseUrl = environment.apiUrl + '/admin';
 
-  // Staff & Admin Users
+  // #region 0. Dashboard Stats & Analytics
+
+  /**
+   * Retrieves aggregated KPI totals for doctors, staff, patients, departments, and nursing stations.
+   * Single fast database round-trip without serializing large entity lists.
+   */
+  getDashboardStats(): Observable<AdminDashboardStatsResponse> {
+    return this.http.get<AdminDashboardStatsResponse>(this.baseUrl + '/dashboard/stats');
+  }
+
+  // #endregion
+
+  // #region 1. Staff & Admin Accounts
+
   getUsers(): Observable<StaffUserResponse[]> {
     return this.http.get<StaffUserResponse[]>(this.baseUrl + '/users');
   }
@@ -28,7 +46,10 @@ export class AdminService {
     return this.http.put<StaffUserResponse>(this.baseUrl + '/users/' + id, req);
   }
 
-  // Doctors
+  // #endregion
+
+  // #region 2. Doctor Roster
+
   getDoctors(): Observable<DoctorResponse[]> {
     return this.http.get<DoctorResponse[]>(this.baseUrl + '/doctors');
   }
@@ -45,7 +66,10 @@ export class AdminService {
     return this.http.patch<DoctorResponse>(this.baseUrl + '/doctors/' + id + '/status', { status });
   }
 
-  // Departments
+  // #endregion
+
+  // #region 3. Clinical Departments
+
   getDepartments(): Observable<DepartmentResponse[]> {
     return this.http.get<DepartmentResponse[]>(this.baseUrl + '/departments');
   }
@@ -58,7 +82,10 @@ export class AdminService {
     return this.http.put<DepartmentResponse>(this.baseUrl + '/departments/' + id, req);
   }
 
-  // Nursing Stations
+  // #endregion
+
+  // #region 4. Nursing Stations
+
   getNursingStations(departmentId?: string): Observable<NursingStationResponse[]> {
     const url = departmentId
       ? this.baseUrl + '/nursing-stations?departmentId=' + departmentId
@@ -74,7 +101,13 @@ export class AdminService {
     return this.http.put<NursingStationResponse>(this.baseUrl + '/nursing-stations/' + id, req);
   }
 
-  // Patient Directory (Limit 50 with optional server-side search by MRN, Name, Phone)
+  // #endregion
+
+  // #region 5. Patient Directory & Lookup
+
+  /**
+   * Browse registered patients (limit 50 per search page) with indexed server-side search.
+   */
   getPatients(search?: string): Observable<PatientDetailResponse[]> {
     const url = search?.trim()
       ? `${this.baseUrl}/patients?search=${encodeURIComponent(search.trim())}`
@@ -85,4 +118,6 @@ export class AdminService {
   getPatientById(id: string): Observable<PatientDetailResponse> {
     return this.http.get<PatientDetailResponse>(this.baseUrl + '/patients/' + id);
   }
+
+  // #endregion
 }

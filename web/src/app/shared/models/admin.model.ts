@@ -1,9 +1,25 @@
+// #region 0. Dashboard Stats & Analytics
+
+export interface AdminDashboardStatsResponse {
+  totalDoctors: number;
+  availableDoctors: number;
+  totalStaff: number;
+  totalPatients: number;
+  totalDepartments: number;
+  totalNursingStations: number;
+}
+
+// #endregion
+
+// #region 1. Doctor Management
+
 export interface DoctorResponse {
   id: string;
   userId: string;
   doctorName: string;
   username: string;
   password: string;
+  phoneNumber: string;
   departmentId: string;
   departmentName: string;
   specialization: string;
@@ -34,6 +50,10 @@ export interface UpdateDoctorRequest {
   status: 'Available' | 'OnLeave' | 'Busy';
   avgConsultationMinutes: number;
 }
+
+// #endregion
+
+// #region 2. Staff & User Management
 
 export interface StaffUserResponse {
   id: string;
@@ -66,6 +86,10 @@ export interface UpdateUserRequest {
   isActive: boolean;
 }
 
+// #endregion
+
+// #region 3. Department Management
+
 export interface DepartmentResponse {
   id: string;
   name: string;
@@ -88,6 +112,10 @@ export interface UpdateDepartmentRequest {
   isActive: boolean;
 }
 
+// #endregion
+
+// #region 4. Nursing Station Management
+
 export interface NursingStationResponse {
   id: string;
   stationName: string;
@@ -109,6 +137,10 @@ export interface UpdateNursingStationRequest {
   locationFloor: string;
   isActive: boolean;
 }
+
+// #endregion
+
+// #region 5. Patient Directory & Lookup
 
 export interface PatientVisitHistoryDto {
   tokenId: string;
@@ -136,3 +168,5 @@ export interface PatientDetailResponse {
   totalCompletedBookings: number;
   visits: PatientVisitHistoryDto[];
 }
+
+// #endregion
