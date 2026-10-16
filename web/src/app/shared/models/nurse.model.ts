@@ -1,5 +1,10 @@
 import { TriageAssessment } from './triage.model';
 
+// #region 1. Dashboard Metrics & Doctor Queue Roster
+
+/**
+ * Summary card representation of a physician's live consultation queue.
+ */
 export interface DoctorQueueSummaryDto {
   doctorId: string;
   doctorName: string;
@@ -11,6 +16,9 @@ export interface DoctorQueueSummaryDto {
   totalAssignedToday: number;
 }
 
+/**
+ * Top-level response returned by GET /api/nurse/dashboard/stats for station command center.
+ */
 export interface NurseDashboardStatsResponse {
   totalBookingsToday: number;
   totalTriagedToday: number;
@@ -20,6 +28,9 @@ export interface NurseDashboardStatsResponse {
   doctors: DoctorQueueSummaryDto[];
 }
 
+/**
+ * Token queue entry inside a doctor's active consultation line.
+ */
 export interface DoctorQueueItemDto {
   tokenId: string;
   tokenNumber: string;
@@ -35,6 +46,9 @@ export interface DoctorQueueItemDto {
   triageAssessment?: TriageAssessment | null;
 }
 
+/**
+ * Detailed modal response with full ordered queue for a clicked doctor.
+ */
 export interface DoctorDetailedQueueResponse {
   doctorId: string;
   doctorName: string;
@@ -44,6 +58,13 @@ export interface DoctorDetailedQueueResponse {
   queue: DoctorQueueItemDto[];
 }
 
+// #endregion
+
+// #region 2. Patient Real-Time Queue Position & Visualizer
+
+/**
+ * Detailed real-time tracking data for a patient's position in the clinic line.
+ */
 export interface PatientQueuePositionResponse {
   tokenId: string;
   tokenNumber: string;
@@ -63,6 +84,13 @@ export interface PatientQueuePositionResponse {
   doctorLiveQueue: DoctorQueueItemDto[];
 }
 
+// #endregion
+
+// #region 3. Emergency Walk-in & Existing Patient Token Booking Payloads
+
+/**
+ * Payload sent to register a new/returning walk-in patient at the station desk.
+ */
 export interface EmergencyWalkInBookingRequest {
   fullName: string;
   phoneNumber: string;
@@ -73,10 +101,15 @@ export interface EmergencyWalkInBookingRequest {
   clinicalNotes?: string;
 }
 
+/**
+ * Streamlined booking payload for registered patients without demographic re-entry.
+ */
 export interface ExistingPatientTokenBookingRequest {
   doctorId: string;
   isEmergencyCodeRed: boolean;
   clinicalNotes?: string;
 }
+
+// #endregion
 
 
