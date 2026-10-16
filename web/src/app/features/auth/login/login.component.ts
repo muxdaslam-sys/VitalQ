@@ -1,3 +1,15 @@
+/**
+ * ============================================================================
+ * COMPONENT: LoginComponent (Universal Hospital Authentication Gateway)
+ * ============================================================================
+ * 
+ * PURPOSE:
+ * Serves as the universal login portal for both Hospital Staff (Doctors, Nurses, Admins)
+ * and Outpatients. Provides mode switching, caps lock detection, password visibility,
+ * quick paper slip tracking, and first-time patient self-registration.
+ * ============================================================================
+ */
+
 import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -16,9 +28,57 @@ import { TeleportToBodyDirective } from '../../../shared/directives/teleport.dir
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LoginComponent implements OnInit {
+  //#region 1. Dependencies & Services
+
   private auth = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+
+  //#endregion
+
+  //#region 2. Reactive State & Form Models
+
+  /** Active login mode: 'staff' vs 'patient' */
+  activeMode = signal<'staff' | 'patient'>('staff');
+
+  /** Login credentials payload */
+  credentials: LoginRequest = { username: '', password: '' };
+
+  /** Authentication HTTP request in flight */
+  isLoading = signal(false);
+
+  /** Inline error message if authentication fails */
+  errorMessage = signal<string | null>(null);
+
+  /** Toggle password plain text visibility */
+  showPassword = signal(false);
+
+  /** Remember workstation/device session checkbox */
+  rememberStation = signal(true);
+
+  /** Support & access help modal visibility */
+  showSupportModal = signal(false);
+
+  /** Keyboard Caps Lock detection flag */
+  capsLockOn = signal(false);
+
+  /** Quick Token Tracking for Patients with physical slips */
+  showQuickTokenModal = signal(false);
+  quickTokenInput = signal('');
+  quickTokenError = signal<string | null>(null);
+
+  /** Online Patient Self-Registration Form */
+  showRegisterModal = signal(false);
+  registerFullName = signal('');
+  registerPhone = signal('');
+  registerDob = signal('');
+  registerGender = signal('Male');
+  registerLoading = signal(false);
+  registerError = signal<string | null>(null);
+
+  //#endregion
+
+  //#region 3. Lifecycle & Active Session Auto-Redirect
 
   ngOnInit(): void {
     // PREVENT REDUNDANT RE-AUTHENTICATION:
@@ -31,48 +91,44 @@ export class LoginComponent implements OnInit {
     }
   }
 
-  // Mode Switcher: 'staff' vs 'patient'
-  activeMode = signal<'staff' | 'patient'>('staff');
+  //#endregion
 
-  credentials: LoginRequest = { username: '', password: '' };
-  isLoading = signal(false);
-  errorMessage = signal<string | null>(null);
-  showPassword = signal(false);
-  rememberStation = signal(true);
-  showSupportModal = signal(false);
+  //#region 4. Mode Switching & UI Toggles
 
-  // Caps Lock detection
-  capsLockOn = signal(false);
-
-  // Quick Token Tracking for Patients with physical slips
-  showQuickTokenModal = signal(false);
-  quickTokenInput = signal('');
-  quickTokenError = signal<string | null>(null);
-
-  // Online Patient Self-Registration
-  showRegisterModal = signal(false);
-  registerFullName = signal('');
-  registerPhone = signal('');
-  registerDob = signal('');
-  registerGender = signal('Male');
-  registerLoading = signal(false);
-  registerError = signal<string | null>(null);
-
-  switchMode(mode: 'staff' | 'patient') {
+  /**
+   * Switches portal mode between Hospital Staff and Patient OPD.
+   */
+  switchMode(mode: 'staff' | 'patient'): void {
     this.activeMode.set(mode);
     this.errorMessage.set(null);
     this.credentials = { username: '', password: '' };
   }
 
-  togglePassword() {
+  /**
+   * Toggles password masking.
+   */
+  togglePassword(): void {
     this.showPassword.update((val) => !val);
   }
 
-  toggleSupportModal(open: boolean) {
+  /**
+   * Detects whether keyboard Caps Lock is engaged to warn users.
+   */
+  checkCapsLock(event: KeyboardEvent): void {
+    if (event.getModifierState) {
+      this.capsLockOn.set(event.getModifierState('CapsLock'));
+    }
+  }
+
+  //#endregion
+
+  //#region 5. Modal Dialog Controls (Register & Quick Token)
+
+  toggleSupportModal(open: boolean): void {
     this.showSupportModal.set(open);
   }
 
-  toggleQuickTokenModal(open: boolean) {
+  toggleQuickTokenModal(open: boolean): void {
     this.showQuickTokenModal.set(open);
     this.quickTokenError.set(null);
     if (!open) {
@@ -80,7 +136,7 @@ export class LoginComponent implements OnInit {
     }
   }
 
-  toggleRegisterModal(open: boolean) {
+  toggleRegisterModal(open: boolean): void {
     this.showRegisterModal.set(open);
     this.registerError.set(null);
     if (!open) {
@@ -91,24 +147,27 @@ export class LoginComponent implements OnInit {
     }
   }
 
-  checkCapsLock(event: KeyboardEvent) {
-    if (event.getModifierState) {
-      this.capsLockOn.set(event.getModifierState('CapsLock'));
-    }
-  }
+  //#endregion
 
-  onQuickTokenSubmit() {
+  //#region 6. Form Submission & Authentication Handlers
+
+  /**
+   * Submits quick token tracking query and navigates to the public live display.
+   */
+  onQuickTokenSubmit(): void {
     const token = this.quickTokenInput().trim();
     if (!token) {
       this.quickTokenError.set('Please enter a valid token number (e.g. CARD-001 or GEN-012).');
       return;
     }
     this.showQuickTokenModal.set(false);
-    // Navigate to public live display with token query
     this.router.navigate(['/track'], { queryParams: { token: token.toUpperCase() } });
   }
 
-  onRegisterSubmit() {
+  /**
+   * Submits first-time patient self-registration request to the backend.
+   */
+  onRegisterSubmit(): void {
     const fullName = this.registerFullName().trim();
     const phone = this.registerPhone().trim();
     const dob = this.registerDob();
@@ -143,7 +202,10 @@ export class LoginComponent implements OnInit {
     });
   }
 
-  onSubmit() {
+  /**
+   * Authenticates credentials and routes user to their role-specific portal.
+   */
+  onSubmit(): void {
     if (!this.credentials.username.trim() || !this.credentials.password) {
       const fieldName = this.activeMode() === 'staff' ? 'Staff ID / Username' : 'Mobile / Patient ID';
       this.errorMessage.set(`Please provide both your ${fieldName} and password/PIN.`);
@@ -173,4 +235,6 @@ export class LoginComponent implements OnInit {
       }
     });
   }
+
+  //#endregion
 }

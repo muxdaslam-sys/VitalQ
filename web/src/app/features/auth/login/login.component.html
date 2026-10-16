@@ -434,8 +434,11 @@
               Cancel
             </button>
             <button type="submit"
-                    class="w-1/2 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md shadow-teal-600/20 transition">
-              Track Queue &rarr;
+                    class="w-1/2 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md shadow-teal-600/20 transition flex items-center justify-center gap-1.5">
+              <span>Track Queue</span>
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
             </button>
           </div>
         </form>
@@ -506,7 +509,11 @@
               <p class="text-[11px] text-slate-500 font-medium">Create your hospital chart &amp; permanent MRN</p>
             </div>
           </div>
-          <button (click)="toggleRegisterModal(false)" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1 rounded-lg hover:bg-slate-100 transition">&times;</button>
+          <button (click)="toggleRegisterModal(false)" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition flex items-center justify-center">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         @if (registerError()) {
@@ -551,7 +558,12 @@
           </div>
 
           <div class="p-3 bg-teal-50/80 border border-teal-100 rounded-xl text-[11px] text-teal-900 space-y-0.5">
-            <p class="font-bold">🔐 Automatic Portal PIN:</p>
+            <div class="flex items-center gap-1.5 font-bold">
+              <svg class="w-3.5 h-3.5 text-teal-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <span>Automatic Portal PIN:</span>
+            </div>
             <p class="text-teal-800 leading-relaxed">
               Your Date of Birth (DDMMYYYY) will automatically become your login PIN.
             </p>
@@ -567,7 +579,10 @@
               @if (registerLoading()) {
                 <span>Registering Profile...</span>
               } @else {
-                <span>Complete Registration &rarr;</span>
+                <span>Complete Registration</span>
+                <svg class="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
               }
             </button>
           </div>
