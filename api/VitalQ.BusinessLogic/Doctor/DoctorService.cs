@@ -39,6 +39,7 @@ public class DoctorService : IDoctorService
             UserId = doctor.UserId,
             DoctorName = doctor.User?.FullName ?? string.Empty,
             Username = doctor.User?.Username ?? string.Empty,
+            PhoneNumber = doctor.User?.PhoneNumber ?? string.Empty,
             DepartmentId = doctor.DepartmentId,
             DepartmentName = doctor.Department?.Name ?? string.Empty,
             Specialization = doctor.Specialization,

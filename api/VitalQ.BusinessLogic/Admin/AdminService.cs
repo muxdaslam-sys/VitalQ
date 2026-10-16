@@ -18,6 +18,34 @@ public class AdminService : IAdminService
         _context = context;
     }
 
+    #region 0. Dashboard Stats & Analytics
+
+    /// <summary>
+    /// Computes aggregated KPI metrics for the Admin Dashboard overview in a single fast database round-trip.
+    /// Executes sequential EF Core CountAsync queries without materializing any entity models into memory.
+    /// </summary>
+    public async Task<AdminDashboardStatsResponse> GetDashboardStatsAsync()
+    {
+        var totalDoctors = await _context.Doctors.CountAsync();
+        var availableDoctors = await _context.Doctors.CountAsync(d => d.Status == "Available");
+        var totalStaff = await _context.Users.CountAsync(u => u.Role == "Admin" || u.Role == "Nurse");
+        var totalPatients = await _context.Patients.CountAsync();
+        var totalDepartments = await _context.Departments.CountAsync();
+        var totalNursingStations = await _context.NursingStations.CountAsync();
+
+        return new AdminDashboardStatsResponse
+        {
+            TotalDoctors = totalDoctors,
+            AvailableDoctors = availableDoctors,
+            TotalStaff = totalStaff,
+            TotalPatients = totalPatients,
+            TotalDepartments = totalDepartments,
+            TotalNursingStations = totalNursingStations
+        };
+    }
+
+    #endregion
+
     #region 1. Staff & Admin Account Management
 
     /// <summary>
@@ -245,6 +273,7 @@ public class AdminService : IAdminService
             DoctorName = user.FullName,
             Username = user.Username,
             Password = user.Password,
+            PhoneNumber = user.PhoneNumber,
             DepartmentId = department.Id,
             DepartmentName = department.Name,
             Specialization = doctor.Specialization,
@@ -266,6 +295,7 @@ public class AdminService : IAdminService
                 DoctorName = d.User.FullName,
                 Username = d.User.Username,
                 Password = d.User.Password,
+                PhoneNumber = d.User.PhoneNumber,
                 DepartmentId = d.DepartmentId,
                 DepartmentName = d.Department.Name,
                 Specialization = d.Specialization,
@@ -332,6 +362,7 @@ public class AdminService : IAdminService
             DoctorName = doctor.User.FullName,
             Username = doctor.User.Username,
             Password = doctor.User.Password,
+            PhoneNumber = doctor.User.PhoneNumber,
             DepartmentId = department.Id,
             DepartmentName = department.Name,
             Specialization = doctor.Specialization,
@@ -364,6 +395,7 @@ public class AdminService : IAdminService
             DoctorName = doctor.User.FullName,
             Username = doctor.User.Username,
             Password = doctor.User.Password,
+            PhoneNumber = doctor.User.PhoneNumber,
             DepartmentId = doctor.DepartmentId,
             DepartmentName = doctor.Department.Name,
             Specialization = doctor.Specialization,
