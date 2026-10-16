@@ -251,5 +251,51 @@ public class NurseController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Issues a token for an existing registered patient with optional Code-Red emergency bypass (POST /api/nurse/patients/{patientId}/book-token).
+    /// </summary>
+    [HttpPost("patients/{patientId:guid}/book-token")]
+    public async Task<IActionResult> BookTokenForExistingPatient(Guid patientId, [FromBody] ExistingPatientTokenBookingRequest request)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        Guid.TryParse(userIdStr, out var nurseUserId);
+
+        Guid? stationId = null;
+        if (User.IsInRole("Nurse"))
+        {
+            var stationClaim = User.FindFirst("nursingStationId")?.Value;
+            if (Guid.TryParse(stationClaim, out var parsedStationId))
+            {
+                stationId = parsedStationId;
+            }
+        }
+
+        try
+        {
+            var token = await _nurseService.BookTokenForExistingPatientAsync(patientId, request, nurseUserId, stationId);
+            await _notificationService.NotifyTokenBookedAsync(token);
+
+            if (request.IsEmergencyCodeRed)
+            {
+                await _notificationService.NotifyTriageCompletedAsync(token);
+            }
+
+            return Ok(token);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+        }
+    }
+
     #endregion
 }
+

@@ -108,3 +108,14 @@ public class EmergencyWalkInBookingRequest
     public bool IsEmergencyCodeRed { get; set; }
     public string? ClinicalNotes { get; set; }
 }
+
+/// <summary>
+/// Streamlined token booking payload for already registered patients (eliminates re-entering demographics).
+/// </summary>
+public class ExistingPatientTokenBookingRequest
+{
+    public Guid DoctorId { get; set; }
+    public bool IsEmergencyCodeRed { get; set; }
+    public string? ClinicalNotes { get; set; }
+}
+

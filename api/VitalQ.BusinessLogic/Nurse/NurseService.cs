@@ -880,5 +880,94 @@ public class NurseService : INurseService
         }
     }
 
+    /// <summary>
+    /// Issues a token for an existing registered patient with optional Code-Red emergency bypass.
+    /// Eliminates re-entering demographics for already registered patients.
+    /// </summary>
+    public async Task<QueueTokenResponse> BookTokenForExistingPatientAsync(Guid patientId, ExistingPatientTokenBookingRequest request, Guid nurseUserId, Guid? nursingStationId)
+    {
+        var patient = await _context.Patients
+            .FirstOrDefaultAsync(p => p.Id == patientId)
+            ?? throw new KeyNotFoundException($"Patient with ID '{patientId}' was not found.");
+
+        var doctor = await _context.Doctors
+            .Include(d => d.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(d => d.User)
+            .FirstOrDefaultAsync(d => d.Id == request.DoctorId)
+            ?? throw new KeyNotFoundException("Doctor was not found.");
+
+        var tokenNumber = await TokenGenerator.GenerateAsync(_context, doctor.DepartmentId, doctor.Department.Code);
+
+        if (request.IsEmergencyCodeRed)
+        {
+            var token = new QueueToken
+            {
+                Id = Guid.NewGuid(),
+                TokenNumber = tokenNumber,
+                PatientId = patient.Id,
+                DepartmentId = doctor.DepartmentId,
+                DoctorId = doctor.Id,
+                Status = "Waiting",
+                BaseWeight = PriorityScoreCalculator.BaseWeightRed, // 1000: Guaranteed top priority
+                PriorityScore = PriorityScoreCalculator.BaseWeightRed, // 1000: Uncompromised Code-Red score
+                BookedAtUtc = DateTime.UtcNow,
+                TriagedAtUtc = DateTime.UtcNow,
+                ConsultationNotes = null // Kept clean for physician's consultation notes
+            };
+
+            var emergencyReason = string.IsNullOrWhiteSpace(request.ClinicalNotes)
+                ? "Immediate Emergency Walk-In Bypass (Acute Life Threat)"
+                : $"Immediate Emergency Bypass: {request.ClinicalNotes.Trim()}";
+
+            var assessment = new TriageAssessment
+            {
+                Id = Guid.NewGuid(),
+                QueueTokenId = token.Id,
+                NurseUserId = nurseUserId,
+                NursingStationId = nursingStationId,
+                SpO2 = 0,
+                SystolicBp = 0,
+                DiastolicBp = 0,
+                HeartRate = 0,
+                Temperature = 0,
+                PainScale = 10,
+                TriageLevel = "Red",
+                IsManualOverride = true,
+                OverrideReason = emergencyReason,
+                NurseNotes = request.ClinicalNotes?.Trim(),
+                AssessedAtUtc = DateTime.UtcNow
+            };
+
+            await _context.QueueTokens.AddAsync(token);
+            await _context.TriageAssessments.AddAsync(assessment);
+            await _context.SaveChangesAsync();
+
+            token.TriageAssessment = assessment;
+            return MapToTokenResponse(token, patient, doctor);
+        }
+        else
+        {
+            var token = new QueueToken
+            {
+                Id = Guid.NewGuid(),
+                TokenNumber = tokenNumber,
+                PatientId = patient.Id,
+                DepartmentId = doctor.DepartmentId,
+                DoctorId = doctor.Id,
+                Status = "Booked",
+                BaseWeight = 0,
+                PriorityScore = 0,
+                BookedAtUtc = DateTime.UtcNow,
+                ConsultationNotes = null // Kept clean for physician's consultation notes
+            };
+
+            await _context.QueueTokens.AddAsync(token);
+            await _context.SaveChangesAsync();
+
+            return MapToTokenResponse(token, patient, doctor);
+        }
+    }
+
     #endregion
 }
+
