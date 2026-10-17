@@ -40,6 +40,7 @@ export interface DoctorQueueItemDto {
   status: string;
   priorityScore: number;
   triageLevel?: 'Red' | 'Yellow' | 'Green' | null;
+  skipCount?: number;
   bookedAtUtc: string;
   triagedAtUtc?: string | null;
   calledAtUtc?: string | null;

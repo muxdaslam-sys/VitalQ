@@ -22,6 +22,7 @@ export class SignalRService {
   private queueUpdatedSubject = new Subject<QueueToken>();
   private patientCalledSubject = new Subject<QueueToken>();
   private scoresRecalculatedSubject = new Subject<string>();
+  private doctorStatusChangedSubject = new Subject<{ doctorId: string; status: string }>();
 
   /** Emitted whenever any patient books a new token in a monitored department */
   public onTokenBooked$: Observable<QueueToken> = this.tokenBookedSubject.asObservable();
@@ -34,6 +35,9 @@ export class SignalRService {
 
   /** Emitted by the backend AgingWorker background service (every 60s) */
   public onScoresRecalculated$: Observable<string> = this.scoresRecalculatedSubject.asObservable();
+
+  /** Emitted whenever a physician's duty status (Available, Busy, OnLeave) is updated */
+  public onDoctorStatusChanged$: Observable<{ doctorId: string; status: string }> = this.doctorStatusChangedSubject.asObservable();
 
   /** Boolean flag tracking live WebSocket connection health */
   public isConnected = false;
@@ -151,6 +155,10 @@ export class SignalRService {
 
     this.hubConnection.on('QueueScoresRecalculated', (timestamp: string) => {
       this.scoresRecalculatedSubject.next(timestamp);
+    });
+
+    this.hubConnection.on('DoctorStatusChanged', (data: { doctorId: string; status: string }) => {
+      this.doctorStatusChangedSubject.next(data);
     });
   }
 }

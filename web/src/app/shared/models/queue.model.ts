@@ -55,6 +55,23 @@ export interface Doctor {
   avgConsultationMinutes: number;
 }
 
+/**
+ * Shift performance metrics for the consulting doctor's room console.
+ */
+export interface DoctorDashboardStats {
+  doctorId: string;
+  doctorName: string;
+  roomNumber: string;
+  departmentName: string;
+  status: string; // 'Available' | 'Busy' | 'OnLeave'
+  totalAssignedToday: number;
+  completedToday: number;
+  waitingCount: number;
+  skippedCount: number;
+  avgConsultationMinutes: number;
+  currentCalledTokenNumber?: string | null;
+}
+
 //#endregion
 
 //#region 2. Queue Token & Navigation Models
@@ -106,6 +123,8 @@ export interface QueueToken {
   patientsAhead: number;
   /** Dynamic estimated wait time in minutes */
   estimatedWaitMinutes: number;
+  /** Cumulative number of times patient was skipped (0, 1, 2, or 3) */
+  skipCount?: number;
   /** UTC timestamp when the appointment was originally booked */
   bookedAtUtc: string;
   /** UTC timestamp when nurse recorded vitals */
@@ -152,6 +171,13 @@ export interface CompleteConsultationRequest {
 export interface UpdateTokenStatusRequest {
   status: string;
   notes?: string;
+}
+
+/**
+ * Request payload for toggling physician duty availability.
+ */
+export interface UpdateDoctorStatusRequest {
+  status: string;
 }
 
 //#endregion
