@@ -435,20 +435,31 @@ public class NurseService : INurseService
             .ThenBy(t => t.BookedAtUtc)
             .ToListAsync();
 
-        var queueItems = tokens.Select(t => new DoctorQueueItemDto
+        var queueItems = tokens.Select(t =>
         {
-            TokenId = t.Id,
-            TokenNumber = t.TokenNumber,
-            PatientId = t.PatientId,
-            PatientName = t.Patient.FullName,
-            PhoneNumber = t.Patient.PhoneNumber,
-            Status = t.Status,
-            PriorityScore = t.PriorityScore,
-            TriageLevel = t.TriageAssessment?.TriageLevel,
-            BookedAtUtc = t.BookedAtUtc,
-            TriagedAtUtc = t.TriagedAtUtc,
-            CalledAtUtc = t.CalledAtUtc,
-            TriageAssessment = t.TriageAssessment != null ? new TriageAssessmentResponse
+            int skipCount = 0;
+            if (!string.IsNullOrEmpty(t.ConsultationNotes))
+            {
+                if (t.ConsultationNotes.Contains("Call 3 of 3") || t.ConsultationNotes.Contains("Absent after 3 calls")) skipCount = 3;
+                else if (t.ConsultationNotes.Contains("Call 2 of 3")) skipCount = 2;
+                else if (t.ConsultationNotes.Contains("Call 1 of 3")) skipCount = 1;
+            }
+
+            return new DoctorQueueItemDto
+            {
+                TokenId = t.Id,
+                TokenNumber = t.TokenNumber,
+                PatientId = t.PatientId,
+                PatientName = t.Patient.FullName,
+                PhoneNumber = t.Patient.PhoneNumber,
+                Status = t.Status,
+                PriorityScore = t.PriorityScore,
+                TriageLevel = t.TriageAssessment?.TriageLevel,
+                SkipCount = skipCount,
+                BookedAtUtc = t.BookedAtUtc,
+                TriagedAtUtc = t.TriagedAtUtc,
+                CalledAtUtc = t.CalledAtUtc,
+                TriageAssessment = t.TriageAssessment != null ? new TriageAssessmentResponse
             {
                 Id = t.TriageAssessment.Id,
                 QueueTokenId = t.TriageAssessment.QueueTokenId,
@@ -468,6 +479,7 @@ public class NurseService : INurseService
                 NurseNotes = t.TriageAssessment.NurseNotes,
                 AssessedAtUtc = t.TriageAssessment.AssessedAtUtc
             } : null
+            };
         }).ToList();
 
         return new DoctorDetailedQueueResponse

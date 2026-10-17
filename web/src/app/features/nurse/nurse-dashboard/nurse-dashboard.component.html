@@ -23,18 +23,6 @@
         <span>Station: {{ auth.currentUser()?.nursingStationName || 'General OPD Desk' }}</span>
       </div>
 
-      <!-- Quick Refresh Button with Sync Animation -->
-      <button (click)="loadDashboard(); loadPendingTriage()" 
-              [title]="isRefreshing() ? 'Syncing...' : 'Manual Sync (Auto-Sync Active via WebSockets)'"
-              class="text-xs font-bold text-slate-200 hover:text-white border border-slate-700 hover:border-slate-500 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 bg-slate-800 shadow-xs cursor-pointer">
-        <svg class="w-3.5 h-3.5 text-slate-400 transition-transform duration-500" 
-             [class.animate-spin]="isRefreshing()" 
-             fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        <span class="hidden sm:inline">{{ isRefreshing() ? 'Syncing...' : 'Refresh' }}</span>
-      </button>
-
       <!-- Logout Button -->
       <button (click)="logout()" title="Sign out"
               class="text-xs font-bold text-slate-300 hover:text-rose-400 border border-slate-700 hover:border-rose-800/80 hover:bg-rose-950/30 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 bg-slate-800 shadow-xs cursor-pointer">
@@ -708,6 +696,7 @@
                      [ngClass]="{
                        'bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200': item.status === 'Called',
                        'bg-white border-slate-200': item.status === 'Waiting',
+                       'bg-amber-50/70 border-amber-300 ring-1 ring-amber-200': item.status === 'Skipped',
                        'bg-slate-50 border-slate-200 opacity-60': item.status === 'Completed'
                      }">
                   <div class="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
@@ -744,10 +733,26 @@
                             [ngClass]="{
                               'bg-emerald-600 text-white': item.status === 'Called',
                               'bg-blue-100 text-blue-700': item.status === 'Waiting',
+                              'bg-amber-100 text-amber-800 border border-amber-300': item.status === 'Skipped',
                               'bg-slate-200 text-slate-600': item.status === 'Completed'
                             }">
-                        {{ item.status }}
+                        {{ item.status === 'Skipped' ? 'On Hold (Skipped)' : item.status }}
                       </span>
+
+                      <!-- Re-Queue Button (Visible ONLY when patient is skipped) -->
+                      @if (item.status === 'Skipped') {
+                        <button 
+                          type="button"
+                          (click)="requeuePatient(item.tokenId, item.tokenNumber)"
+                          [disabled]="isRequeuing()"
+                          class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 text-white rounded-lg text-xs font-bold shadow-2xs transition flex items-center gap-1 cursor-pointer"
+                          title="Restore patient to waiting queue with CTAS 3-slot fallback">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          <span>Re-Queue</span>
+                        </button>
+                      }
 
                       <!-- View More Accordion Toggle -->
                       @if (item.triageAssessment) {
@@ -1007,6 +1012,30 @@
                   <p class="font-bold text-sm">Awaiting Triage Vitals</p>
                   <p class="text-xs text-amber-700">Patient has not yet completed vital signs intake. Complete triage to activate them in the doctor's prioritized queue.</p>
                 </div>
+              </div>
+            } @else if (queuePositionData()?.status === 'Skipped') {
+              <div class="p-4 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-xl bg-amber-200 text-amber-800 flex items-center justify-center shrink-0">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p class="font-bold text-sm">Patient Is On Temporary Hold (Missed Call)</p>
+                    <p class="text-xs text-amber-800">Patient was absent when summoned to Room {{ queuePositionData()?.roomNumber }}. Re-queue when the patient arrives at the desk.</p>
+                  </div>
+                </div>
+                <button 
+                  type="button"
+                  (click)="requeuePatient(queuePositionData()!.tokenId, queuePositionData()!.tokenNumber)"
+                  [disabled]="isRequeuing()"
+                  class="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5 shrink-0 cursor-pointer">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>{{ isRequeuing() ? 'Re-Queuing...' : 'Re-Queue Patient' }}</span>
+                </button>
               </div>
             } @else {
               <div class="p-4 rounded-2xl bg-slate-100 text-slate-700 text-xs">

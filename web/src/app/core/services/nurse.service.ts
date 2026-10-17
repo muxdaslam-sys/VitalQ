@@ -116,6 +116,14 @@ export class NurseService {
     return this.http.post<QueueToken>(`${this.baseUrl}/patients/${patientId}/book-token`, request);
   }
 
+  /**
+   * Restores a skipped patient back into the doctor's active waiting queue from the Nurse Desk.
+   * Places routine patients 3 slots back in line and emergency patients immediately at Position #1.
+   */
+  requeuePatient(tokenId: string): Observable<QueueToken> {
+    return this.http.post<QueueToken>(`${this.baseUrl}/tokens/${tokenId}/requeue`, {});
+  }
+
   // #endregion
 
   // #region 5. Client-Side Clinical Decision Support

@@ -62,4 +62,12 @@ public class QueueNotificationService : IQueueNotificationService
         // 2. Nurse desk marks pending item as completed
         await _hubContext.Clients.Group("nurse-station").SendAsync("TriageCompleted", token);
     }
+
+    /// <summary>
+    /// Broadcasts doctor availability status updates to the entire clinical floor and doctor room.
+    /// </summary>
+    public async Task NotifyDoctorStatusChangedAsync(Guid doctorId, string status)
+    {
+        await _hubContext.Clients.All.SendAsync("DoctorStatusChanged", new { doctorId, status });
+    }
 }

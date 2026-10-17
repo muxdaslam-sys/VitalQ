@@ -2,9 +2,25 @@ using System.ComponentModel.DataAnnotations;
 
 namespace VitalQ.Entities.DTOs;
 
-// ==========================================
-// 1. DATA RETURNED TO CLIENTS (RESPONSES)
-// ==========================================
+#region 1. Data Returned to Clients (Responses)
+
+/// <summary>
+/// Aggregated real-time shift performance metrics for the Doctor Room Console header.
+/// </summary>
+public class DoctorDashboardStatsDto
+{
+    public Guid DoctorId { get; set; }
+    public string DoctorName { get; set; } = string.Empty;
+    public string RoomNumber { get; set; } = string.Empty;
+    public string DepartmentName { get; set; } = string.Empty;
+    public string Status { get; set; } = "Available"; // "Available", "Busy", "OnLeave"
+    public int TotalAssignedToday { get; set; }
+    public int CompletedToday { get; set; }
+    public int WaitingCount { get; set; }
+    public int SkippedCount { get; set; }
+    public int AvgConsultationMinutes { get; set; }
+    public string? CurrentCalledTokenNumber { get; set; }
+}
 
 /// <summary>
 /// Doctor details returned to patient booking screens and admin portals.
@@ -26,9 +42,9 @@ public class DoctorResponse
     public DateTime CreatedAtUtc { get; set; }
 }
 
-// ==========================================
-// 2. DATA SENT FROM CLIENTS (REQUESTS)
-// ==========================================
+#endregion
+
+#region 2. Data Sent from Clients (Requests)
 
 /// <summary>
 /// Used by Admin to register a doctor and their login credentials.
@@ -99,3 +115,5 @@ public class UpdateDoctorStatusRequest
     [Required, RegularExpression("^(Available|OnLeave|Busy)$", ErrorMessage = "Status must be Available, OnLeave, or Busy")]
     public string Status { get; set; } = "Available";
 }
+
+#endregion

@@ -19,4 +19,7 @@ public interface IQueueNotificationService
 
     // Notify doctor's room PC when nurse finishes vitals and assigns CTAS level
     Task NotifyTriageCompletedAsync(QueueTokenResponse token);
+
+    // Broadcasts doctor's availability status change (Available, Busy, OnLeave) to all connected clinical stations
+    Task NotifyDoctorStatusChangedAsync(Guid doctorId, string status);
 }

@@ -8,10 +8,26 @@ namespace VitalQ.BusinessLogic.Interfaces;
 /// </summary>
 public interface IDoctorService
 {
+    #region 1. Doctor Profile, Identity & Shift KPIs
+
     /// <summary>
     /// Retrieves the doctor clinical profile linked to an authenticated user ID.
     /// </summary>
     Task<DoctorResponse?> GetDoctorByUserIdAsync(Guid userId);
+
+    /// <summary>
+    /// Computes real-time shift performance metrics for the doctor consultation desk.
+    /// </summary>
+    Task<DoctorDashboardStatsDto> GetDashboardStatsAsync(Guid doctorId);
+
+    /// <summary>
+    /// Updates physician availability status (Available, Busy, OnLeave).
+    /// </summary>
+    Task<DoctorResponse> UpdateDoctorStatusAsync(Guid doctorId, string status);
+
+    #endregion
+
+    #region 2. Live Consultation Queue & Summoning
 
     /// <summary>
     /// Retrieves the live priority-sorted queue for a doctor's consultation room.
@@ -29,6 +45,15 @@ public interface IDoctorService
     Task<QueueTokenResponse?> CallNextPatientAsync(Guid doctorId);
 
     /// <summary>
+    /// Re-broadcasts the melodic summon chime and room assignment to an already-called patient.
+    /// </summary>
+    Task<QueueTokenResponse?> ResummonPatientAsync(Guid tokenId, Guid doctorId);
+
+    #endregion
+
+    #region 3. Queue Advancement & State Transitions
+
+    /// <summary>
     /// Marks a called patient as skipped if they are absent.
     /// </summary>
     Task<QueueTokenResponse> SkipPatientAsync(Guid tokenId, Guid doctorUserId);
@@ -43,6 +68,24 @@ public interface IDoctorService
     /// </summary>
     Task<QueueTokenResponse> CompleteConsultationAsync(Guid tokenId, Guid doctorUserId, CompleteConsultationRequest request);
 
+    #endregion
+
+    #region 4. Encounter History & Patient Dossier
+
+    /// <summary>
+    /// Retrieves consultations completed today by the specified doctor in chronological order.
+    /// </summary>
+    Task<IEnumerable<QueueTokenResponse>> GetCompletedHistoryTodayAsync(Guid doctorId);
+
+    /// <summary>
+    /// Retrieves previous hospital encounters and consultation notes for a patient.
+    /// </summary>
+    Task<IEnumerable<PatientVisitHistoryDto>> GetPatientPastEncountersAsync(Guid patientId);
+
+    #endregion
+
+    #region 5. Background Engine & SLA Maintenance
+
     /// <summary>
     /// Recalculates dynamic wait-time priority scores across all waiting tokens.
     /// </summary>
@@ -52,4 +95,6 @@ public interface IDoctorService
     /// Sweeps and marks unvisited stale tokens from past days as expired.
     /// </summary>
     Task<int> ExpireStaleTokensAsync();
+
+    #endregion
 }
