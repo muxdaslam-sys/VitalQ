@@ -20,7 +20,7 @@ import { Component, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy }
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, timer } from 'rxjs';
 import { BookingService } from '../../../core/services/booking.service';
 import { SignalRService } from '../../../core/services/signalr.service';
 import { QueueToken } from '../../../shared/models/queue.model';
@@ -82,6 +82,15 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
       }
     });
     this.subs.push(sub);
+
+    // 3. Fail-safe silent poller (every 30s) if a token is tracked (Option B)
+    const heartbeatSub = timer(30000, 30000).subscribe(() => {
+      const currentTokenNum = this.token()?.tokenNumber;
+      if (currentTokenNum) {
+        this.fetchTokenSilently(currentTokenNum);
+      }
+    });
+    this.subs.push(heartbeatSub);
   }
 
   ngOnDestroy(): void {
@@ -134,6 +143,19 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
           this.currentJoinedTokenId = null;
         }
       }
+    });
+  }
+
+  /**
+   * Silently refreshes active token in the background without triggering loading screen.
+   */
+  fetchTokenSilently(tokenNumber: string): void {
+    this.bookingService.trackToken(tokenNumber).subscribe({
+      next: (data) => {
+        this.token.set(data);
+        this.checkIfCalled(data);
+      },
+      error: () => {}
     });
   }
 

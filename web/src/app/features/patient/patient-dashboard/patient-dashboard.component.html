@@ -78,7 +78,7 @@
               <div class="mt-5 pt-4 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
                    [class]="currentToken.status === 'Called' 
                      ? 'border-white/20 text-white' 
-                     : (currentToken.status === 'Booked' ? 'border-amber-200/90 text-amber-900' : 'border-teal-200/90 text-teal-900')">
+                     : (currentToken.status === 'Booked' ? 'border-amber-200/90 text-amber-900' : (currentToken.status === 'Skipped' ? 'border-amber-300 bg-amber-50 text-amber-950' : (currentToken.status === 'Expired' ? 'border-rose-300 bg-rose-50 text-rose-950' : 'border-teal-200/90 text-teal-900')))">
                 @if (currentToken.status === 'Called') {
                   <div class="flex items-center gap-2 font-black text-sm">
                     <svg class="w-5 h-5 text-amber-300 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -103,6 +103,20 @@
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                     <span>Step 1 Action: Please report to <strong>{{ currentToken.nursingStationName || (currentToken.departmentName + ' Nurse Desk') }}</strong> ({{ currentToken.locationFloor || 'Floor 1' }})</span>
+                  </div>
+                } @else if (currentToken.status === 'Skipped') {
+                  <div class="flex items-center gap-2 text-amber-950 font-bold text-xs sm:text-sm">
+                    <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>Call {{ currentToken.skipCount ?? 1 }} of 3 Missed &bull; Token on Temporary Hold (Report to Nurse Desk within 60 mins)</span>
+                  </div>
+                } @else if (currentToken.status === 'Expired') {
+                  <div class="flex items-center gap-2 text-rose-950 font-bold text-xs sm:text-sm">
+                    <svg class="w-4 h-4 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Appointment Expired (Absent after 3 calls or 60 min hold expired)</span>
                   </div>
                 } @else {
                   <span class="text-xs text-slate-500">Status: {{ currentToken.status }}</span>
@@ -251,16 +265,51 @@
 
               <!-- STAGE 4: PATIENT ABSENT / SKIPPED -->
               @if (currentToken.status === 'Skipped') {
-                <div class="bg-rose-50 border border-rose-200 rounded-2xl p-5 space-y-2">
-                  <div class="flex items-center gap-2.5 text-rose-800 font-bold text-sm">
-                    <svg class="w-5 h-5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <h4>Token Placed on Temporary Hold</h4>
+                <div class="bg-amber-50/90 border-2 border-amber-300 rounded-2xl p-5 space-y-3">
+                  <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2.5 text-amber-900 font-bold text-sm">
+                      <svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <h4>Token Placed on Temporary Hold (Call {{ currentToken.skipCount ?? 1 }} of 3 Missed)</h4>
+                    </div>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-200 text-amber-900 border border-amber-300">
+                      Strike {{ currentToken.skipCount ?? 1 }}/3
+                    </span>
                   </div>
-                  <p class="text-xs text-rose-700 leading-relaxed">
-                    You were called to Consultation Room {{ currentToken.roomNumber }} but were absent. Please approach the <strong>{{ currentToken.departmentName }} Nurse Desk</strong> to restore your turn in line.
+                  <p class="text-xs text-amber-800 leading-relaxed">
+                    You were summoned to Consultation Room {{ currentToken.roomNumber }} but did not respond. Your token is now on temporary hold.
+                    Please approach the <strong>{{ currentToken.departmentName }} Nurse Desk</strong> immediately to restore your turn in line.
                   </p>
+                  <div class="p-3 bg-white/80 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span><strong>60-Minute Expiry Rule:</strong> Tokens left on hold for 60 minutes or missing 3 calls will automatically be cancelled as No-Show.</span>
+                  </div>
+                </div>
+              }
+
+              <!-- STAGE 5: APPOINTMENT EXPIRED (NO-SHOW) -->
+              @if (currentToken.status === 'Expired') {
+                <div class="bg-rose-50 border-2 border-rose-300 rounded-2xl p-5 space-y-3">
+                  <div class="flex items-center gap-2.5 text-rose-900 font-bold text-sm">
+                    <svg class="w-5 h-5 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h4>Appointment Expired (No-Show)</h4>
+                  </div>
+                  <p class="text-xs text-rose-800 leading-relaxed">
+                    This consultation pass expired because 3 summons were missed or the 60-minute temporary hold window elapsed. If you still require outpatient care today, please book a new appointment slip below.
+                  </p>
+                  <div>
+                    <a routerLink="/patient/book" class="inline-flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-600/20 transition">
+                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                      </svg>
+                      <span>Book New Consultation Slip</span>
+                    </a>
+                  </div>
                 </div>
               }
 
