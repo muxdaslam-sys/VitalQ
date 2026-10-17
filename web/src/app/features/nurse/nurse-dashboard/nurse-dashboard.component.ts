@@ -14,7 +14,7 @@ import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetection
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Subscription, Subject, of } from 'rxjs';
+import { Subscription, Subject, of, timer } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
 
 import { AuthService } from '../../../core/services/auth.service';
@@ -97,6 +97,7 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   isLoadingDoctorQueue = signal<boolean>(false);
   selectedDoctorQueue = signal<DoctorDetailedQueueResponse | null>(null);
   expandedTokenId = signal<string | null>(null);
+  isRequeuing = signal<boolean>(false);
   // #endregion
 
   // #region 4. Unified Patient Intake & Search State
@@ -204,10 +205,24 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     this.loadDashboard();
     this.loadPendingTriage();
     this.initSignalR();
+    this.initHeartbeatPoller();
   }
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
+  }
+
+  /**
+   * Fail-Safe Silent Background Heartbeat Poller (Option B):
+   * Runs every 45s as a parachute fallback to SignalR.
+   */
+  private initHeartbeatPoller(): void {
+    const heartbeatSub = timer(45000, 45000).subscribe(() => {
+      this.loadDashboard(false);
+      this.loadPendingTriage(false);
+      this.refreshActiveDoctorQueue();
+    });
+    this.subs.add(heartbeatSub);
   }
 
   private initSignalR(): void {
@@ -306,6 +321,28 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
 
   toggleTokenDetails(tokenId: string): void {
     this.expandedTokenId.update(curr => (curr === tokenId ? null : tokenId));
+  }
+
+  /**
+   * Restores an absent patient who was skipped back into the physician's active waiting queue.
+   * Routine patients fall back 3 slots; Red emergencies are placed immediately at Position #1.
+   */
+  requeuePatient(tokenId: string, tokenNumber: string): void {
+    if (this.isRequeuing()) return;
+    this.isRequeuing.set(true);
+
+    this.nurseService.requeuePatient(tokenId).subscribe({
+      next: () => {
+        this.isRequeuing.set(false);
+        this.toast.success(`Token ${tokenNumber} re-activated into waiting queue.`);
+        this.refreshActiveDoctorQueue();
+        this.loadDashboard(false);
+      },
+      error: (err) => {
+        this.isRequeuing.set(false);
+        this.toast.error(err.error?.message || 'Failed to re-queue patient.');
+      }
+    });
   }
   // #endregion
 
