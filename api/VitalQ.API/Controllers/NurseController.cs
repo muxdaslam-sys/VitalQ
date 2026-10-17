@@ -15,11 +15,13 @@ namespace VitalQ.API.Controllers;
 public class NurseController : ControllerBase
 {
     private readonly INurseService _nurseService;
+    private readonly IDoctorService _doctorService;
     private readonly IQueueNotificationService _notificationService;
 
-    public NurseController(INurseService nurseService, IQueueNotificationService notificationService)
+    public NurseController(INurseService nurseService, IDoctorService doctorService, IQueueNotificationService notificationService)
     {
         _nurseService = nurseService;
+        _doctorService = doctorService;
         _notificationService = notificationService;
     }
 
@@ -297,6 +299,31 @@ public class NurseController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Restores a skipped patient back into the doctor's active waiting queue from the Nurse Desk (POST /api/nurse/tokens/{id}/requeue).
+    /// </summary>
+    [HttpPost("tokens/{id:guid}/requeue")]
+    public async Task<IActionResult> RequeuePatient(Guid id)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        Guid.TryParse(userIdStr, out var nurseUserId);
+
+        try
+        {
+            var token = await _doctorService.RequeuePatientAsync(id, nurseUserId);
+            await _notificationService.NotifyQueueUpdatedAsync(token.DoctorId, token);
+            return Ok(token);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 

@@ -2,9 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace VitalQ.Entities.DTOs;
 
-// ==========================================
-// 1. DATA RETURNED TO CLIENTS (RESPONSES)
-// ==========================================
+#region 1. Data Returned to Clients (Responses)
 
 /// <summary>
 /// Returned when fetching token or queue details.
@@ -31,10 +29,16 @@ public class QueueTokenResponse
     // Queue & Triage Status
     public string Status { get; set; } = null!;            // Booked, Triaged, Waiting, Called, Skipped, Completed
     public int PriorityScore { get; set; }                 // Calculated priority with aging
-    public int BaseWeight { get; set; }                    // Red=100, Yellow=50, Green=10
+    public int BaseWeight { get; set; }                    // Red=1000, Yellow=500, Green=100
     public string? TriageLevel { get; set; }               // "Red", "Yellow", "Green"
     public int PatientsAhead { get; set; }                 // Number of patients ahead in line
     public int EstimatedWaitMinutes { get; set; }          // Estimated wait based on doctor consultation time
+
+    /// <summary>
+    /// Cumulative number of times this token has been skipped due to absence (0, 1, 2, or 3).
+    /// Used by Doctor, Nurse, and Patient screens to display strike warnings (Call X of 3).
+    /// </summary>
+    public int SkipCount { get; set; }
 
     // Nursing Station & Wayfinding Navigation
     public Guid? NursingStationId { get; set; }
@@ -52,9 +56,9 @@ public class QueueTokenResponse
     public byte[] RowVersion { get; set; } = null!;        // Concurrency token to prevent duplicate calls
 }
 
-// ==========================================
-// 2. DATA SENT FROM CLIENTS (REQUESTS)
-// ==========================================
+#endregion
+
+#region 2. Data Sent from Clients (Requests)
 
 /// <summary>
 /// Used when a patient books an appointment online. (POST /api/bookings)
@@ -88,3 +92,5 @@ public class CompleteConsultationRequest
     [MaxLength(2000)]
     public string? ConsultationNotes { get; set; }
 }
+
+#endregion
