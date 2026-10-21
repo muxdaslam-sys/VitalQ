@@ -62,8 +62,9 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
   /** Internal subscription registry */
   private subs: Subscription[] = [];
 
-  /** Currently subscribed SignalR token group */
+  /** Currently subscribed SignalR token & doctor groups */
   private currentJoinedTokenId: string | null = null;
+  private currentJoinedDoctorId: string | null = null;
 
   //#endregion
 
@@ -95,6 +96,10 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.forEach(s => s.unsubscribe());
+    if (this.currentJoinedDoctorId) {
+      this.signalR.leaveDoctorGroup(this.currentJoinedDoctorId);
+      this.currentJoinedDoctorId = null;
+    }
     if (this.currentJoinedTokenId) {
       this.signalR.leaveTokenGroup(this.currentJoinedTokenId);
       this.currentJoinedTokenId = null;
@@ -133,11 +138,24 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
         }
         this.currentJoinedTokenId = data.id;
         this.signalR.joinTokenGroup(data.id);
+
+        // Join the doctor group so we get queue movement notifications
+        if (this.currentJoinedDoctorId && this.currentJoinedDoctorId !== data.doctorId) {
+          this.signalR.leaveDoctorGroup(this.currentJoinedDoctorId);
+        }
+        if (data.doctorId) {
+          this.currentJoinedDoctorId = data.doctorId;
+          this.signalR.joinDoctorGroup(data.doctorId);
+        }
       },
       error: (err) => {
         this.token.set(null);
         this.isLoading.set(false);
         this.errorMessage.set(err.error?.message || `No active token found matching "${tokenNumber}" for today.`);
+        if (this.currentJoinedDoctorId) {
+          this.signalR.leaveDoctorGroup(this.currentJoinedDoctorId);
+          this.currentJoinedDoctorId = null;
+        }
         if (this.currentJoinedTokenId) {
           this.signalR.leaveTokenGroup(this.currentJoinedTokenId);
           this.currentJoinedTokenId = null;
@@ -168,6 +186,10 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
       if (this.token()) {
         this.currentJoinedTokenId = this.token()!.id;
         this.signalR.joinTokenGroup(this.token()!.id);
+        if (this.token()!.doctorId) {
+          this.currentJoinedDoctorId = this.token()!.doctorId;
+          this.signalR.joinDoctorGroup(this.token()!.doctorId);
+        }
       }
 
       // Refresh token if doctor calls patient or queue moves
@@ -175,17 +197,36 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
         if (this.token() && this.token()!.id === calledToken.id) {
           this.token.set(calledToken);
           this.checkIfCalled(calledToken);
+        } else if (this.token() && this.token()!.doctorId === calledToken.doctorId) {
+          // Another patient in this doctor's line was called; queue moved forward
+          this.fetchTokenSilently(this.token()!.tokenNumber);
         }
       });
 
       const updateSub = this.signalR.onQueueUpdated$.subscribe(updatedToken => {
+        if (!updatedToken) {
+          if (this.token()) {
+            this.fetchTokenSilently(this.token()!.tokenNumber);
+          }
+          return;
+        }
+
         if (this.token() && this.token()!.id === updatedToken.id) {
           this.token.set(updatedToken);
           this.checkIfCalled(updatedToken);
+        } else if (this.token() && this.token()!.doctorId === updatedToken.doctorId) {
+          // Another patient in this doctor's line was completed, skipped, or progressed
+          this.fetchTokenSilently(this.token()!.tokenNumber);
         }
       });
 
-      this.subs.push(callSub, updateSub);
+      const triageSub = this.signalR.onTriageCompleted$.subscribe(triagedToken => {
+        if (this.token() && this.token()!.id === triagedToken.id) {
+          this.token.set(triagedToken);
+        }
+      });
+
+      this.subs.push(callSub, updateSub, triageSub);
     });
   }
 
