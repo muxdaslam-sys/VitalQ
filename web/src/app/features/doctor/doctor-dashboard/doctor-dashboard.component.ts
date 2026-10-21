@@ -86,7 +86,7 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
   elapsedConsultationSeconds = signal<number>(0);
 
   /**
-   * Ambient Consultation Pacing Metric (Option C):
+   * Ambient Consultation Pacing Metric:
    * Compares elapsed consultation seconds against physician's target duration.
    * - Normal (0% to 100%): Dark teal glass badge
    * - Caution (100% to 150%): Warm amber badge with past target duration
@@ -138,6 +138,9 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
   isCompleteModalOpen = signal<boolean>(false);
   consultationNotes = signal<string>('');
   isSubmittingComplete = signal<boolean>(false);
+
+  /** Skip / Absent confirmation modal state */
+  isSkipModalOpen = signal<boolean>(false);
 
   /** Shift availability toggle dropdown visibility */
   isStatusMenuOpen = signal<boolean>(false);
@@ -195,9 +198,8 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Fail-Safe Silent Background Heartbeat Poller (Option B):
+   * Fail-Safe Silent Background Heartbeat Poller:
    * Runs every 30 seconds as an automatic fallback to SignalR WebSockets.
-   * Ensures doctor room queue never freezes even during hospital Wi-Fi roaming or TCP half-opens.
    */
   private initHeartbeatPoller(doctorId: string): void {
     const heartbeatSub = timer(30000, 30000).subscribe(() => {
@@ -231,7 +233,7 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
 
         // Sync stopwatch and clinical vitals
         if (called) {
-          this.loadCurrentPatientVitals(called.id);
+          this.loadCurrentPatientVitals(called);
           this.startConsultationTimer(called.calledAtUtc);
         } else {
           this.currentVitals.set(null);
@@ -252,21 +254,49 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
       error: () => { /* Metrics fallback to default */ }
     });
 
-    // 3. Fetch completed consultations history today
+    // 3. Fetch completed consultations history today (strictly descending)
     this.doctorService.getCompletedHistoryToday(doctorId).subscribe({
-      next: (history) => this.completedQueue.set(history),
+      next: (history) => {
+        const sorted = [...history].sort((a, b) => {
+          const timeA = this.parseUtcTimestamp(a.completedAtUtc || a.calledAtUtc || a.bookedAtUtc);
+          const timeB = this.parseUtcTimestamp(b.completedAtUtc || b.calledAtUtc || b.bookedAtUtc);
+          return timeB - timeA;
+        });
+        this.completedQueue.set(sorted);
+      },
       error: () => { /* Non-blocking history refresh */ }
     });
   }
 
   /**
    * Retrieves vitals recorded by triage nurse for the active in-room patient.
+   * Leverages embedded vitals on the token directly for zero-latency presentation.
    */
-  loadCurrentPatientVitals(tokenId: string): void {
-    this.nurseService.getTriageAssessment(tokenId).subscribe({
-      next: (vitals) => this.currentVitals.set(vitals),
-      error: () => this.currentVitals.set(null)
-    });
+  loadCurrentPatientVitals(called: QueueToken): void {
+    if (called.spO2 != null || called.systolicBp != null || called.heartRate != null) {
+      this.currentVitals.set({
+        id: '',
+        queueTokenId: called.id,
+        nurseUserId: '',
+        nurseName: called.nurseName || 'Triage Nurse',
+        stationName: called.nursingStationName || '',
+        spO2: called.spO2,
+        systolicBp: called.systolicBp,
+        diastolicBp: called.diastolicBp,
+        heartRate: called.heartRate,
+        temperature: called.temperature,
+        painScale: called.painScale,
+        triageLevel: (called.triageLevel as 'Red' | 'Yellow' | 'Green') || 'Green',
+        isManualOverride: false,
+        nurseNotes: called.nurseNotes,
+        assessedAtUtc: called.triagedAtUtc || called.bookedAtUtc
+      });
+    } else {
+      this.nurseService.getTriageAssessment(called.id).subscribe({
+        next: (vitals) => this.currentVitals.set(vitals),
+        error: () => this.currentVitals.set(null)
+      });
+    }
   }
 
   // #endregion
@@ -310,12 +340,22 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
   // #region 7. Live Consultation Stopwatch
 
   /**
+   * Safely parses UTC timestamps serialized by .NET without a trailing 'Z'.
+   * Prevents local timezone offset discrepancies (e.g. +330m in IST).
+   */
+  private parseUtcTimestamp(utcStr?: string): number {
+    if (!utcStr) return Date.now();
+    const normalized = utcStr.endsWith('Z') || utcStr.includes('+') ? utcStr : `${utcStr}Z`;
+    return new Date(normalized).getTime();
+  }
+
+  /**
    * Starts a 1-second interval timer computing elapsed consultation minutes and seconds.
    */
   private startConsultationTimer(calledAtUtc?: string): void {
     this.stopConsultationTimer();
 
-    const startTime = calledAtUtc ? new Date(calledAtUtc).getTime() : Date.now();
+    const startTime = calledAtUtc ? this.parseUtcTimestamp(calledAtUtc) : Date.now();
 
     const updateTimer = () => {
       const elapsedSeconds = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
@@ -395,11 +435,34 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
   // #region 9. Skipping Logic & 3-Strike Safety Guard
 
   /**
-   * Puts absent patient on hold enforcing the 3-strike policy.
+   * Opens the in-app skip confirmation dialog.
+   */
+  openSkipModal(): void {
+    if (!this.currentCalled() || this.isActionLoading()) return;
+    this.isSkipModalOpen.set(true);
+  }
+
+  /**
+   * Closes the in-app skip confirmation dialog.
+   */
+  closeSkipModal(): void {
+    if (this.isActionLoading()) return;
+    this.isSkipModalOpen.set(false);
+  }
+
+  /**
+   * Convenience alias triggering the in-app modal.
+   */
+  skipCurrentPatient(): void {
+    this.openSkipModal();
+  }
+
+  /**
+   * Confirms marking absent enforcing the 3-strike policy.
    * Strike 1 & 2: Moved to Skipped tab on temporary hold.
    * Strike 3: Auto-transitioned to Expired / No-Show with slot released.
    */
-  skipCurrentPatient(): void {
+  confirmSkipPatient(): void {
     const current = this.currentCalled();
     const profile = this.doctorProfile();
     if (!current || !profile || this.isActionLoading()) return;
@@ -407,19 +470,11 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
     const currentStrikes = current.skipCount ?? 0;
     const nextStrike = currentStrikes + 1;
 
-    let confirmMsg = `Patient ${current.tokenNumber} did not respond to summon.\n\n`;
-    if (nextStrike >= 3) {
-      confirmMsg += `WARNING: This is Call 3 of 3 (Final Strike).\nMarking absent now will immediately EXPIRE this appointment as a No-Show. Proceed?`;
-    } else {
-      confirmMsg += `Marking as absent (Call ${nextStrike} of 3).\nPatient will be placed on temporary hold. Proceed?`;
-    }
-
-    if (!confirm(confirmMsg)) return;
-
     this.isActionLoading.set(true);
     this.doctorService.skipPatient(current.id).subscribe({
       next: () => {
         this.isActionLoading.set(false);
+        this.isSkipModalOpen.set(false);
         this.currentCalled.set(null);
         this.currentVitals.set(null);
         this.stopConsultationTimer();
@@ -514,6 +569,7 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
 
   /**
    * Toggles the inline vitals inspection card for any patient in the waiting queue.
+   * Leverages embedded vitals on the token directly for zero-latency presentation.
    */
   toggleVitalsPreview(token: QueueToken): void {
     if (this.expandedVitalsTokenId() === token.id) {
@@ -523,19 +579,40 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
     }
 
     this.expandedVitalsTokenId.set(token.id);
-    this.isLoadingExpandedVitals.set(true);
-    this.expandedVitalsData.set(null);
 
-    this.nurseService.getTriageAssessment(token.id).subscribe({
-      next: (vitals) => {
-        this.expandedVitalsData.set(vitals);
-        this.isLoadingExpandedVitals.set(false);
-      },
-      error: () => {
-        this.expandedVitalsData.set(null);
-        this.isLoadingExpandedVitals.set(false);
-      }
-    });
+    if (token.spO2 != null || token.systolicBp != null || token.heartRate != null) {
+      this.expandedVitalsData.set({
+        id: '',
+        queueTokenId: token.id,
+        nurseUserId: '',
+        nurseName: token.nurseName || 'Triage Nurse',
+        stationName: token.nursingStationName || '',
+        spO2: token.spO2,
+        systolicBp: token.systolicBp,
+        diastolicBp: token.diastolicBp,
+        heartRate: token.heartRate,
+        temperature: token.temperature,
+        painScale: token.painScale,
+        triageLevel: (token.triageLevel as 'Red' | 'Yellow' | 'Green') || 'Green',
+        isManualOverride: false,
+        nurseNotes: token.nurseNotes,
+        assessedAtUtc: token.triagedAtUtc || token.bookedAtUtc
+      });
+      this.isLoadingExpandedVitals.set(false);
+    } else {
+      this.isLoadingExpandedVitals.set(true);
+      this.expandedVitalsData.set(null);
+      this.nurseService.getTriageAssessment(token.id).subscribe({
+        next: (vitals) => {
+          this.expandedVitalsData.set(vitals);
+          this.isLoadingExpandedVitals.set(false);
+        },
+        error: () => {
+          this.expandedVitalsData.set(null);
+          this.isLoadingExpandedVitals.set(false);
+        }
+      });
+    }
   }
 
   // #endregion
@@ -553,7 +630,12 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
 
     this.doctorService.getPatientPastEncounters(patientId).subscribe({
       next: (history) => {
-        this.patientHistoryList.set(history);
+        const sorted = [...history].sort((a, b) => {
+          const timeA = this.parseUtcTimestamp(a.completedAtUtc || a.calledAtUtc || a.bookedAtUtc);
+          const timeB = this.parseUtcTimestamp(b.completedAtUtc || b.calledAtUtc || b.bookedAtUtc);
+          return timeB - timeA;
+        });
+        this.patientHistoryList.set(sorted);
         this.isLoadingHistory.set(false);
       },
       error: () => {
@@ -673,13 +755,13 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
   getWaitingMinutes(triagedAtUtc?: string, bookedAtUtc?: string): number {
     const timeStr = triagedAtUtc || bookedAtUtc;
     if (!timeStr) return 0;
-    const diffMs = Date.now() - new Date(timeStr).getTime();
+    const diffMs = Date.now() - this.parseUtcTimestamp(timeStr);
     return Math.max(0, Math.floor(diffMs / 60000));
   }
 
   getHoldMinutes(calledAtUtc?: string): number {
     if (!calledAtUtc) return 0;
-    const diffMs = Date.now() - new Date(calledAtUtc).getTime();
+    const diffMs = Date.now() - this.parseUtcTimestamp(calledAtUtc);
     return Math.max(0, Math.floor(diffMs / 60000));
   }
 
