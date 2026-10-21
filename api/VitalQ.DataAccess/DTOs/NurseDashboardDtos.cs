@@ -61,6 +61,14 @@ public class DoctorQueueItemDto
     public string Status { get; set; } = null!; // "Called", "Waiting", "Completed", "Skipped"
     public int PriorityScore { get; set; }
     public string? TriageLevel { get; set; } // "Red", "Yellow", "Green"
+    public decimal? SpO2 { get; set; }
+    public int? SystolicBp { get; set; }
+    public int? DiastolicBp { get; set; }
+    public int? HeartRate { get; set; }
+    public decimal? Temperature { get; set; }
+    public int? PainScale { get; set; }
+    public string? NurseNotes { get; set; }
+    public string? NurseName { get; set; }
     public int SkipCount { get; set; }
     public DateTime BookedAtUtc { get; set; }
     public DateTime? TriagedAtUtc { get; set; }

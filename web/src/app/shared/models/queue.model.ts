@@ -119,6 +119,16 @@ export interface QueueToken {
   baseWeight: number;
   /** Emergency severity level: 'Red' (Immediate), 'Yellow' (Urgent), 'Green' (Standard) */
   triageLevel?: string;
+
+  /** Embedded clinical vitals from triage assessment (zero-latency instant access) */
+  spO2?: number;
+  systolicBp?: number;
+  diastolicBp?: number;
+  heartRate?: number;
+  temperature?: number;
+  painScale?: number;
+  nurseNotes?: string;
+  nurseName?: string;
   /** Real-time number of patients queued ahead for the same doctor */
   patientsAhead: number;
   /** Dynamic estimated wait time in minutes */
