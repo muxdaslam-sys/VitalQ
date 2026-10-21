@@ -143,12 +143,12 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   showTriageModal = signal<boolean>(false);
   triageToken = signal<QueueToken | null>(null);
   vitalsForm: TriageRequest = {
-    spO2: 98,
-    systolicBp: 120,
-    diastolicBp: 80,
-    heartRate: 75,
-    temperature: 37.0,
-    painScale: 0,
+    spO2: null,
+    systolicBp: null,
+    diastolicBp: null,
+    heartRate: null,
+    temperature: null,
+    painScale: null,
     isManualOverride: false,
     overrideTriageLevel: null,
     overrideReason: null,
@@ -209,6 +209,7 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.signalR.leaveNurseStationGroup();
     this.subs.unsubscribe();
   }
 
@@ -226,7 +227,9 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   }
 
   private initSignalR(): void {
-    this.signalR.startConnection().catch(err => {
+    this.signalR.startConnection().then(async () => {
+      await this.signalR.joinNurseStationGroup();
+    }).catch(err => {
       console.warn('SignalR connection failed, falling back to on-demand refresh:', err);
     });
 
@@ -243,6 +246,19 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
         this.loadDashboard(false);
         this.loadPendingTriage(false);
         this.refreshActiveDoctorQueue();
+      })
+    );
+
+    this.subs.add(
+      this.signalR.onTriageCompleted$.subscribe(() => {
+        this.loadDashboard(false);
+        this.loadPendingTriage(false);
+      })
+    );
+
+    this.subs.add(
+      this.signalR.onDoctorStatusChanged$.subscribe(() => {
+        this.loadDashboard(false);
       })
     );
 
@@ -454,16 +470,16 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     }
     this.triageToken.set(token);
     this.vitalsForm = {
-      spO2: 98,
-      systolicBp: 120,
-      diastolicBp: 80,
-      heartRate: 75,
-      temperature: 37.0,
-      painScale: 0,
+      spO2: null,
+      systolicBp: null,
+      diastolicBp: null,
+      heartRate: null,
+      temperature: null,
+      painScale: null,
       isManualOverride: false,
       overrideTriageLevel: 'Yellow',
       overrideReason: '',
-      nurseNotes: ''
+      nurseNotes: token.nurseNotes ?? ''
     };
     this.showTriageModal.set(true);
   }
