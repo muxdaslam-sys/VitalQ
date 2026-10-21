@@ -1,7 +1,9 @@
-import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { AdminService } from '../../../core/services/admin.service';
+import { SignalRService } from '../../../core/services/signalr.service';
 import { AdminDashboardStatsResponse } from '../../../shared/models/admin.model';
 
 /**
@@ -24,8 +26,10 @@ import { AdminDashboardStatsResponse } from '../../../shared/models/admin.model'
   styleUrl: './dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   private adminService = inject(AdminService);
+  private signalR = inject(SignalRService);
+  private subs: Subscription[] = [];
 
   // #region State Signals
 
@@ -51,28 +55,59 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadHospitalMetrics();
+    this.initSignalR();
+  }
+
+  ngOnDestroy(): void {
+    this.subs.forEach(s => s.unsubscribe());
+    this.signalR.leaveAdminGroup();
   }
 
   // #endregion
 
-  // #region Data Fetching
+  // #region Data Fetching & Real-Time Sync
 
   /**
-   * Fetches the aggregated dashboard KPIs in a single lightweight API call.
+   * Fetches the aggregated dashboard KPIs.
+   * If silent is true, refreshes KPIs without showing loading spinner.
    */
-  loadHospitalMetrics(): void {
-    this.isLoading.set(true);
-    this.hasError.set(false);
+  loadHospitalMetrics(silent = false): void {
+    if (!silent) {
+      this.isLoading.set(true);
+      this.hasError.set(false);
+    }
 
     this.adminService.getDashboardStats().subscribe({
       next: (data) => {
         this.stats.set(data);
-        this.isLoading.set(false);
+        if (!silent) this.isLoading.set(false);
       },
       error: () => {
-        this.hasError.set(true);
-        this.isLoading.set(false);
+        if (!silent) {
+          this.hasError.set(true);
+          this.isLoading.set(false);
+        }
       }
+    });
+  }
+
+  private initSignalR(): void {
+    this.signalR.startConnection().then(() => {
+      this.signalR.joinAdminGroup();
+
+      const docSub = this.signalR.onDoctorStatusChanged$.subscribe(() => {
+        this.loadHospitalMetrics(true);
+      });
+
+      const bookSub = this.signalR.onTokenBooked$.subscribe(() => {
+        this.loadHospitalMetrics(true);
+      });
+
+      const queueSub = this.signalR.onQueueUpdated$.subscribe(() => {
+        this.loadHospitalMetrics(true);
+      });
+
+      this.subs.push(docSub, bookSub, queueSub);
     });
   }
 
