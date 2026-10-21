@@ -21,6 +21,7 @@ export class SignalRService {
   private tokenBookedSubject = new Subject<QueueToken>();
   private queueUpdatedSubject = new Subject<QueueToken>();
   private patientCalledSubject = new Subject<QueueToken>();
+  private triageCompletedSubject = new Subject<QueueToken>();
   private scoresRecalculatedSubject = new Subject<string>();
   private doctorStatusChangedSubject = new Subject<{ doctorId: string; status: string }>();
 
@@ -32,6 +33,9 @@ export class SignalRService {
 
   /** Emitted whenever a doctor presses "Call Next" in their consultation room */
   public onPatientCalled$: Observable<QueueToken> = this.patientCalledSubject.asObservable();
+
+  /** Emitted whenever triage vitals are completed for a token */
+  public onTriageCompleted$: Observable<QueueToken> = this.triageCompletedSubject.asObservable();
 
   /** Emitted by the backend AgingWorker background service (every 60s) */
   public onScoresRecalculated$: Observable<string> = this.scoresRecalculatedSubject.asObservable();
@@ -96,42 +100,70 @@ export class SignalRService {
   /** Joins real-time updates for a specific doctor's room queue */
   async joinDoctorGroup(doctorId: string): Promise<void> {
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
-      await this.hubConnection.invoke('JoinDoctorGroup', doctorId);
+      await this.hubConnection.invoke('JoinDoctorGroup', doctorId.toLowerCase());
     }
   }
 
   /** Leaves a doctor's room queue broadcast */
   async leaveDoctorGroup(doctorId: string): Promise<void> {
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
-      await this.hubConnection.invoke('LeaveDoctorGroup', doctorId);
+      await this.hubConnection.invoke('LeaveDoctorGroup', doctorId.toLowerCase());
+    }
+  }
+
+  /** Joins real-time updates for the nurse triage desk station */
+  async joinNurseStationGroup(): Promise<void> {
+    if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
+      await this.hubConnection.invoke('JoinNurseStationGroup');
+    }
+  }
+
+  /** Leaves the nurse triage desk broadcast group */
+  async leaveNurseStationGroup(): Promise<void> {
+    if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
+      await this.hubConnection.invoke('LeaveNurseStationGroup');
+    }
+  }
+
+  /** Joins real-time hospital administration KPI overview group */
+  async joinAdminGroup(): Promise<void> {
+    if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
+      await this.hubConnection.invoke('JoinAdminGroup');
+    }
+  }
+
+  /** Leaves the administration broadcast group */
+  async leaveAdminGroup(): Promise<void> {
+    if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
+      await this.hubConnection.invoke('LeaveAdminGroup');
     }
   }
 
   /** Joins real-time updates for a specific clinical department (e.g. Cardiology OPD) */
   async joinDepartmentGroup(deptId: string): Promise<void> {
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
-      await this.hubConnection.invoke('JoinDepartmentGroup', deptId);
+      await this.hubConnection.invoke('JoinDepartmentGroup', deptId.toLowerCase());
     }
   }
 
   /** Leaves a department's broadcast group */
   async leaveDepartmentGroup(deptId: string): Promise<void> {
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
-      await this.hubConnection.invoke('LeaveDepartmentGroup', deptId);
+      await this.hubConnection.invoke('LeaveDepartmentGroup', deptId.toLowerCase());
     }
   }
 
   /** Subscribes a patient to targeted alerts for their specific consultation slip */
   async joinTokenGroup(tokenId: string): Promise<void> {
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
-      await this.hubConnection.invoke('JoinTokenGroup', tokenId);
+      await this.hubConnection.invoke('JoinTokenGroup', tokenId.toLowerCase());
     }
   }
 
   /** Unsubscribes from a specific token group upon completion or cancellation */
   async leaveTokenGroup(tokenId: string): Promise<void> {
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
-      await this.hubConnection.invoke('LeaveTokenGroup', tokenId);
+      await this.hubConnection.invoke('LeaveTokenGroup', tokenId.toLowerCase());
     }
   }
 
@@ -151,6 +183,10 @@ export class SignalRService {
 
     this.hubConnection.on('PatientCalled', (token: QueueToken) => {
       this.patientCalledSubject.next(token);
+    });
+
+    this.hubConnection.on('TriageCompleted', (token: QueueToken) => {
+      this.triageCompletedSubject.next(token);
     });
 
     this.hubConnection.on('QueueScoresRecalculated', (timestamp: string) => {
