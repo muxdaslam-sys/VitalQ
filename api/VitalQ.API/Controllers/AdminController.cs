@@ -21,10 +21,12 @@ namespace VitalQ.API.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _adminService;
+    private readonly IQueueNotificationService _notificationService;
 
-    public AdminController(IAdminService adminService)
+    public AdminController(IAdminService adminService, IQueueNotificationService notificationService)
     {
         _adminService = adminService;
+        _notificationService = notificationService;
     }
 
     #region 0. Dashboard Stats & Analytics
@@ -164,6 +166,10 @@ public class AdminController : ControllerBase
         try
         {
             var doctor = await _adminService.UpdateDoctorAsync(id, request);
+            if (!string.IsNullOrEmpty(request.Status))
+            {
+                await _notificationService.NotifyDoctorStatusChangedAsync(id, request.Status);
+            }
             return Ok(doctor);
         }
         catch (KeyNotFoundException ex)
@@ -189,6 +195,7 @@ public class AdminController : ControllerBase
         try
         {
             var doctor = await _adminService.UpdateDoctorStatusAsync(id, request);
+            await _notificationService.NotifyDoctorStatusChangedAsync(id, request.Status);
             return Ok(doctor);
         }
         catch (KeyNotFoundException ex)
