@@ -19,52 +19,70 @@ public class QueueNotificationService : IQueueNotificationService
     }
 
     /// <summary>
-    /// Broadcasts to Doctor PC console and Nurse PC station when a token is booked.
+    /// Broadcasts to Doctor PC console, Nurse triage desk, and Admin when a token is booked.
     /// </summary>
     public async Task NotifyTokenBookedAsync(QueueTokenResponse token)
     {
-        // 1. Send to Doctor's PC room console
-        await _hubContext.Clients.Group($"doctor-{token.DoctorId}").SendAsync("TokenBooked", token);
-
-        // 2. Send to Nurse triage desk PC
+        var doctorGroup = $"doctor-{token.DoctorId.ToString().ToLowerInvariant()}";
+        await _hubContext.Clients.Group(doctorGroup).SendAsync("TokenBooked", token);
         await _hubContext.Clients.Group("nurse-station").SendAsync("TokenBooked", token);
+        await _hubContext.Clients.Group("admin-dashboard").SendAsync("TokenBooked", token);
     }
 
     /// <summary>
     /// Broadcasts to Patient's mobile/PC screen (triggers chime audio + room alert)
-    /// and updates Doctor's PC console.
+    /// and updates Doctor console, waiting patients, and Admin.
     /// </summary>
     public async Task NotifyPatientCalledAsync(QueueTokenResponse token)
     {
-        // 1. Patient's mobile or PC screen
-        await _hubContext.Clients.Group($"patient-{token.Id}").SendAsync("PatientCalled", token);
+        var patientGroup = $"patient-{token.Id.ToString().ToLowerInvariant()}";
+        var doctorGroup = $"doctor-{token.DoctorId.ToString().ToLowerInvariant()}";
 
-        // 2. Doctor's PC console
-        await _hubContext.Clients.Group($"doctor-{token.DoctorId}").SendAsync("QueueUpdated", token);
+        // 1. Patient summoned receives chime audio & room alert
+        await _hubContext.Clients.Group(patientGroup).SendAsync("PatientCalled", token);
+
+        // 2. Doctor PC and all other patients waiting in this doctor's line receive QueueUpdated
+        await _hubContext.Clients.Group(doctorGroup).SendAsync("QueueUpdated", token);
+        await _hubContext.Clients.Group("admin-dashboard").SendAsync("QueueUpdated", token);
     }
 
     /// <summary>
-    /// Broadcasts to Doctor's PC console when queue order shifts (skip, requeue).
+    /// Broadcasts when queue order shifts (Skip, Expire, Re-queue, Complete, Cancel).
+    /// Updates Doctor console, affected patient, and Admin.
     /// </summary>
     public async Task NotifyQueueUpdatedAsync(Guid doctorId, QueueTokenResponse? token = null)
     {
-        await _hubContext.Clients.Group($"doctor-{doctorId}").SendAsync("QueueUpdated", token);
+        var doctorGroup = $"doctor-{doctorId.ToString().ToLowerInvariant()}";
+        await _hubContext.Clients.Group(doctorGroup).SendAsync("QueueUpdated", token);
+
+        // Explicitly update the specific patient whose token changed state (Skipped, Completed, Expired)
+        if (token != null)
+        {
+            var patientGroup = $"patient-{token.Id.ToString().ToLowerInvariant()}";
+            await _hubContext.Clients.Group(patientGroup).SendAsync("QueueUpdated", token);
+        }
+
+        await _hubContext.Clients.Group("admin-dashboard").SendAsync("QueueUpdated", token);
     }
 
     /// <summary>
-    /// Broadcasts to Doctor's PC console and Nurse desk when triage is completed.
+    /// Broadcasts when triage vitals are recorded.
+    /// Updates Doctor queue, Nurse desk, Patient tracker, and Admin.
     /// </summary>
     public async Task NotifyTriageCompletedAsync(QueueTokenResponse token)
     {
-        // 1. Doctor's PC queue now shows updated CTAS badge and priority score
-        await _hubContext.Clients.Group($"doctor-{token.DoctorId}").SendAsync("QueueUpdated", token);
+        var doctorGroup = $"doctor-{token.DoctorId.ToString().ToLowerInvariant()}";
+        var patientGroup = $"patient-{token.Id.ToString().ToLowerInvariant()}";
 
-        // 2. Nurse desk marks pending item as completed
+        await _hubContext.Clients.Group(doctorGroup).SendAsync("QueueUpdated", token);
         await _hubContext.Clients.Group("nurse-station").SendAsync("TriageCompleted", token);
+        await _hubContext.Clients.Group("nurse-station").SendAsync("QueueUpdated", token);
+        await _hubContext.Clients.Group(patientGroup).SendAsync("QueueUpdated", token);
+        await _hubContext.Clients.Group("admin-dashboard").SendAsync("QueueUpdated", token);
     }
 
     /// <summary>
-    /// Broadcasts doctor availability status updates to the entire clinical floor and doctor room.
+    /// Broadcasts doctor availability status updates to the entire clinic floor and admin.
     /// </summary>
     public async Task NotifyDoctorStatusChangedAsync(Guid doctorId, string status)
     {

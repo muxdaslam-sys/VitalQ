@@ -5,12 +5,12 @@
  */
 export interface TriageRequest {
   nursingStationId?: string | null;
-  spO2: number;
-  systolicBp: number;
-  diastolicBp: number;
-  heartRate: number;
-  temperature: number;
-  painScale: number;
+  spO2?: number | null;
+  systolicBp?: number | null;
+  diastolicBp?: number | null;
+  heartRate?: number | null;
+  temperature?: number | null;
+  painScale?: number | null;
   isManualOverride: boolean;
   overrideTriageLevel?: string | null;
   overrideReason?: string | null;
@@ -31,12 +31,12 @@ export interface TriageAssessment {
   nurseName: string;
   nursingStationId?: string;
   stationName?: string;
-  spO2: number;
-  systolicBp: number;
-  diastolicBp: number;
-  heartRate: number;
-  temperature: number;
-  painScale: number;
+  spO2?: number | null;
+  systolicBp?: number | null;
+  diastolicBp?: number | null;
+  heartRate?: number | null;
+  temperature?: number | null;
+  painScale?: number | null;
   triageLevel: 'Red' | 'Yellow' | 'Green';
   isManualOverride: boolean;
   overrideReason?: string;

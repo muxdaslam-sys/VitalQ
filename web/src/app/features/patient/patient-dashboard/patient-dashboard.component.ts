@@ -187,6 +187,9 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
     tokenList.forEach(t => {
       if (!this.joinedTokenIds.has(t.id)) {
         this.signalR.joinTokenGroup(t.id);
+        if (t.doctorId) {
+          this.signalR.joinDoctorGroup(t.doctorId);
+        }
         this.joinedTokenIds.add(t.id);
       }
     });

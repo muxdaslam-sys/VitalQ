@@ -12,12 +12,12 @@ public class QueueHub : Hub
     // Doctor consultation room PC joins doctor group
     public async Task JoinDoctorGroup(string doctorId)
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, $"doctor-{doctorId}");
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"doctor-{doctorId.ToLowerInvariant()}");
     }
 
     public async Task LeaveDoctorGroup(string doctorId)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"doctor-{doctorId}");
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"doctor-{doctorId.ToLowerInvariant()}");
     }
 
     // Nurse triage station PC joins nurse group
@@ -34,11 +34,33 @@ public class QueueHub : Hub
     // Patient mobile phone or PC browser joins their individual token group for live chime/call alerts
     public async Task JoinTokenGroup(string tokenId)
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, $"patient-{tokenId}");
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"patient-{tokenId.ToLowerInvariant()}");
     }
 
     public async Task LeaveTokenGroup(string tokenId)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"patient-{tokenId}");
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"patient-{tokenId.ToLowerInvariant()}");
+    }
+
+    // Clinical Department wide broadcast group (e.g. Cardiology OPD)
+    public async Task JoinDepartmentGroup(string deptId)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"department-{deptId.ToLowerInvariant()}");
+    }
+
+    public async Task LeaveDepartmentGroup(string deptId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"department-{deptId.ToLowerInvariant()}");
+    }
+
+    // Hospital Administration real-time KPI overview group
+    public async Task JoinAdminGroup()
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, "admin-dashboard");
+    }
+
+    public async Task LeaveAdminGroup()
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "admin-dashboard");
     }
 }

@@ -130,22 +130,37 @@ export class NurseService {
 
   /**
    * Client-side instant CTAS evaluation preview for triage form visual feedback.
+   * Safely handles nullable / unentered vitals without triggering false positives.
    */
-  evaluateLevel(spo2: number, sys: number, hr: number, temp: number, pain: number): 'Red' | 'Yellow' | 'Green' {
-    if (spo2 < 90 || sys < 90 || sys > 200 || hr > 140 || hr < 40 || temp > 40.0 || pain === 10) {
-      return 'Red';
+  evaluateLevel(
+    spo2: number | null | undefined,
+    sys: number | null | undefined,
+    hr: number | null | undefined,
+    temp: number | null | undefined,
+    pain: number | null | undefined
+  ): 'Red' | 'Yellow' | 'Green' {
+    if (spo2 == null && sys == null && hr == null && temp == null && pain == null) {
+      return 'Green';
     }
-    if (
-      (spo2 >= 90 && spo2 <= 94) ||
-      (sys >= 90 && sys <= 99) ||
-      (sys >= 160 && sys <= 200) ||
-      (hr >= 110 && hr <= 140) ||
-      (hr >= 40 && hr < 50) ||
-      (temp >= 38.5 && temp <= 40.0) ||
-      pain >= 6
-    ) {
-      return 'Yellow';
-    }
+
+    const isRed =
+      (spo2 != null && spo2 < 90) ||
+      (sys != null && (sys < 90 || sys > 200)) ||
+      (hr != null && (hr > 140 || hr < 40)) ||
+      (temp != null && temp > 40.0) ||
+      (pain != null && pain === 10);
+
+    if (isRed) return 'Red';
+
+    const isYellow =
+      (spo2 != null && spo2 >= 90 && spo2 <= 94) ||
+      (sys != null && ((sys >= 90 && sys <= 99) || (sys >= 160 && sys <= 200))) ||
+      (hr != null && ((hr >= 110 && hr <= 140) || (hr >= 40 && hr < 50))) ||
+      (temp != null && temp >= 38.5 && temp <= 40.0) ||
+      (pain != null && pain >= 6);
+
+    if (isYellow) return 'Yellow';
+
     return 'Green';
   }
 

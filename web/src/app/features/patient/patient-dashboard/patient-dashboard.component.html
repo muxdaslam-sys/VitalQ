@@ -116,7 +116,7 @@
                     <svg class="w-4 h-4 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span>Appointment Expired (Absent after 3 calls or 60 min hold expired)</span>
+                    <span>Appointment Expired: {{ currentToken.consultationNotes || 'Absent after 3 calls or 60 min hold expired' }}</span>
                   </div>
                 } @else {
                   <span class="text-xs text-slate-500">Status: {{ currentToken.status }}</span>
@@ -300,7 +300,14 @@
                     <h4>Appointment Expired (No-Show)</h4>
                   </div>
                   <p class="text-xs text-rose-800 leading-relaxed">
+                  @if (currentToken.consultationNotes) {
+                    <div class="bg-rose-100/80 p-2.5 rounded-xl border border-rose-200 text-xs text-rose-900 font-medium">
+                      <span class="font-bold text-[10px] uppercase tracking-wider text-rose-700 block mb-0.5">Recorded Reason:</span>
+                      "{{ currentToken.consultationNotes }}"
+                    </div>
+                  } @else {
                     This consultation pass expired because 3 summons were missed or the 60-minute temporary hold window elapsed. If you still require outpatient care today, please book a new appointment slip below.
+                  }
                   </p>
                   <div>
                     <a routerLink="/patient/book" class="inline-flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md shadow-teal-600/20 transition">

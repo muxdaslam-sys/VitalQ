@@ -34,6 +34,16 @@ public class QueueTokenResponse
     public int PatientsAhead { get; set; }                 // Number of patients ahead in line
     public int EstimatedWaitMinutes { get; set; }          // Estimated wait based on doctor consultation time
 
+    // Embedded Clinical Triage Vitals (Zero-latency instant preview)
+    public decimal? SpO2 { get; set; }
+    public int? SystolicBp { get; set; }
+    public int? DiastolicBp { get; set; }
+    public int? HeartRate { get; set; }
+    public decimal? Temperature { get; set; }
+    public int? PainScale { get; set; }
+    public string? NurseNotes { get; set; }
+    public string? NurseName { get; set; }
+
     /// <summary>
     /// Cumulative number of times this token has been skipped due to absence (0, 1, 2, or 3).
     /// Used by Doctor, Nurse, and Patient screens to display strike warnings (Call X of 3).

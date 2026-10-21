@@ -166,6 +166,7 @@ public class DoctorService : IDoctorService
             .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NurseUser)
             .Where(t => t.DoctorId == doctorId &&
                         t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc &&
                         (t.Status == "Called" || t.Status == "Waiting" || t.Status == "Skipped"))
@@ -220,6 +221,7 @@ public class DoctorService : IDoctorService
             .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NurseUser)
             .Where(t => t.DoctorId == doctorId &&
                         t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc &&
                         t.Status == "Called")
@@ -265,6 +267,7 @@ public class DoctorService : IDoctorService
             .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NurseUser)
             .Where(t => t.DoctorId == doctorId &&
                         t.Status == "Waiting" &&
                         t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc)
@@ -297,6 +300,7 @@ public class DoctorService : IDoctorService
             .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NurseUser)
             .FirstOrDefaultAsync(t => t.Id == tokenId && t.DoctorId == doctorId);
 
         if (token == null)
@@ -534,6 +538,7 @@ public class DoctorService : IDoctorService
             .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NurseUser)
             .Where(t => t.DoctorId == doctorId &&
                         t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc &&
                         t.Status == "Completed")
@@ -716,6 +721,14 @@ public class DoctorService : IDoctorService
             PriorityScore = t.PriorityScore,
             BaseWeight = t.BaseWeight,
             TriageLevel = t.TriageAssessment?.TriageLevel,
+            SpO2 = t.TriageAssessment?.SpO2,
+            SystolicBp = t.TriageAssessment?.SystolicBp,
+            DiastolicBp = t.TriageAssessment?.DiastolicBp,
+            HeartRate = t.TriageAssessment?.HeartRate,
+            Temperature = t.TriageAssessment?.Temperature,
+            PainScale = t.TriageAssessment?.PainScale,
+            NurseNotes = t.TriageAssessment?.NurseNotes,
+            NurseName = t.TriageAssessment?.NurseUser?.FullName,
             PatientsAhead = patientsAhead,
             EstimatedWaitMinutes = patientsAhead * avgConsultationMins,
             SkipCount = skipCount,
