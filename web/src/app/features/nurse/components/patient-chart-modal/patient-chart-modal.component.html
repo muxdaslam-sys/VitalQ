@@ -1,0 +1,101 @@
+<div teleportToBody class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
+  <div class="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn max-h-[90vh] flex flex-col">
+    <!-- Header -->
+    <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-teal-500 text-white flex items-center justify-center text-lg font-bold">
+          <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="text-base font-bold leading-tight">Patient Medical Profile &amp; History</h3>
+          <p class="text-xs text-slate-300">Permanent Hospital Chart &amp; Past Consultations</p>
+        </div>
+      </div>
+      <button (click)="close.emit()" class="w-8 h-8 rounded-lg text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer" title="Close">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div class="p-6 flex-1 overflow-y-auto space-y-5">
+      <!-- Patient Demographics Card -->
+      <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <h4 class="font-bold text-lg text-slate-900">{{ patient.fullName }}</h4>
+            <p class="text-xs text-slate-500 font-mono">MRN: {{ patient.medicalRecordNumber }}</p>
+          </div>
+          <span class="px-3 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
+            {{ patient.totalCompletedBookings }} Completed Visits
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1 border-t border-slate-200/80">
+          <div>
+            <span class="text-[10px] font-bold uppercase text-slate-400 block">Phone</span>
+            <span class="font-semibold text-slate-800">{{ patient.phoneNumber }}</span>
+          </div>
+          <div>
+            <span class="text-[10px] font-bold uppercase text-slate-400 block">Date of Birth</span>
+            <span class="font-semibold text-slate-800">{{ patient.dateOfBirth }}</span>
+          </div>
+          <div>
+            <span class="text-[10px] font-bold uppercase text-slate-400 block">Age</span>
+            <span class="font-semibold text-slate-800">{{ calculateAge(patient.dateOfBirth) || 'N/A' }}</span>
+          </div>
+          <div>
+            <span class="text-[10px] font-bold uppercase text-slate-400 block">Gender</span>
+            <span class="font-semibold text-slate-800">{{ patient.gender }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Past Visit & Consultation History -->
+      <div class="space-y-3">
+        <h5 class="text-xs font-bold uppercase tracking-wider text-slate-500">Visit &amp; Doctor Notes History</h5>
+        
+        @if (!patient.visits || patient.visits.length === 0) {
+          <p class="text-xs text-slate-400 py-6 text-center bg-slate-50 rounded-xl border border-slate-200">
+            No prior consultation records logged for this patient.
+          </p>
+        } @else {
+          <div class="space-y-2.5">
+            @for (visit of patient.visits; track visit.tokenId) {
+              <div class="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                <div class="flex items-center justify-between text-xs flex-wrap gap-2">
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      {{ visit.tokenNumber }}
+                    </span>
+                    <span class="font-bold text-slate-800">{{ visit.departmentName }} · Dr. {{ visit.doctorName }}</span>
+                  </div>
+                  <span class="text-slate-400 text-[11px]">{{ visit.bookedAtUtc | date:'mediumDate' }}</span>
+                </div>
+
+                @if (visit.consultationNotes) {
+                  <p class="text-xs text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                    <span class="font-bold text-slate-900">Physician Notes:</span> {{ visit.consultationNotes }}
+                  </p>
+                } @else {
+                  <p class="text-xs text-slate-400 italic">No notes recorded for this visit.</p>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="px-6 py-3.5 bg-slate-100 border-t border-slate-200 flex justify-end shrink-0">
+      <button (click)="close.emit()"
+              class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition cursor-pointer">
+        Close Chart
+      </button>
+    </div>
+  </div>
+</div>

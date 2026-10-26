@@ -34,4 +34,8 @@ dist/
 ## Project state & internal documentation
 PROJECT_STATE.md
 
-
+## Database backups & local seed scripts
+*.bak
+*.mdf
+*.ldf
+*.sql
