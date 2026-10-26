@@ -1,0 +1,62 @@
+<div teleportToBody class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex justify-end animate-fadeIn">
+  <div class="bg-white w-full max-w-md h-full shadow-2xl flex flex-col p-6 space-y-4 overflow-y-auto">
+    
+    <!-- Drawer Header -->
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div>
+        <h3 class="text-base font-bold text-slate-800">Longitudinal Medical History</h3>
+        <p class="text-xs text-slate-500">{{ patientName }}</p>
+      </div>
+      <button (click)="close.emit()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition cursor-pointer" title="Close">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- History Records Timeline -->
+    <div class="flex-1 space-y-4">
+      @if (isLoading) {
+        <div class="text-center py-12 text-slate-400 text-xs">Loading longitudinal records...</div>
+      } @else if (historyList.length === 0) {
+        <div class="text-center py-12 text-slate-400 text-xs">
+          <p class="font-semibold text-slate-600">No Prior Hospital Encounters</p>
+          <p class="mt-1">This is the patient's first recorded encounter at VitalQ.</p>
+        </div>
+      } @else {
+        <div class="space-y-3">
+          @for (item of historyList; track item.tokenId) {
+            <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 text-xs space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="font-mono font-bold text-slate-800">{{ item.tokenNumber }}</span>
+                <span class="text-slate-400">{{ formatDate(item.completedAtUtc || item.bookedAtUtc) }}</span>
+              </div>
+              <div class="text-slate-600">
+                <span>{{ item.departmentName }}</span> · <span class="font-medium text-slate-800">{{ item.doctorName }}</span>
+              </div>
+              @if (item.consultationNotes) {
+                <div class="bg-white p-2.5 rounded-xl border border-slate-200/80 text-slate-700">
+                  <span class="text-[10px] font-bold uppercase text-slate-400 block mb-0.5">
+                    {{ item.status === 'Completed' ? 'Doctor Clinical Advice / Prescription:' : 'Encounter Audit Remarks:' }}
+                  </span>
+                  <p class="italic text-slate-800">"{{ item.consultationNotes }}"</p>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Drawer Footer -->
+    <div class="pt-3 border-t border-slate-100">
+      <button 
+        type="button"
+        (click)="close.emit()"
+        class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer">
+        Close Medical Dossier
+      </button>
+    </div>
+
+  </div>
+</div>

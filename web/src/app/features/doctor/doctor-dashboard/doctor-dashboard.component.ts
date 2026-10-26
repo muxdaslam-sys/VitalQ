@@ -1,3 +1,19 @@
+/**
+ * ============================================================================
+ * COMPONENT: Doctor Consultation Room Console (/doctor)
+ * ============================================================================
+ * 
+ * High-performance clinical cockpit for attending physicians:
+ * - Real-time priority queue management with CTAS urgency and dynamic aging
+ * - Live in-room consultation stopwatch tracking patient encounter length
+ * - Melodic hospital audio summon chime via native Web Audio API
+ * - 3-Strike skip safety enforcement and CTAS 3-slot fallback re-queuing
+ * - Inline pre-call vitals preview accordion and historical medical records dossier
+ * - Real-time physician duty status toggle (Available vs. On Break)
+ * - Decoupled child components with teleportToBody for modals and drawers
+ * ============================================================================
+ */
+
 import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -7,28 +23,24 @@ import { AuthService } from '../../../core/services/auth.service';
 import { DoctorService } from '../../../core/services/doctor.service';
 import { SignalRService } from '../../../core/services/signalr.service';
 import { NurseService } from '../../../core/services/nurse.service';
+import { ToastService } from '../../../core/services/toast.service';
+import { CompleteConsultationModalComponent } from '../components/complete-consultation-modal/complete-consultation-modal.component';
+import { SkipPatientModalComponent } from '../components/skip-patient-modal/skip-patient-modal.component';
+import { PatientHistoryDrawerComponent } from '../components/patient-history-drawer/patient-history-drawer.component';
 import { Doctor, QueueToken, DoctorDashboardStats } from '../../../shared/models/queue.model';
 import { TriageAssessment } from '../../../shared/models/triage.model';
 import { PatientVisitHistory } from '../../../shared/models/patient.model';
 
-/**
- * ============================================================================
- * COMPONENT: Doctor Consultation Room Console (/doctor)
- * ============================================================================
- * 
- * High-performance clinical cockpit for attending physicians:
- * - Real-time priority queue management with CTAS urgency and dynamic aging
- * - Live in-room consultation stopwatch tracking patient encounter length
- * - Melodic hospital audio summon chime via Web Audio API
- * - 3-Strike skip safety enforcement and CTAS 3-slot fallback re-queuing
- * - Inline pre-call vitals preview accordion and historical medical records dossier
- * - Real-time physician duty status toggle (Available vs. On Break)
- * ============================================================================
- */
 @Component({
   selector: 'app-doctor-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    CompleteConsultationModalComponent,
+    SkipPatientModalComponent,
+    PatientHistoryDrawerComponent
+  ],
   templateUrl: './doctor-dashboard.component.html',
   styleUrl: './doctor-dashboard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -36,11 +48,12 @@ import { PatientVisitHistory } from '../../../shared/models/patient.model';
 export class DoctorDashboardComponent implements OnInit, OnDestroy {
 
   // #region 1. Dependency Injection & Service Wiring
-  auth = inject(AuthService);
-  private router = inject(Router);
-  private doctorService = inject(DoctorService);
-  private nurseService = inject(NurseService);
-  private signalR = inject(SignalRService);
+  readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly doctorService = inject(DoctorService);
+  private readonly nurseService = inject(NurseService);
+  private readonly signalR = inject(SignalRService);
+  private readonly toast = inject(ToastService);
   // #endregion
 
   // #region 2. Reactive State Signals
@@ -74,10 +87,6 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
 
   /** Button-level loading state during queue transitions */
   isActionLoading = signal<boolean>(false);
-
-  /** Ephemeral notification banners */
-  errorMessage = signal<string>('');
-  successMessage = signal<string>('');
 
   /** Live consultation stopwatch timer text formatted as MM:SS */
   consultationTimerText = signal<string>('00:00');
@@ -136,8 +145,6 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
 
   /** Complete consultation modal state */
   isCompleteModalOpen = signal<boolean>(false);
-  consultationNotes = signal<string>('');
-  isSubmittingComplete = signal<boolean>(false);
 
   /** Skip / Absent confirmation modal state */
   isSkipModalOpen = signal<boolean>(false);
@@ -150,7 +157,6 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
   // #region 3. Subscriptions & Timers
   private subs: Subscription[] = [];
   private stopwatchIntervalId: any = null;
-  private autoDismissTimerId: any = null;
   // #endregion
 
   // #region 4. Lifecycle Hooks
@@ -161,9 +167,6 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopConsultationTimer();
-    if (this.autoDismissTimerId) {
-      clearTimeout(this.autoDismissTimerId);
-    }
     if (this.doctorProfile()) {
       this.signalR.leaveDoctorGroup(this.doctorProfile()!.id);
     }
@@ -179,7 +182,6 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
    */
   loadDoctorProfileAndData(): void {
     this.isLoading.set(true);
-    this.errorMessage.set('');
 
     this.doctorService.getDoctorProfile().subscribe({
       next: (doc) => {
@@ -188,9 +190,9 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
         this.connectSignalR(doc.id);
         this.initHeartbeatPoller(doc.id);
       },
-      error: (err) => {
+      error: (err: any) => {
         this.isLoading.set(false);
-        this.errorMessage.set(
+        this.toast.error(
           err.error?.message || 'Could not load physician profile. Ensure your account is assigned to an active doctor record.'
         );
       }
@@ -240,10 +242,10 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
           this.stopConsultationTimer();
         }
       },
-      error: (err) => {
+      error: (err: any) => {
         this.isLoading.set(false);
         if (showSpinner) {
-          this.errorMessage.set(err.error?.message || 'Failed to refresh room queue.');
+          this.toast.error(err.error?.message || 'Failed to refresh room queue.');
         }
       }
     });
@@ -392,19 +394,18 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
     if (!profile || this.isActionLoading()) return;
 
     this.isActionLoading.set(true);
-    this.errorMessage.set('');
 
     this.doctorService.callNext(profile.id).subscribe({
       next: (token) => {
         this.isActionLoading.set(false);
         this.currentCalled.set(token);
         this.playMelodicChime();
-        this.showSuccessToast(`Patient ${token.tokenNumber} (${token.patientName}) called into ${profile.roomNumber}!`);
+        this.toast.success(`Patient ${token.tokenNumber} (${token.patientName}) called into Room ${profile.roomNumber}!`);
         this.fetchQueueAndStats(profile.id);
       },
-      error: (err) => {
+      error: (err: any) => {
         this.isActionLoading.set(false);
-        this.errorMessage.set(err.error?.message || 'Could not summon next patient.');
+        this.toast.error(err.error?.message || 'Could not summon next patient.');
       }
     });
   }
@@ -421,11 +422,11 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
       next: () => {
         this.isActionLoading.set(false);
         this.playMelodicChime();
-        this.showSuccessToast(`Re-broadcasted chime & screen alert for ${current.tokenNumber} (${current.patientName}).`);
+        this.toast.info(`Re-broadcasted chime & screen alert for ${current.tokenNumber} (${current.patientName}).`);
       },
-      error: (err) => {
+      error: (err: any) => {
         this.isActionLoading.set(false);
-        this.errorMessage.set(err.error?.message || 'Failed to re-summon patient.');
+        this.toast.error(err.error?.message || 'Failed to re-summon patient.');
       }
     });
   }
@@ -451,13 +452,6 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Convenience alias triggering the in-app modal.
-   */
-  skipCurrentPatient(): void {
-    this.openSkipModal();
-  }
-
-  /**
    * Confirms marking absent enforcing the 3-strike policy.
    * Strike 1 & 2: Moved to Skipped tab on temporary hold.
    * Strike 3: Auto-transitioned to Expired / No-Show with slot released.
@@ -480,16 +474,16 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
         this.stopConsultationTimer();
 
         if (nextStrike >= 3) {
-          this.showSuccessToast(`Token ${current.tokenNumber} expired as No-Show after 3 missed calls.`);
+          this.toast.warning(`Token ${current.tokenNumber} expired as No-Show after 3 missed calls.`);
         } else {
-          this.showSuccessToast(`Token ${current.tokenNumber} placed on temporary hold (Strike ${nextStrike} of 3).`);
+          this.toast.info(`Token ${current.tokenNumber} placed on temporary hold (Strike ${nextStrike} of 3).`);
         }
 
         this.fetchQueueAndStats(profile.id);
       },
-      error: (err) => {
+      error: (err: any) => {
         this.isActionLoading.set(false);
-        this.errorMessage.set(err.error?.message || 'Could not skip patient.');
+        this.toast.error(err.error?.message || 'Could not skip patient.');
       }
     });
   }
@@ -517,12 +511,12 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
           ? `Emergency Token ${token.tokenNumber} prioritized immediately to Position #1!`
           : `Token ${token.tokenNumber} re-activated into Waiting Queue (3 slots back).`;
 
-        this.showSuccessToast(msg);
+        this.toast.success(msg);
         this.fetchQueueAndStats(profile.id);
       },
-      error: (err) => {
+      error: (err: any) => {
         this.isActionLoading.set(false);
-        this.errorMessage.set(err.error?.message || 'Could not re-queue patient.');
+        this.toast.error(err.error?.message || 'Could not re-queue patient.');
       }
     });
   }
@@ -532,7 +526,6 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
   // #region 11. Consultation Completion & Clinical Notes Modal
 
   openCompleteModal(): void {
-    this.consultationNotes.set('');
     this.isCompleteModalOpen.set(true);
   }
 
@@ -540,25 +533,22 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
     this.isCompleteModalOpen.set(false);
   }
 
-  submitCompleteConsultation(): void {
+  submitCompleteConsultation(notes: string): void {
     const current = this.currentCalled();
     const profile = this.doctorProfile();
-    if (!current || !profile || this.isSubmittingComplete()) return;
+    if (!current || !profile) return;
 
-    this.isSubmittingComplete.set(true);
-    this.doctorService.completeConsultation(current.id, this.consultationNotes()).subscribe({
+    this.doctorService.completeConsultation(current.id, notes).subscribe({
       next: () => {
-        this.isSubmittingComplete.set(false);
         this.isCompleteModalOpen.set(false);
         this.currentCalled.set(null);
         this.currentVitals.set(null);
         this.stopConsultationTimer();
-        this.showSuccessToast(`Consultation finalized for ${current.tokenNumber} (${current.patientName}).`);
+        this.toast.success(`Consultation finalized for ${current.tokenNumber} (${current.patientName}).`);
         this.fetchQueueAndStats(profile.id);
       },
-      error: (err) => {
-        this.isSubmittingComplete.set(false);
-        this.errorMessage.set(err.error?.message || 'Failed to complete consultation.');
+      error: (err: any) => {
+        this.toast.error(err.error?.message || 'Failed to complete consultation.');
       }
     });
   }
@@ -674,10 +664,10 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
           this.dashboardStats.set({ ...currentStats, status: updatedDoc.status });
         }
         const label = status === 'Available' ? 'Available in Clinic' : 'On Break (Paused)';
-        this.showSuccessToast(`Duty status updated to ${label}.`);
+        this.toast.success(`Duty status updated to ${label}.`);
       },
-      error: (err) => {
-        this.errorMessage.set(err.error?.message || 'Could not update duty status.');
+      error: (err: any) => {
+        this.toast.error(err.error?.message || 'Could not update duty status.');
       }
     });
   }
@@ -768,22 +758,6 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
   formatTime(isoUtc?: string): string {
     if (!isoUtc) return '--:--';
     return new Date(isoUtc).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  }
-
-  formatDate(isoUtc?: string): string {
-    if (!isoUtc) return '--';
-    return new Date(isoUtc).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
-  }
-
-  private showSuccessToast(message: string): void {
-    this.successMessage.set(message);
-    if (this.autoDismissTimerId) clearTimeout(this.autoDismissTimerId);
-    this.autoDismissTimerId = setTimeout(() => this.successMessage.set(''), 6000);
-  }
-
-  dismissToast(): void {
-    this.successMessage.set('');
-    this.errorMessage.set('');
   }
 
   // #endregion
