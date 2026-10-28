@@ -348,10 +348,7 @@ public class PatientService : IPatientService
         await _context.QueueTokens.AddAsync(queueToken);
         await _context.SaveChangesAsync();
 
-        var response = MapToTokenResponse(queueToken, patient, doctor);
-        response.PatientsAhead = 0;
-        response.EstimatedWaitMinutes = 0;
-        return response;
+        return MapToTokenResponse(queueToken, patient, doctor);
     }
 
     /// <summary>
@@ -384,8 +381,8 @@ public class PatientService : IPatientService
             .Include(t => t.Patient)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
-            .Include(t => t.Department).ThenInclude(dept => dept.NursingStations)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NurseUser)
             .Where(t => familyPatientIds.Contains(t.PatientId)
                      && t.BookedAtUtc >= today
                      && t.BookedAtUtc < tomorrow
@@ -397,27 +394,7 @@ public class PatientService : IPatientService
         foreach (var token in tokens)
         {
             var res = MapToTokenResponse(token, token.Patient!, token.Doctor!);
-
-            if (token.Status == "Waiting")
-            {
-                res.PatientsAhead = await _context.QueueTokens
-                    .AsNoTracking()
-                    .CountAsync(t => t.DoctorId == token.DoctorId
-                                  && t.BookedAtUtc >= today
-                                  && t.BookedAtUtc < tomorrow
-                                  && (t.Status == "Waiting" || t.Status == "Called")
-                                  && (t.PriorityScore > token.PriorityScore ||
-                                     (t.PriorityScore == token.PriorityScore && t.BookedAtUtc < token.BookedAtUtc)));
-
-                var avgMinutes = token.Doctor?.AvgConsultationMinutes ?? 10;
-                res.EstimatedWaitMinutes = res.PatientsAhead * avgMinutes;
-            }
-            else if (token.Status == "Called")
-            {
-                res.PatientsAhead = 0;
-                res.EstimatedWaitMinutes = 0;
-            }
-
+            await PopulateWaitingPositionAsync(res, token, today, tomorrow);
             responseList.Add(res);
         }
 
@@ -437,8 +414,8 @@ public class PatientService : IPatientService
             .Include(t => t.Patient)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
-            .Include(t => t.Department).ThenInclude(dept => dept.NursingStations)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NurseUser)
             .Where(t => t.PatientId == patientId
                      && t.BookedAtUtc >= today
                      && t.BookedAtUtc < tomorrow
@@ -449,27 +426,7 @@ public class PatientService : IPatientService
         if (token == null) return null;
 
         var res = MapToTokenResponse(token, token.Patient!, token.Doctor!);
-
-        if (token.Status == "Waiting")
-        {
-            res.PatientsAhead = await _context.QueueTokens
-                .AsNoTracking()
-                .CountAsync(t => t.DoctorId == token.DoctorId
-                              && t.BookedAtUtc >= today
-                              && t.BookedAtUtc < tomorrow
-                              && (t.Status == "Waiting" || t.Status == "Called")
-                              && (t.PriorityScore > token.PriorityScore ||
-                                 (t.PriorityScore == token.PriorityScore && t.BookedAtUtc < token.BookedAtUtc)));
-
-            var avgConsult = token.Doctor?.AvgConsultationMinutes ?? 10;
-            res.EstimatedWaitMinutes = res.PatientsAhead * avgConsult;
-        }
-        else if (token.Status == "Called")
-        {
-            res.PatientsAhead = 0;
-            res.EstimatedWaitMinutes = 0;
-        }
-
+        await PopulateWaitingPositionAsync(res, token, today, tomorrow);
         return res;
     }
 
@@ -482,8 +439,8 @@ public class PatientService : IPatientService
             .Include(t => t.Patient)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
-            .Include(t => t.Department).ThenInclude(dept => dept.NursingStations)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
+            .Include(t => t.TriageAssessment).ThenInclude(a => a!.NurseUser)
             .FirstOrDefaultAsync(t => t.Id == tokenId)
             ?? throw new KeyNotFoundException($"Token with ID {tokenId} was not found.");
 
@@ -494,8 +451,7 @@ public class PatientService : IPatientService
 
         bool isOwner = (token.Patient.UserId == currentUserId) 
                     || (token.Patient.PhoneNumber == user.PhoneNumber) 
-                    || (user.Role == "Admin")
-                    || await _context.Patients.AnyAsync(p => p.Id == token.PatientId && (p.UserId == currentUserId || p.PhoneNumber == user.PhoneNumber));
+                    || (user.Role == "Admin");
 
         if (!isOwner)
         {
@@ -658,17 +614,37 @@ public class PatientService : IPatientService
         CreatedAtUtc = p.CreatedAtUtc
     };
 
+    /// <summary>
+    /// Computes live queue position ("patients ahead") and estimated wait time for waiting tokens.
+    /// Default values are already 0 on QueueTokenResponse, so only "Waiting" status needs calculation.
+    /// </summary>
+    private async Task PopulateWaitingPositionAsync(QueueTokenResponse res, QueueToken token, DateTime today, DateTime tomorrow)
+    {
+        if (token.Status != "Waiting") return;
+
+        res.PatientsAhead = await _context.QueueTokens
+            .AsNoTracking()
+            .CountAsync(t => t.DoctorId == token.DoctorId
+                          && t.BookedAtUtc >= today
+                          && t.BookedAtUtc < tomorrow
+                          && (t.Status == "Waiting" || t.Status == "Called")
+                          && (t.PriorityScore > token.PriorityScore ||
+                             (t.PriorityScore == token.PriorityScore && t.BookedAtUtc < token.BookedAtUtc)));
+
+        var avgMinutes = token.Doctor?.AvgConsultationMinutes ?? 10;
+        res.EstimatedWaitMinutes = res.PatientsAhead * avgMinutes;
+    }
+
     private static QueueTokenResponse MapToTokenResponse(QueueToken t, Patient p, Doctor d)
     {
-        // Resolve Nursing Station from TriageAssessment (if triaged) or from Department (if awaiting triage)
+        // Resolve Nursing Station from TriageAssessment (if triaged) or from Department
         var station = t.TriageAssessment?.NursingStation 
-            ?? d?.Department?.NursingStations?.FirstOrDefault(s => s.IsActive)
-            ?? t.Department?.NursingStations?.FirstOrDefault(s => s.IsActive);
+            ?? d.Department.NursingStations.FirstOrDefault(s => s.IsActive);
 
         var stationName = station?.StationName ?? "Nursing Triage Desk";
-        var stationFloor = station?.LocationFloor ?? d?.Department?.LocationFloor ?? t.Department?.LocationFloor ?? "Floor 1";
-        var room = d?.RoomNumber ?? "Consultation Room";
-        var doctorName = d?.User?.FullName ?? "Doctor";
+        var stationFloor = station?.LocationFloor ?? d.Department.LocationFloor;
+        var room = d.RoomNumber;
+        var doctorName = d.User.FullName;
 
         // Generate contextual wayfinding instruction based on current queue stage
         var nextStepInstruction = t.Status switch
@@ -688,16 +664,24 @@ public class PatientService : IPatientService
             PatientId = p.Id,
             PatientName = p.FullName,
             PatientPhone = p.PhoneNumber,
-            DepartmentId = d?.DepartmentId ?? t.DepartmentId,
-            DepartmentName = d?.Department?.Name ?? t.Department?.Name ?? string.Empty,
-            DepartmentCode = d?.Department?.Code ?? t.Department?.Code ?? string.Empty,
-            DoctorId = d?.Id ?? t.DoctorId,
+            DepartmentId = d.DepartmentId,
+            DepartmentName = d.Department.Name,
+            DepartmentCode = d.Department.Code,
+            DoctorId = d.Id,
             DoctorName = doctorName,
             RoomNumber = room,
             Status = t.Status,
             PriorityScore = t.PriorityScore,
             BaseWeight = t.BaseWeight,
             TriageLevel = t.TriageAssessment?.TriageLevel,
+            SpO2 = t.TriageAssessment?.SpO2,
+            SystolicBp = t.TriageAssessment?.SystolicBp,
+            DiastolicBp = t.TriageAssessment?.DiastolicBp,
+            HeartRate = t.TriageAssessment?.HeartRate,
+            Temperature = t.TriageAssessment?.Temperature,
+            PainScale = t.TriageAssessment?.PainScale,
+            NurseNotes = t.TriageAssessment?.NurseNotes,
+            NurseName = t.TriageAssessment?.NurseUser?.FullName,
             BookedAtUtc = t.BookedAtUtc,
             TriagedAtUtc = t.TriagedAtUtc,
             CalledAtUtc = t.CalledAtUtc,
