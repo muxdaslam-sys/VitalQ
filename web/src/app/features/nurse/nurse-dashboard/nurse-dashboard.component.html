@@ -37,6 +37,18 @@
           </svg>
           <span>Emergency Walk-In</span>
         </button>
+
+        <!-- Sign Out Button -->
+        <button 
+          type="button"
+          (click)="logout()"
+          class="text-xs font-bold text-slate-600 hover:text-rose-600 border border-slate-200 px-3 py-2 rounded-xl transition flex items-center gap-1.5 cursor-pointer bg-white"
+          title="Sign out of nursing station">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span class="hidden sm:inline">Sign Out</span>
+        </button>
       </div>
     </div>
   </header>
@@ -116,8 +128,72 @@
           </div>
         </div>
 
-        <!-- Triage Waiting Table -->
-        <div class="overflow-x-auto">
+        <!-- Triage Waiting List: Dual Responsive Layout -->
+        <!-- 1. Mobile Cards View (< 768px) -->
+        <div class="block md:hidden divide-y divide-slate-100">
+          @for (token of filteredQueue(); track token.id) {
+            <div class="py-3.5 space-y-2.5">
+              <div class="flex items-center justify-between">
+                <span class="font-mono font-bold text-sm text-teal-800 bg-teal-50 border border-teal-200/80 px-2.5 py-1 rounded-xl">
+                  {{ token.tokenNumber }}
+                </span>
+                <span class="text-xs text-slate-400 font-medium flex items-center gap-1 font-mono">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>{{ token.bookedAtUtc | date:'shortTime' }}</span>
+                </span>
+              </div>
+              <div class="space-y-0.5">
+                <p class="font-bold text-slate-900 text-sm leading-snug break-words">{{ token.patientName }}</p>
+                <p class="text-xs text-slate-400 font-mono">{{ token.patientPhone }}</p>
+                <div class="pt-1 flex items-center gap-1.5 text-xs text-slate-600 flex-wrap">
+                  <span class="font-semibold text-slate-800">Dr. {{ token.doctorName }}</span>
+                  <span class="text-slate-300">·</span>
+                  <span class="text-slate-500">{{ token.departmentName }}</span>
+                </div>
+              </div>
+              <div class="pt-1 flex items-center gap-2">
+                <button 
+                  type="button"
+                  (click)="openTriage(token)" 
+                  class="flex-1 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Take Vitals</span>
+                </button>
+                <button 
+                  type="button"
+                  (click)="openQueueStatus(token.id)" 
+                  class="px-3.5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                  title="View Queue Line Position">
+                  Queue
+                </button>
+                <button 
+                  type="button"
+                  (click)="openPatientChart(token.patientId)" 
+                  class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                  title="View Medical Chart">
+                  Chart
+                </button>
+              </div>
+            </div>
+          } @empty {
+            <div class="py-12 text-center text-slate-400">
+              <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p class="font-bold text-sm text-slate-700">All Walk-In Arrivals Triaged</p>
+              <p class="text-xs text-slate-400 mt-0.5">No patients are currently waiting for vital signs intake.</p>
+            </div>
+          }
+        </div>
+
+        <!-- 2. Desktop High-Density Table View (>= 768px) -->
+        <div class="hidden md:block overflow-x-auto">
           <table class="w-full text-left text-xs">
             <thead class="bg-slate-50 text-slate-400 uppercase tracking-wider font-bold border-b border-slate-200">
               <tr>
@@ -131,21 +207,21 @@
             <tbody class="divide-y divide-slate-100">
               @for (token of filteredQueue(); track token.id) {
                 <tr class="hover:bg-slate-50/80 transition">
-                  <td class="py-3.5 px-4 font-mono font-bold text-sm text-teal-800">
+                  <td class="py-3.5 px-4 font-mono font-bold text-sm text-teal-800 whitespace-nowrap">
                     {{ token.tokenNumber }}
                   </td>
-                  <td class="py-3.5 px-4">
-                    <p class="font-bold text-slate-900 text-sm leading-tight">{{ token.patientName }}</p>
-                    <p class="text-slate-400 text-[11px] font-medium">{{ token.patientPhone }}</p>
+                  <td class="py-3.5 px-4 max-w-xs">
+                    <p class="font-bold text-slate-900 text-sm leading-tight break-words">{{ token.patientName }}</p>
+                    <p class="text-slate-400 text-[11px] font-medium font-mono">{{ token.patientPhone }}</p>
                   </td>
                   <td class="py-3.5 px-4">
-                    <p class="font-semibold text-slate-800">Dr. {{ token.doctorName }}</p>
+                    <p class="font-semibold text-slate-800 break-words">Dr. {{ token.doctorName }}</p>
                     <p class="text-[11px] text-slate-400">{{ token.departmentName }}</p>
                   </td>
-                  <td class="py-3.5 px-4 text-slate-500 font-medium">
+                  <td class="py-3.5 px-4 text-slate-500 font-medium whitespace-nowrap font-mono">
                     {{ token.bookedAtUtc | date:'shortTime' }}
                   </td>
-                  <td class="py-3.5 px-4 text-right space-x-1.5">
+                  <td class="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
                     <button 
                       (click)="openTriage(token)" 
                       class="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl shadow-sm transition inline-flex items-center gap-1.5 cursor-pointer">
@@ -253,9 +329,45 @@
             class="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50 outline-none focus:border-teal-500 focus:bg-white transition" />
         </div>
 
-        <!-- Search Results Table -->
+        <!-- Search Results: Dual Responsive Layout -->
         @if (searchResults().length > 0) {
-          <div class="overflow-x-auto pt-2">
+          <!-- 1. Mobile Cards View (< 768px) -->
+          <div class="block md:hidden divide-y divide-slate-100 pt-2">
+            @for (patient of searchResults(); track patient.patientId) {
+              <div class="py-3.5 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="font-mono font-bold text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
+                    {{ patient.medicalRecordNumber || 'N/A' }}
+                  </span>
+                  <span class="text-xs text-slate-500 font-medium">{{ patient.gender }}</span>
+                </div>
+                <div>
+                  <p class="font-bold text-slate-900 text-sm leading-snug break-words">{{ patient.fullName }}</p>
+                  <p class="text-xs text-slate-500 font-mono mt-0.5">{{ patient.phoneNumber }}</p>
+                </div>
+                <div class="flex items-center gap-2 pt-1">
+                  <button 
+                    type="button"
+                    (click)="openBookExisting(patient)" 
+                    class="flex-1 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-sm transition cursor-pointer flex items-center justify-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Book Token</span>
+                  </button>
+                  <button 
+                    type="button"
+                    (click)="openPatientChart(patient.patientId)" 
+                    class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition cursor-pointer">
+                    Chart
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- 2. Desktop High-Density Table View (>= 768px) -->
+          <div class="hidden md:block overflow-x-auto pt-2">
             <table class="w-full text-left text-xs">
               <thead class="bg-slate-50 text-slate-400 uppercase tracking-wider font-bold border-b border-slate-200">
                 <tr>
@@ -269,11 +381,11 @@
               <tbody class="divide-y divide-slate-100">
                 @for (patient of searchResults(); track patient.patientId) {
                   <tr class="hover:bg-slate-50/80">
-                    <td class="py-3 px-4 font-mono font-bold text-slate-700">{{ patient.medicalRecordNumber || 'N/A' }}</td>
-                    <td class="py-3 px-4 font-bold text-slate-900">{{ patient.fullName }}</td>
-                    <td class="py-3 px-4 text-slate-600 font-medium">{{ patient.phoneNumber }}</td>
-                    <td class="py-3 px-4 text-slate-500">{{ patient.gender }}</td>
-                    <td class="py-3 px-4 text-right space-x-2">
+                    <td class="py-3 px-4 font-mono font-bold text-slate-700 whitespace-nowrap">{{ patient.medicalRecordNumber || 'N/A' }}</td>
+                    <td class="py-3 px-4 font-bold text-slate-900 break-words">{{ patient.fullName }}</td>
+                    <td class="py-3 px-4 text-slate-600 font-medium font-mono whitespace-nowrap">{{ patient.phoneNumber }}</td>
+                    <td class="py-3 px-4 text-slate-500 whitespace-nowrap">{{ patient.gender }}</td>
+                    <td class="py-3 px-4 text-right space-x-2 whitespace-nowrap">
                       <button 
                         (click)="openBookExisting(patient)" 
                         class="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl transition cursor-pointer">
@@ -345,31 +457,39 @@
   <!-- Modal 6: Instant Booking for Registered Patient -->
   @if (showBookExistingModal()) {
     <div teleportToBody class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
-      <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn">
-        <div class="px-6 py-4 bg-teal-600 text-white flex items-center justify-between">
-          <h3 class="font-bold text-sm">Book Token: {{ bookExistingPatient()?.fullName }}</h3>
-          <button (click)="showBookExistingModal.set(false)" class="text-white/80 hover:text-white cursor-pointer">
+      <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn max-h-[90vh] flex flex-col">
+        <div class="px-6 py-4 bg-teal-600 text-white flex items-center justify-between shrink-0">
+          <h3 class="font-bold text-sm break-words">Book Token: {{ bookExistingPatient()?.fullName }}</h3>
+          <button (click)="showBookExistingModal.set(false)" class="text-white/80 hover:text-white cursor-pointer ml-2 shrink-0">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <form (ngSubmit)="submitBookExisting()" class="p-6 space-y-4">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Assign to Physician *</label>
-            <select [(ngModel)]="bookExistingForm.doctorId" name="assignDoctor" required
-                    class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold bg-white focus:ring-2 focus:ring-teal-500">
-              @for (doc of doctors(); track doc.doctorId) {
-                <option [value]="doc.doctorId">
-                  Dr. {{ doc.doctorName }} ({{ doc.specialization }} · Room {{ doc.roomNumber }} - {{ doc.status }})
-                </option>
-              }
-            </select>
-          </div>
+        <form (ngSubmit)="submitBookExisting()" class="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div class="p-5 sm:p-6 space-y-4 flex-1 overflow-y-auto">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Assign to Physician *</label>
+              <div class="relative">
+                <select [(ngModel)]="bookExistingForm.doctorId" name="assignDoctor" required
+                        class="w-full px-3.5 py-2.5 pr-8 border border-slate-300 rounded-xl text-xs sm:text-sm font-bold bg-white focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer">
+                  @for (doc of doctors(); track doc.doctorId) {
+                    <option [value]="doc.doctorId">
+                      Dr. {{ doc.doctorName }} · Rm {{ doc.roomNumber }} ({{ doc.specialization }}) [{{ doc.status }}]
+                    </option>
+                  }
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
 
           <div class="p-3 bg-red-50 rounded-xl border border-red-200 flex items-center gap-2">
             <input type="checkbox" [(ngModel)]="bookExistingForm.isEmergencyCodeRed" name="existingCodeRed" id="existCodeRed"
-                   class="w-4 h-4 text-red-600 rounded cursor-pointer">
+                   class="w-4 h-4 text-red-600 rounded cursor-pointer shrink-0">
             <label for="existCodeRed" class="text-xs font-bold text-red-900 cursor-pointer select-none">
               Immediate Code-Red Emergency Bypass
             </label>
@@ -383,14 +503,15 @@
                         class="w-full px-3 py-2 border border-red-300 rounded-xl text-xs bg-white text-slate-800"></textarea>
             </div>
           }
+        </div>
 
-          <div class="pt-2 flex justify-end gap-2">
-            <button type="button" (click)="showBookExistingModal.set(false)" class="px-4 py-2 border rounded-xl text-xs font-bold text-slate-700">Cancel</button>
-            <button type="submit" [disabled]="isSubmittingBooking()" class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold">
-              {{ isSubmittingBooking() ? 'Booking...' : 'Confirm Token' }}
-            </button>
-          </div>
-        </form>
+        <div class="px-6 py-3.5 bg-slate-100 border-t border-slate-200 flex justify-end gap-2 shrink-0">
+          <button type="button" (click)="showBookExistingModal.set(false)" class="px-4 py-2 border rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-200 transition cursor-pointer">Cancel</button>
+          <button type="submit" [disabled]="isSubmittingBooking()" class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold cursor-pointer">
+            {{ isSubmittingBooking() ? 'Booking...' : 'Confirm Token' }}
+          </button>
+        </div>
+      </form>
       </div>
     </div>
   }

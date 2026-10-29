@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using VitalQ.BusinessLogic.Interfaces;
 using VitalQ.DataAccess;
@@ -623,27 +624,30 @@ public class AdminService : IAdminService
             .AsNoTracking()
             .AsQueryable();
 
-        // 1. High-Performance B-Tree Index Routed Search (MRN, Phone, or Name)
+        // 1. Smart Multi-Predicate Search (MRN, Phone, or Name)
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
+            var mrnClean = Regex.Replace(term, @"^mrn[\s\-_]*", "", RegexOptions.IgnoreCase).Trim();
 
-            // A. MRN Search (e.g. "MRN-261005-7A3F") -> Direct Index Seek on UQ_MedicalRecordNumber
+            // A. MRN Search (e.g. "MRN-261005-7A3F", "mrn - 444g", "mrn 444g")
             if (term.StartsWith("MRN", StringComparison.OrdinalIgnoreCase))
             {
-                query = query.Where(p => p.MedicalRecordNumber.StartsWith(term));
+                query = query.Where(p => p.MedicalRecordNumber.StartsWith(term) 
+                                      || p.MedicalRecordNumber.Contains(mrnClean));
             }
-            // B. Phone Number Search (e.g. "9876543210") -> Direct Index Seek on IX_Patients_PhoneNumber
+            // B. Phone Number or Last Digits Search (e.g. "9876543210" or "0005")
             else if (term.All(char.IsDigit))
             {
-                query = query.Where(p => p.PhoneNumber.StartsWith(term));
+                query = query.Where(p => p.PhoneNumber.StartsWith(term) 
+                                      || p.MedicalRecordNumber.Contains(term));
             }
-            // C. Patient Name Search (e.g. "Sarah") -> Direct Index Seek on IX_Patients_FullName
+            // C. Patient Name or Alphanumeric MRN Code (e.g. "Sarah", "444g", "7A3F")
             else
             {
-                query = term.Length < 3
-                    ? query.Where(p => p.FullName.StartsWith(term))
-                    : query.Where(p => p.FullName.StartsWith(term) || p.FullName.Contains(term));
+                query = query.Where(p => p.MedicalRecordNumber.Contains(mrnClean)
+                                      || p.FullName.StartsWith(term) 
+                                      || p.FullName.Contains(term));
             }
         }
 

@@ -42,10 +42,10 @@ export class AuthService {
   currentUser = signal<UserResponse | null>(this.getStoredUser());
 
   /** Current active JWT Bearer token */
-  accessToken = signal<string | null>(localStorage.getItem('vq_token'));
+  accessToken = signal<string | null>(this.getStoredToken());
 
-  /** Computed boolean checking if a valid user session is currently active */
-  isAuthenticated = computed(() => !!this.currentUser());
+  /** Computed boolean checking if a valid user session is currently active and unexpired */
+  isAuthenticated = computed(() => !!this.currentUser() && !this.isTokenExpired());
 
   /** Computed hospital role string ('Admin' | 'Doctor' | 'Nurse' | 'Patient') */
   userRole = computed(() => this.currentUser()?.role || null);
@@ -165,6 +165,25 @@ export class AuthService {
    * 
    * @param role Hospital clinical or administrative role.
    */
+  /**
+   * Checks if the active JWT token is expired or within 10 seconds of expiry.
+   * Decodes the payload directly without external dependencies.
+   */
+  isTokenExpired(): boolean {
+    const token = this.getStoredToken();
+    if (!token) return true;
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return true;
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+      if (!payload.exp) return false;
+      const expiryMs = payload.exp * 1000;
+      return Date.now() >= (expiryMs - 10000);
+    } catch {
+      return true;
+    }
+  }
+
   getRoleDefaultRoute(role: string): string {
     switch (role) {
       case 'Admin': return '/admin/dashboard';
@@ -179,8 +198,10 @@ export class AuthService {
    * Persists authentication tokens and user profile to storage and signals.
    */
   private setSession(authResult: AuthResponse): void {
-    localStorage.setItem('vq_token', authResult.accessToken);
-    localStorage.setItem('vq_user', JSON.stringify(authResult.user));
+    sessionStorage.setItem('vq_token', authResult.accessToken);
+    sessionStorage.setItem('vq_user', JSON.stringify(authResult.user));
+    localStorage.removeItem('vq_token');
+    localStorage.removeItem('vq_user');
     this.accessToken.set(authResult.accessToken);
     this.currentUser.set(authResult.user);
   }
@@ -189,6 +210,8 @@ export class AuthService {
    * Purges cached session tokens and resets reactive signals.
    */
   private clearSession(): void {
+    sessionStorage.removeItem('vq_token');
+    sessionStorage.removeItem('vq_user');
     localStorage.removeItem('vq_token');
     localStorage.removeItem('vq_user');
     this.accessToken.set(null);
@@ -196,10 +219,19 @@ export class AuthService {
   }
 
   /**
-   * Safely reads and parses the stored user profile from localStorage.
+   * Safely reads the stored JWT token from sessionStorage.
+   */
+  private getStoredToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return sessionStorage.getItem('vq_token');
+  }
+
+  /**
+   * Safely reads and parses the stored user profile from sessionStorage.
    */
   private getStoredUser(): UserResponse | null {
-    const raw = localStorage.getItem('vq_user');
+    if (typeof window === 'undefined') return null;
+    const raw = sessionStorage.getItem('vq_user');
     if (!raw) return null;
     try {
       return JSON.parse(raw) as UserResponse;
