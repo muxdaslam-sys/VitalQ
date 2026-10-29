@@ -1,10 +1,10 @@
 <div teleportToBody class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6 overflow-y-auto">
-  <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn">
+  <div class="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn max-h-[92vh] flex flex-col">
     <!-- Header -->
-    <div class="px-6 py-4 text-white flex items-center justify-between transition-colors"
+    <div class="px-6 py-4 text-white flex items-center justify-between transition-colors shrink-0"
          [ngClass]="walkInForm.isEmergencyCodeRed ? 'bg-red-600' : 'bg-amber-500'">
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center text-base">
+        <div class="w-8 h-8 rounded-xl bg-white/20 text-white flex items-center justify-center text-base shrink-0">
           <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
@@ -16,16 +16,16 @@
           <p class="text-xs opacity-90">Auto-scoped to {{ auth.currentUser()?.nursingStationName || 'Station' }} Clinic</p>
         </div>
       </div>
-      <button (click)="close.emit()" class="w-7 h-7 rounded-lg text-white/80 hover:text-white flex items-center justify-center transition cursor-pointer" title="Close">
+      <button (click)="close.emit()" class="w-7 h-7 rounded-lg text-white/80 hover:text-white flex items-center justify-center transition cursor-pointer shrink-0" title="Close">
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
     </div>
 
     @if (!successToken()) {
-      <form (ngSubmit)="onSubmit()">
-        <div class="p-5 sm:p-6 space-y-4">
+      <form (ngSubmit)="onSubmit()" class="flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div class="p-5 sm:p-6 space-y-4 flex-1 overflow-y-auto">
           <!-- Phone Number Input with Auto Patient Recognition -->
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">Patient Phone Number *</label>
@@ -42,9 +42,9 @@
                   <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
                   </svg>
-                  <span><strong>Returning Patient:</strong> {{ existingPatientMatch()?.fullName }} ({{ existingPatientMatch()?.medicalRecordNumber || 'MRN On File' }})</span>
+                  <span class="break-words"><strong>Returning Patient:</strong> {{ existingPatientMatch()?.fullName }} ({{ existingPatientMatch()?.medicalRecordNumber || 'MRN On File' }})</span>
                 </div>
-                <span class="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded font-bold">Auto-filled</span>
+                <span class="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded font-bold shrink-0">Auto-filled</span>
               </div>
             }
           </div>
@@ -56,36 +56,50 @@
                    class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 bg-slate-50/50 font-medium">
           </div>
 
-          <!-- DOB & Gender -->
-          <div class="grid grid-cols-2 gap-3">
+          <!-- DOB & Gender (Responsive 1-Col on Mobile, 2-Col on Tablet/Desktop) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Date of Birth *</label>
               <input type="date" [(ngModel)]="walkInForm.dateOfBirth" name="walkInDob" required
-                     class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-xs bg-slate-50/50 focus:ring-2 focus:ring-amber-500">
+                     class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50/50 focus:ring-2 focus:ring-amber-500">
             </div>
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1">Gender</label>
-              <select [(ngModel)]="walkInForm.gender" name="walkInGender"
-                      class="w-full px-3 py-1.5 border border-slate-300 rounded-xl text-xs bg-slate-50/50 focus:ring-2 focus:ring-amber-500 font-medium">
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
+              <div class="relative">
+                <select [(ngModel)]="walkInForm.gender" name="walkInGender"
+                        class="w-full px-3 py-2 pr-8 border border-slate-300 rounded-xl text-xs bg-slate-50/50 focus:ring-2 focus:ring-amber-500 font-medium appearance-none cursor-pointer">
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- Assign to On-Duty Doctor -->
+          <!-- Assign to On-Duty Doctor (Mobile-Optimized Dropdown) -->
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">Assign to On-Duty Doctor *</label>
-            <select [(ngModel)]="walkInForm.doctorId" name="walkInDoctor" required
-                    class="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 bg-slate-50/50 font-bold text-slate-900">
-              <option value="" disabled selected>-- Select a Physician --</option>
-              @for (doc of doctors; track doc.doctorId) {
-                <option [value]="doc.doctorId">
-                  Dr. {{ doc.doctorName }} ({{ doc.specialization }} · Room {{ doc.roomNumber }} - {{ doc.status }})
-                </option>
-              }
-            </select>
+            <div class="relative">
+              <select [(ngModel)]="walkInForm.doctorId" name="walkInDoctor" required
+                      class="w-full px-3.5 py-2.5 pr-8 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-amber-500 bg-slate-50/50 font-bold text-slate-900 appearance-none cursor-pointer">
+                <option value="" disabled selected>-- Select a Physician --</option>
+                @for (doc of doctors; track doc.doctorId) {
+                  <option [value]="doc.doctorId">
+                    Dr. {{ doc.doctorName }} · Rm {{ doc.roomNumber }} ({{ doc.specialization }}) [{{ doc.status }}]
+                  </option>
+                }
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-500">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           <!-- IMMEDIATE CODE-RED EMERGENCY BYPASS TOGGLE -->
@@ -93,7 +107,7 @@
                [ngClass]="walkInForm.isEmergencyCodeRed ? 'bg-red-50 border-red-400 ring-2 ring-red-200' : 'bg-slate-50 border-slate-200'">
             <label class="flex items-start gap-3 cursor-pointer select-none">
               <input type="checkbox" [(ngModel)]="walkInForm.isEmergencyCodeRed" name="isCodeRed"
-                     class="mt-1 w-5 h-5 rounded text-red-600 focus:ring-red-500 border-red-300 cursor-pointer">
+                     class="mt-1 w-5 h-5 rounded text-red-600 focus:ring-red-500 border-red-300 cursor-pointer shrink-0">
               <div>
                 <span class="text-xs font-bold flex items-center gap-1.5"
                       [ngClass]="walkInForm.isEmergencyCodeRed ? 'text-red-900' : 'text-slate-700'">
@@ -128,7 +142,7 @@
         </div>
 
         <!-- Actions -->
-        <div class="px-6 py-3.5 bg-slate-100 border-t border-slate-200 flex justify-end gap-2.5">
+        <div class="px-6 py-3.5 bg-slate-100 border-t border-slate-200 flex justify-end gap-2.5 shrink-0">
           <button type="button" (click)="close.emit()" [disabled]="isSubmitting()"
                   class="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-200 transition cursor-pointer">
             Cancel
@@ -163,10 +177,10 @@
         <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 max-w-xs mx-auto">
           <p class="text-[10px] font-bold uppercase text-slate-400">Token Number</p>
           <p class="text-3xl font-black text-teal-700 mt-0.5 font-mono">{{ successToken()?.tokenNumber }}</p>
-          <p class="text-xs font-semibold text-slate-700 mt-1">{{ successToken()?.patientName }}</p>
+          <p class="text-xs font-semibold text-slate-700 mt-1 break-words">{{ successToken()?.patientName }}</p>
           <p class="text-[11px] text-slate-500">Dr. {{ successToken()?.doctorName }}</p>
         </div>
-        <button (click)="close.emit()" class="px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition">
+        <button (click)="close.emit()" class="px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition cursor-pointer">
           Done
         </button>
       </div>

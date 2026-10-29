@@ -74,6 +74,15 @@ export class TriageModalComponent {
   }
 
   /**
+   * Pre-populates override level with the current calculated level upon toggle.
+   */
+  onOverrideToggle(): void {
+    if (this.vitalsForm.isManualOverride && !this.vitalsForm.overrideTriageLevel) {
+      this.vitalsForm.overrideTriageLevel = this.effectiveLevel();
+    }
+  }
+
+  /**
    * Dispatches triage assessment payload to parent orchestrator.
    */
   onSubmit(): void {

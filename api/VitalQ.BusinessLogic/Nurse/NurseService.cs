@@ -46,6 +46,8 @@ public class NurseService : INurseService
             .AsNoTracking()
             .AsQueryable();
 
+        var mrnClean = Regex.Replace(q, @"^mrn[\s\-_]*", "", RegexOptions.IgnoreCase).Trim();
+
         // 1. If searching by Token Number (e.g. "CARD-261005-001" or "CARD-")
         if (q.Contains('-') && !q.StartsWith("MRN", StringComparison.OrdinalIgnoreCase))
         {
@@ -57,31 +59,25 @@ public class NurseService : INurseService
                 .Take(15)
                 .ToListAsync();
 
-            patientQuery = patientQuery.Where(p => matchedPatientIds.Contains(p.Id));
+            patientQuery = patientQuery.Where(p => matchedPatientIds.Contains(p.Id) 
+                                                || p.MedicalRecordNumber.Contains(q) 
+                                                || p.MedicalRecordNumber.Contains(mrnClean));
+        }
+        else if (q.StartsWith("MRN", StringComparison.OrdinalIgnoreCase))
+        {
+            patientQuery = patientQuery.Where(p => p.MedicalRecordNumber.StartsWith(q) 
+                                                || p.MedicalRecordNumber.Contains(mrnClean));
+        }
+        else if (q.All(char.IsDigit))
+        {
+            patientQuery = patientQuery.Where(p => p.PhoneNumber.StartsWith(q) 
+                                                || p.MedicalRecordNumber.Contains(q));
         }
         else
         {
-            var mrnClean = Regex.Replace(q, @"^mrn[\s\-_]*", "", RegexOptions.IgnoreCase).Trim();
-
-            // 2. If searching by MRN (e.g. "MRN-261005-7A3F", "mrn - 444g")
-            if (q.StartsWith("MRN", StringComparison.OrdinalIgnoreCase))
-            {
-                patientQuery = patientQuery.Where(p => p.MedicalRecordNumber.StartsWith(q) 
-                                                    || p.MedicalRecordNumber.Contains(mrnClean));
-            }
-            // 3. If searching by Phone or numeric MRN digits (e.g. "0005")
-            else if (q.All(char.IsDigit))
-            {
-                patientQuery = patientQuery.Where(p => p.PhoneNumber.StartsWith(q) 
-                                                    || p.MedicalRecordNumber.Contains(q));
-            }
-            // 4. If searching by Name or Alphanumeric MRN code (e.g. "444g", "7A3F", "Sarah")
-            else
-            {
-                patientQuery = patientQuery.Where(p => p.MedicalRecordNumber.Contains(mrnClean)
-                                                    || p.FullName.StartsWith(q) 
-                                                    || p.FullName.Contains(q));
-            }
+            patientQuery = patientQuery.Where(p => p.MedicalRecordNumber.Contains(mrnClean)
+                                                || p.FullName.StartsWith(q) 
+                                                || p.FullName.Contains(q));
         }
 
         return await patientQuery
@@ -739,6 +735,23 @@ public class NurseService : INurseService
             .FirstOrDefaultAsync(d => d.Id == request.DoctorId)
             ?? throw new KeyNotFoundException("Doctor was not found.");
 
+        // 2b. Prevent duplicate active booking today for this patient and doctor
+        var today = DateTime.UtcNow.Date;
+        var tomorrow = today.AddDays(1);
+
+        var existingActiveToken = await _context.QueueTokens
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.PatientId == patient.Id
+                                   && t.DoctorId == doctor.Id
+                                   && t.BookedAtUtc >= today
+                                   && t.BookedAtUtc < tomorrow
+                                   && (t.Status == "Booked" || t.Status == "Waiting" || t.Status == "Called"));
+
+        if (existingActiveToken != null)
+        {
+            throw new InvalidOperationException($"Patient '{patient.FullName}' already has an active appointment with Dr. {doctor.User.FullName} today (Token #{existingActiveToken.TokenNumber}, Status: {existingActiveToken.Status}).");
+        }
+
         // 3. Generate atomic token sequence
         var tokenNumber = await TokenGenerator.GenerateAsync(_context, doctor.DepartmentId, doctor.Department.Code);
 
@@ -830,6 +843,23 @@ public class NurseService : INurseService
             .Include(d => d.User)
             .FirstOrDefaultAsync(d => d.Id == request.DoctorId)
             ?? throw new KeyNotFoundException("Doctor was not found.");
+
+        // Prevent duplicate active booking today for this patient and doctor
+        var today = DateTime.UtcNow.Date;
+        var tomorrow = today.AddDays(1);
+
+        var existingActiveToken = await _context.QueueTokens
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.PatientId == patient.Id
+                                   && t.DoctorId == doctor.Id
+                                   && t.BookedAtUtc >= today
+                                   && t.BookedAtUtc < tomorrow
+                                   && (t.Status == "Booked" || t.Status == "Waiting" || t.Status == "Called"));
+
+        if (existingActiveToken != null)
+        {
+            throw new InvalidOperationException($"Patient '{patient.FullName}' already has an active appointment with Dr. {doctor.User.FullName} today (Token #{existingActiveToken.TokenNumber}, Status: {existingActiveToken.Status}).");
+        }
 
         var tokenNumber = await TokenGenerator.GenerateAsync(_context, doctor.DepartmentId, doctor.Department.Code);
 

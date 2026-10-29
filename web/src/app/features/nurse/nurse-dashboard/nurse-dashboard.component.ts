@@ -17,6 +17,7 @@
 import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { Subscription, Subject, of, timer } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
 
@@ -64,6 +65,7 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   private nurseService = inject(NurseService);
   private signalR = inject(SignalRService);
   private toast = inject(ToastService);
+  private router = inject(Router);
 
   private subs = new Subscription();
   private searchSubject = new Subject<string>();
@@ -285,6 +287,12 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
         this.isSubmittingBooking.set(false);
         this.toast.error(err.error?.message || 'Failed to book token.');
       }
+    });
+  }
+
+  logout(): void {
+    this.auth.logout().subscribe(() => {
+      this.router.navigate(['/login']);
     });
   }
 

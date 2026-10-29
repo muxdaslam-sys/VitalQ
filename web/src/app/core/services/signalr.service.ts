@@ -56,12 +56,12 @@ export class SignalRService {
     }
 
     // DYNAMIC ACCESS TOKEN FACTORY (HIGH-RESILIENCY):
-    // Evaluating `localStorage.getItem('vq_token')` inside the callback lambda ensures
+    // Evaluating `sessionStorage.getItem('vq_token')` inside the callback lambda ensures
     // that whenever SignalR reconnects after intermittent hospital Wi-Fi drops,
     // it transmits the freshly rotated 60-minute JWT bearer token instead of a stale token.
     this.hubConnection = new signalR.HubConnectionBuilder()
       .withUrl(environment.signalrUrl, {
-        accessTokenFactory: () => localStorage.getItem('vq_token') || ''
+        accessTokenFactory: () => sessionStorage.getItem('vq_token') || localStorage.getItem('vq_token') || ''
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
       .configureLogging(signalR.LogLevel.Warning)
