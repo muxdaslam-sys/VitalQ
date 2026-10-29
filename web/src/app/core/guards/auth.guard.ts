@@ -27,8 +27,8 @@ export const authGuard = (allowedRoles: string[] = []): CanActivateFn => {
     const auth = inject(AuthService);
     const router = inject(Router);
 
-    // 1. Enforce authentication
-    if (!auth.isAuthenticated()) {
+    // 1. Enforce authentication and verify unexpired token
+    if (!auth.isAuthenticated() || auth.isTokenExpired()) {
       return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
     }
 

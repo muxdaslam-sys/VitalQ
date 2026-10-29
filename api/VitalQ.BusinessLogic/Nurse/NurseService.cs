@@ -59,22 +59,29 @@ public class NurseService : INurseService
 
             patientQuery = patientQuery.Where(p => matchedPatientIds.Contains(p.Id));
         }
-        // 2. If searching by MRN (e.g. "MRN-261005-7A3F")
-        else if (q.StartsWith("MRN", StringComparison.OrdinalIgnoreCase))
-        {
-            patientQuery = patientQuery.Where(p => p.MedicalRecordNumber.StartsWith(q));
-        }
-        // 3. If searching by Phone (digits only)
-        else if (q.All(char.IsDigit))
-        {
-            patientQuery = patientQuery.Where(p => p.PhoneNumber.StartsWith(q));
-        }
-        // 4. If searching by Name (prioritize StartsWith for B-Tree index seek)
         else
         {
-            patientQuery = q.Length < 3
-                ? patientQuery.Where(p => p.FullName.StartsWith(q))
-                : patientQuery.Where(p => p.FullName.StartsWith(q) || p.FullName.Contains(q));
+            var mrnClean = Regex.Replace(q, @"^mrn[\s\-_]*", "", RegexOptions.IgnoreCase).Trim();
+
+            // 2. If searching by MRN (e.g. "MRN-261005-7A3F", "mrn - 444g")
+            if (q.StartsWith("MRN", StringComparison.OrdinalIgnoreCase))
+            {
+                patientQuery = patientQuery.Where(p => p.MedicalRecordNumber.StartsWith(q) 
+                                                    || p.MedicalRecordNumber.Contains(mrnClean));
+            }
+            // 3. If searching by Phone or numeric MRN digits (e.g. "0005")
+            else if (q.All(char.IsDigit))
+            {
+                patientQuery = patientQuery.Where(p => p.PhoneNumber.StartsWith(q) 
+                                                    || p.MedicalRecordNumber.Contains(q));
+            }
+            // 4. If searching by Name or Alphanumeric MRN code (e.g. "444g", "7A3F", "Sarah")
+            else
+            {
+                patientQuery = patientQuery.Where(p => p.MedicalRecordNumber.Contains(mrnClean)
+                                                    || p.FullName.StartsWith(q) 
+                                                    || p.FullName.Contains(q));
+            }
         }
 
         return await patientQuery
