@@ -393,6 +393,11 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
     const profile = this.doctorProfile();
     if (!profile || this.isActionLoading()) return;
 
+    if (profile.status !== 'Available') {
+      this.toast.warning('Consultations are currently paused. Please resume duty to "Available in Clinic" before calling waiting patients.');
+      return;
+    }
+
     this.isActionLoading.set(true);
 
     this.doctorService.callNext(profile.id).subscribe({
