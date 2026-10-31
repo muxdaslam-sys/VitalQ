@@ -14,6 +14,7 @@ public class NurseDashboardStatsResponse
     public int TotalBookingsToday { get; set; }
     public int TotalTriagedToday { get; set; }
     public int TotalCompletedToday { get; set; }
+    public int TotalSkippedToday { get; set; }
     public int DoctorsPresent { get; set; }
     public int DoctorsAbsent { get; set; }
     public List<DoctorQueueSummaryDto> Doctors { get; set; } = new();
@@ -32,6 +33,7 @@ public class DoctorQueueSummaryDto
     public string? CurrentCallingToken { get; set; }
     public int WaitingCount { get; set; }
     public int TotalAssignedToday { get; set; }
+    public int SkippedCount { get; set; }
 }
 
 /// <summary>
