@@ -1,16 +1,21 @@
 /**
  * ============================================================================
- * COMPONENT: NurseDashboardComponent (Clinical Triage & Station Workstation)
+ * COMPONENT: NurseDashboardComponent (Clinical Triage Command Desk)
  * ============================================================================
  * 
  * PURPOSE:
- * Serves as the central command console for triage nurses in hospital OPDs.
- * Architected with a clean 3-pillar workflow:
- * 1. [📋 Triage Desk]: Fast, focused vital signs intake and CTAS scoring (80% of shift).
- * 2. [🩺 Doctor Rooms]: Live physician duty roster, active chamber lines, and re-queuing.
- * 3. [🏥 Intake & Directory]: Emergency walk-in registrations and patient directory search.
+ * Serves as the high-throughput clinical workstation for triage nurses in hospital OPDs:
+ * 1. [Triage Desk]: Fast, focused vital signs intake and CTAS scoring with
+ *    live SLA wait indicators, 1-click restore for missed turns, and departed walk-in cancellation.
+ * 2. [Doctor Rooms]: Live physician duty roster, active chamber lines with current patient inside,
+ *    and room re-queuing.
+ * 3. [Intake & Directory]: Unified intake for both walk-in and returning patients with
+ *    automatic phone deduplication and Code-Red emergency bypass options.
  * 
- * Modals are decoupled into dedicated child components to eliminate monolithic code.
+ * PRODUCTION PERFORMANCE:
+ * - Coordinated forkJoin data loading prevents UI flicker.
+ * - SignalR broadcasts are debounced (300ms) to stop database stampedes.
+ * - Single unified intake modal eliminates duplicate HTML and fragmented booking flows.
  * ============================================================================
  */
 
@@ -18,7 +23,7 @@ import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetection
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Subscription, Subject, of, timer } from 'rxjs';
+import { Subscription, Subject, of, timer, forkJoin } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, catchError } from 'rxjs/operators';
 
 import { AuthService } from '../../../core/services/auth.service';
@@ -29,7 +34,6 @@ import { ToastService } from '../../../core/services/toast.service';
 import { TriageModalComponent } from '../components/triage-modal/triage-modal.component';
 import { DoctorQueueModalComponent } from '../components/doctor-queue-modal/doctor-queue-modal.component';
 import { PatientChartModalComponent } from '../components/patient-chart-modal/patient-chart-modal.component';
-import { QueueStatusModalComponent } from '../components/queue-status-modal/queue-status-modal.component';
 import { EmergencyWalkinModalComponent } from '../components/emergency-walkin-modal/emergency-walkin-modal.component';
 
 import { QueueToken } from '../../../shared/models/queue.model';
@@ -37,9 +41,7 @@ import { TriageRequest, PatientSearchResult } from '../../../shared/models/triag
 import {
   NurseDashboardStatsResponse,
   DoctorQueueSummaryDto,
-  DoctorDetailedQueueResponse,
-  PatientQueuePositionResponse,
-  ExistingPatientTokenBookingRequest
+  DoctorDetailedQueueResponse
 } from '../../../shared/models/nurse.model';
 import { PatientDetailResponse } from '../../../shared/models/admin.model';
 
@@ -52,7 +54,6 @@ import { PatientDetailResponse } from '../../../shared/models/admin.model';
     TriageModalComponent,
     DoctorQueueModalComponent,
     PatientChartModalComponent,
-    QueueStatusModalComponent,
     EmergencyWalkinModalComponent
   ],
   templateUrl: './nurse-dashboard.component.html',
@@ -69,6 +70,7 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
 
   private subs = new Subscription();
   private searchSubject = new Subject<string>();
+  private refreshSubject = new Subject<void>();
 
   constructor() {
     // Debounced patient directory search for Tab 3
@@ -100,20 +102,48 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
 
   // #region 2. Dashboard State Signals
   stats = signal<NurseDashboardStatsResponse | null>(null);
-  pendingTriage = signal<QueueToken[]>([]);
+  allDeskTokens = signal<QueueToken[]>([]);
   doctors = signal<DoctorQueueSummaryDto[]>([]);
   isRefreshing = signal<boolean>(false);
 
   /** Focused 3-Pillar Tab: 'triage' (Default) | 'doctors' | 'intake' */
   activeTab = signal<'triage' | 'doctors' | 'intake'>('triage');
 
+  /** Triage Desk Segment: 'awaiting' (Default) | 'skipped' */
+  triageSegment = signal<'awaiting' | 'skipped'>('awaiting');
+
   /** In-table search filter query for Triage Desk */
   tableFilterQuery = signal<string>('');
 
-  /** Computed list of triage tokens filtered in real time */
+  /** Computed count of walk-ins awaiting triage */
+  pendingTriageCount = computed(() =>
+    this.allDeskTokens().filter(t => t.status === 'Booked').length
+  );
+
+  /** Computed count of patients currently skipped / on hold */
+  skippedTokensCount = computed(() =>
+    this.allDeskTokens().filter(t => t.status === 'Skipped').length
+  );
+
+  /** Active Code-Red emergency tokens requiring immediate clinical intervention */
+  activeEmergencyTokens = computed(() =>
+    this.allDeskTokens().filter(t =>
+      (t.baseWeight >= 1000 || t.triageLevel === 'Red') &&
+      (t.status === 'Booked' || t.status === 'Waiting' || t.status === 'Called')
+    )
+  );
+
+  /** Computed list of triage tokens filtered in real time by segment and search */
   filteredQueue = computed(() => {
+    const segment = this.triageSegment();
     const q = this.tableFilterQuery().trim().toLowerCase();
-    const list = this.pendingTriage();
+    
+    // 1. Filter by segment status
+    let list = this.allDeskTokens().filter(t =>
+      segment === 'awaiting' ? t.status === 'Booked' : t.status === 'Skipped'
+    );
+
+    // 2. Filter by search text query
     if (!q) return list;
     return list.filter(t =>
       t.tokenNumber.toLowerCase().includes(q) ||
@@ -128,23 +158,14 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
   searchQuery = signal<string>('');
   searchResults = signal<PatientSearchResult[]>([]);
   isSearching = signal<boolean>(false);
-
-  showBookExistingModal = signal<boolean>(false);
-  bookExistingPatient = signal<PatientSearchResult | null>(null);
-  isSubmittingBooking = signal<boolean>(false);
-  bookExistingForm: ExistingPatientTokenBookingRequest = {
-    doctorId: '',
-    isEmergencyCodeRed: false,
-    clinicalNotes: ''
-  };
   // #endregion
 
   // #region 4. Decoupled Modal State
   activeTriageToken = signal<QueueToken | null>(null);
   activeDoctorQueue = signal<DoctorDetailedQueueResponse | null>(null);
   activePatientChart = signal<PatientDetailResponse | null>(null);
-  activeQueuePosition = signal<PatientQueuePositionResponse | null>(null);
   showWalkInModal = signal<boolean>(false);
+  selectedPatientForIntake = signal<PatientSearchResult | null>(null);
   // #endregion
 
   // #region 5. Lifecycle & SignalR Real-Time Sync
@@ -159,26 +180,42 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     this.subs.unsubscribe();
   }
 
+  /**
+   * Coordinated forkJoin data loading:
+   * Prevents UI flicker and manages refresh spinner strictly until all requests complete.
+   */
   loadAllData(showLoader = true): void {
     if (showLoader) this.isRefreshing.set(true);
 
-    this.nurseService.getDashboardStats().subscribe({
-      next: data => {
-        this.stats.set(data);
-        this.doctors.set(data.doctors);
+    forkJoin({
+      stats: this.nurseService.getDashboardStats().pipe(
+        catchError(() => of(null))
+      ),
+      tokens: this.nurseService.getPendingTriage().pipe(
+        catchError((err) => {
+          this.toast.error(err.error?.message || 'Failed to load active station queue.');
+          return of([]);
+        })
+      )
+    }).subscribe({
+      next: ({ stats, tokens }) => {
+        if (stats) {
+          this.stats.set(stats);
+          this.doctors.set(stats.doctors);
+        }
+        this.allDeskTokens.set(tokens);
         if (showLoader) this.isRefreshing.set(false);
       },
       error: () => {
         if (showLoader) this.isRefreshing.set(false);
       }
     });
-
-    this.nurseService.getPendingTriage().subscribe({
-      next: (tokens: QueueToken[]) => this.pendingTriage.set(tokens),
-      error: () => {}
-    });
   }
 
+  /**
+   * High-Performance Real-Time SignalR Sync:
+   * Debounces incoming events (300ms) to coalesce rapid-fire updates into a single smooth reload.
+   */
   private initSignalR(): void {
     this.signalR.startConnection().then(async () => {
       await this.signalR.joinNurseStationGroup();
@@ -186,11 +223,17 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
       console.warn('SignalR connection failed, falling back to on-demand polling:', err);
     });
 
-    this.subs.add(this.signalR.onTokenBooked$.subscribe(() => this.loadAllData(false)));
-    this.subs.add(this.signalR.onQueueUpdated$.subscribe(() => this.loadAllData(false)));
-    this.subs.add(this.signalR.onTriageCompleted$.subscribe(() => this.loadAllData(false)));
-    this.subs.add(this.signalR.onDoctorStatusChanged$.subscribe(() => this.loadAllData(false)));
-    this.subs.add(this.signalR.onPatientCalled$.subscribe(() => this.loadAllData(false)));
+    this.subs.add(
+      this.refreshSubject.pipe(debounceTime(300)).subscribe(() => {
+        this.loadAllData(false);
+      })
+    );
+
+    this.subs.add(this.signalR.onTokenBooked$.subscribe(() => this.refreshSubject.next()));
+    this.subs.add(this.signalR.onQueueUpdated$.subscribe(() => this.refreshSubject.next()));
+    this.subs.add(this.signalR.onTriageCompleted$.subscribe(() => this.refreshSubject.next()));
+    this.subs.add(this.signalR.onDoctorStatusChanged$.subscribe(() => this.refreshSubject.next()));
+    this.subs.add(this.signalR.onPatientCalled$.subscribe(() => this.refreshSubject.next()));
   }
 
   /**
@@ -227,10 +270,49 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  cancelToken(token: QueueToken): void {
+    if (!confirm(`Cancel walk-in token ${token.tokenNumber} for ${token.patientName}?`)) {
+      return;
+    }
+
+    this.nurseService.cancelToken(token.id).subscribe({
+      next: () => {
+        this.toast.success(`Token ${token.tokenNumber} has been cancelled.`);
+        this.loadAllData(false);
+      },
+      error: (err) => {
+        this.toast.error(err.error?.message || 'Failed to cancel token.');
+      }
+    });
+  }
+
+  requeueFromDesk(token: QueueToken): void {
+    this.nurseService.requeuePatient(token.id).subscribe({
+      next: () => {
+        this.toast.success(`Patient ${token.patientName} (${token.tokenNumber}) restored to active line for Dr. ${token.doctorName}.`);
+        this.loadAllData(false);
+      },
+      error: (err) => {
+        this.toast.error(err.error?.message || 'Failed to restore patient.');
+      }
+    });
+  }
+
   openDoctorQueue(doctorId: string): void {
     this.nurseService.getDoctorQueue(doctorId).subscribe({
       next: data => this.activeDoctorQueue.set(data),
       error: () => this.toast.error('Failed to load doctor queue.')
+    });
+  }
+
+  /**
+   * Refreshes the doctor's active chamber queue in place after a patient is restored.
+   */
+  onDoctorQueuePatientRequeued(doctorId: string): void {
+    this.loadAllData(false);
+    this.nurseService.getDoctorQueue(doctorId).subscribe({
+      next: data => this.activeDoctorQueue.set(data),
+      error: () => this.activeDoctorQueue.set(null)
     });
   }
 
@@ -241,11 +323,9 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  openQueueStatus(tokenId: string): void {
-    this.nurseService.getPatientQueuePosition(tokenId).subscribe({
-      next: pos => this.activeQueuePosition.set(pos),
-      error: () => this.toast.error('Failed to retrieve patient queue position.')
-    });
+  openIntakeModal(patient?: PatientSearchResult): void {
+    this.selectedPatientForIntake.set(patient || null);
+    this.showWalkInModal.set(true);
   }
 
   onSearchInput(val: string): void {
@@ -253,41 +333,11 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     this.searchSubject.next(val);
   }
 
-  openBookExisting(patient: PatientSearchResult): void {
-    this.bookExistingPatient.set(patient);
-    this.bookExistingForm = {
-      doctorId: this.doctors().length > 0 ? this.doctors()[0].doctorId : '',
-      isEmergencyCodeRed: false,
-      clinicalNotes: ''
-    };
-    this.showBookExistingModal.set(true);
-  }
-
-  submitBookExisting(): void {
-    const patient = this.bookExistingPatient();
-    if (!patient || !this.bookExistingForm.doctorId) {
-      this.toast.warning('Please select an assigned physician.');
-      return;
-    }
-
-    if (this.bookExistingForm.isEmergencyCodeRed && !this.bookExistingForm.clinicalNotes?.trim()) {
-      this.toast.warning('Clinical emergency remarks are mandatory for Code-Red emergency bypass.');
-      return;
-    }
-
-    this.isSubmittingBooking.set(true);
-    this.nurseService.bookTokenForExistingPatient(patient.patientId, this.bookExistingForm).subscribe({
-      next: (token) => {
-        this.isSubmittingBooking.set(false);
-        this.showBookExistingModal.set(false);
-        this.toast.success(`Token ${token.tokenNumber} booked for ${patient.fullName}.`);
-        this.loadAllData(false);
-      },
-      error: (err: any) => {
-        this.isSubmittingBooking.set(false);
-        this.toast.error(err.error?.message || 'Failed to book token.');
-      }
-    });
+  getWaitTimeMinutes(bookedAtUtc: string): number {
+    if (!bookedAtUtc) return 0;
+    const booked = new Date(bookedAtUtc).getTime();
+    const now = Date.now();
+    return Math.max(0, Math.floor((now - booked) / 60000));
   }
 
   logout(): void {
