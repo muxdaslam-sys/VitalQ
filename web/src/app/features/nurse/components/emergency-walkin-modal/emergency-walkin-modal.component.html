@@ -165,22 +165,61 @@
     } @else {
       <!-- Success View After Booking -->
       <div class="p-6 text-center space-y-4">
-        <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
+        <div class="no-print">
+          <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <h4 class="font-bold text-lg text-slate-900 mt-2">Token Successfully Issued!</h4>
+            <p class="text-xs text-slate-500 mt-1">Patient has been activated in the clinical queue.</p>
+          </div>
         </div>
-        <div>
-          <h4 class="font-bold text-lg text-slate-900">Token Successfully Issued!</h4>
-          <p class="text-xs text-slate-500 mt-1">Patient has been activated in the clinical queue.</p>
+
+        <!-- Official Hospital Token Pass (Printer-Optimized) -->
+        <div class="printable-slip bg-slate-50 p-4 rounded-2xl border border-slate-200 max-w-xs mx-auto text-left space-y-2.5 shadow-2xs">
+          <div class="border-b border-dashed border-slate-300 pb-2 text-center">
+            <span class="font-black text-xs uppercase tracking-wider text-slate-900 block">VitalQ Hospital Clinic</span>
+            <span class="text-[10px] text-slate-500 block">Outpatient Consultation Pass</span>
+          </div>
+
+          <div class="text-center py-1">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Token Number</span>
+            <span class="text-3xl font-black text-teal-700 font-mono tracking-tight block">{{ successToken()?.tokenNumber }}</span>
+          </div>
+
+          <div class="space-y-1 text-xs border-t border-dashed border-slate-300 pt-2">
+            <div class="flex justify-between">
+              <span class="text-slate-500">Patient:</span>
+              <span class="font-bold text-slate-900 break-words">{{ successToken()?.patientName }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Doctor:</span>
+              <span class="font-bold text-slate-900">Dr. {{ successToken()?.doctorName }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Department:</span>
+              <span class="font-bold text-slate-800">{{ successToken()?.departmentName }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Chamber:</span>
+              <span class="font-bold text-slate-800">Room {{ successToken()?.roomNumber }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Issued:</span>
+              <span class="font-mono text-slate-600">{{ successToken()?.bookedAtUtc | date:'shortTime' }}</span>
+            </div>
+          </div>
+
+          @if (successToken()?.nextStepInstruction) {
+            <div class="bg-teal-50/80 border border-teal-200/80 p-2 rounded-xl text-center text-[10px] text-teal-900 font-medium">
+              {{ successToken()?.nextStepInstruction }}
+            </div>
+          }
         </div>
-        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 max-w-xs mx-auto">
-          <p class="text-[10px] font-bold uppercase text-slate-400">Token Number</p>
-          <p class="text-3xl font-black text-teal-700 mt-0.5 font-mono">{{ successToken()?.tokenNumber }}</p>
-          <p class="text-xs font-semibold text-slate-700 mt-1 break-words">{{ successToken()?.patientName }}</p>
-          <p class="text-[11px] text-slate-500">Dr. {{ successToken()?.doctorName }}</p>
-        </div>
-        <div class="flex items-center justify-center gap-2 pt-2">
+
+        <div class="flex items-center justify-center gap-2 pt-2 no-print">
           <button type="button" (click)="printSlip()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer border border-slate-200">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
