@@ -116,6 +116,7 @@ export class DepartmentsComponent implements OnInit {
    * Validates and submits new department to backend.
    */
   saveDepartment(): void {
+    if (this.isSubmitting()) return;
     if (!this.newDept.name || !this.newDept.code || !this.newDept.locationFloor) {
       this.toast.warning('Please enter Name, Prefix Code, and Floor Location.');
       return;
@@ -154,6 +155,7 @@ export class DepartmentsComponent implements OnInit {
  * Submits department updates to backend.
  */
  updateDepartment(): void {
+    if (this.isSubmitting()) return;
  const id = this.editingDeptId();
  if (!id) return;
 

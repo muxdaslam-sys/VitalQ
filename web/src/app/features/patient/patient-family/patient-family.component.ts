@@ -104,6 +104,8 @@ export class PatientFamilyComponent implements OnInit {
    * Validates inputs and submits dependent registration to the backend.
    */
   submitAddFamily(): void {
+    if (this.submitting()) return;
+
     if (!this.newName().trim()) {
       this.errorMessage.set('Please enter a full name.');
       return;

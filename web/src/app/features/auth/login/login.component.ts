@@ -168,6 +168,7 @@ export class LoginComponent implements OnInit {
    * Submits first-time patient self-registration request to the backend.
    */
   onRegisterSubmit(): void {
+    if (this.registerLoading()) return;
     const fullName = this.registerFullName().trim();
     const phone = this.registerPhone().trim();
     const dob = this.registerDob();
@@ -206,6 +207,7 @@ export class LoginComponent implements OnInit {
    * Authenticates credentials and routes user to their role-specific portal.
    */
   onSubmit(): void {
+    if (this.isLoading()) return;
     if (!this.credentials.username.trim() || !this.credentials.password) {
       const fieldName = this.activeMode() === 'staff' ? 'Staff ID / Username' : 'Mobile / Patient ID';
       this.errorMessage.set(`Please provide both your ${fieldName} and password/PIN.`);

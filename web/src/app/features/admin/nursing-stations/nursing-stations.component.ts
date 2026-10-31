@@ -133,6 +133,7 @@ export class NursingStationsComponent implements OnInit {
    * Submits new nursing station desk to backend.
    */
   saveStation(): void {
+    if (this.isSubmitting()) return;
     if (!this.newStation.stationName || !this.newStation.locationFloor) {
       this.toast.warning('Please enter Station Name and Floor Location.');
       return;
@@ -170,6 +171,7 @@ export class NursingStationsComponent implements OnInit {
  * Submits station modifications to backend.
  */
  updateStation(): void {
+    if (this.isSubmitting()) return;
  const id = this.editingStationId();
  if (!id) return;
 
