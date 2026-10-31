@@ -234,6 +234,7 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     this.subs.add(this.signalR.onTriageCompleted$.subscribe(() => this.refreshSubject.next()));
     this.subs.add(this.signalR.onDoctorStatusChanged$.subscribe(() => this.refreshSubject.next()));
     this.subs.add(this.signalR.onPatientCalled$.subscribe(() => this.refreshSubject.next()));
+    this.subs.add(this.signalR.onScoresRecalculated$.subscribe(() => this.refreshSubject.next()));
   }
 
   /**

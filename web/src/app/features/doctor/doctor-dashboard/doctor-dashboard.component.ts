@@ -541,10 +541,13 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
   submitCompleteConsultation(notes: string): void {
     const current = this.currentCalled();
     const profile = this.doctorProfile();
-    if (!current || !profile) return;
+    if (!current || !profile || this.isActionLoading()) return;
+
+    this.isActionLoading.set(true);
 
     this.doctorService.completeConsultation(current.id, notes).subscribe({
       next: () => {
+        this.isActionLoading.set(false);
         this.isCompleteModalOpen.set(false);
         this.currentCalled.set(null);
         this.currentVitals.set(null);
@@ -553,6 +556,7 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
         this.fetchQueueAndStats(profile.id);
       },
       error: (err: any) => {
+        this.isActionLoading.set(false);
         this.toast.error(err.error?.message || 'Failed to complete consultation.');
       }
     });

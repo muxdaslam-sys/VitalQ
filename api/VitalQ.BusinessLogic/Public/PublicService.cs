@@ -95,9 +95,10 @@ public class PublicService : IPublicService
             .AsNoTracking()
             .Include(t => t.Patient)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.Doctor).ThenInclude(d => d.Department)
-            .Include(t => t.Department)
-            .Include(t => t.TriageAssessment)
+            .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(t => t.Department).ThenInclude(dept => dept.NursingStations)
+            .Include(t => t.TriageAssessment).ThenInclude(ta => ta!.NurseUser)
+            .Include(t => t.TriageAssessment).ThenInclude(ta => ta!.NursingStation)
             .FirstOrDefaultAsync(t => t.TokenNumber == tokenNumber.Trim() && t.BookedAtUtc >= today && t.BookedAtUtc < tomorrow);
 
         if (token == null) return null;
@@ -128,24 +129,73 @@ public class PublicService : IPublicService
         return res;
     }
 
-    private static QueueTokenResponse MapToResponse(QueueToken t, Patient p, Doctor d) => new()
+    private static QueueTokenResponse MapToResponse(QueueToken t, Patient p, Doctor d)
     {
-        Id = t.Id,
-        TokenNumber = t.TokenNumber,
-        PatientId = p.Id,
-        PatientName = p.FullName,
-        PatientPhone = p.PhoneNumber,
-        DepartmentId = d.DepartmentId,
-        DepartmentName = d.Department?.Name ?? string.Empty,
-        DepartmentCode = d.Department?.Code ?? string.Empty,
-        DoctorId = d.Id,
-        DoctorName = d.User?.FullName ?? string.Empty,
-        RoomNumber = d.RoomNumber ?? string.Empty,
-        Status = t.Status,
-        PriorityScore = t.PriorityScore,
-        BaseWeight = t.BaseWeight,
-        TriageLevel = t.TriageAssessment?.TriageLevel,
-        BookedAtUtc = t.BookedAtUtc,
-        RowVersion = t.RowVersion ?? Array.Empty<byte>()
-    };
+        var station = t.TriageAssessment?.NursingStation 
+            ?? d.Department?.NursingStations?.FirstOrDefault(s => s.IsActive)
+            ?? t.Department?.NursingStations?.FirstOrDefault(s => s.IsActive);
+
+        var stationName = station?.StationName ?? "Nursing Triage Desk";
+        var stationFloor = station?.LocationFloor ?? d.Department?.LocationFloor ?? t.Department?.LocationFloor ?? "Floor 1";
+        var room = d.RoomNumber ?? string.Empty;
+        var doctorName = d.User?.FullName ?? string.Empty;
+
+        var nextStepInstruction = t.Status switch
+        {
+            "Booked" => $"Please report to {stationName} ({stationFloor}) for Vital Signs Intake.",
+            "Waiting" => $"Vitals recorded ({t.TriageAssessment?.TriageLevel ?? "Green"}). Please wait in the lounge outside Room {room} ({stationFloor}).",
+            "Called" => $"Please enter Room {room} for your consultation with Dr. {doctorName}.",
+            "Completed" => "Consultation completed. Thank you for visiting VitalQ.",
+            "Cancelled" => "Appointment was cancelled.",
+            "Skipped" => $"Missed call. Please report to {stationName} ({stationFloor}) or Room {room} immediately to retain your place.",
+            "Expired" => "Consultation slip has expired.",
+            _ => $"Please proceed to {stationFloor}."
+        };
+
+        int skipCount = 0;
+        if (!string.IsNullOrEmpty(t.ConsultationNotes))
+        {
+            if (t.ConsultationNotes.Contains("Call 3 of 3") || t.ConsultationNotes.Contains("Absent after 3 calls")) skipCount = 3;
+            else if (t.ConsultationNotes.Contains("Call 2 of 3")) skipCount = 2;
+            else if (t.ConsultationNotes.Contains("Call 1 of 3")) skipCount = 1;
+        }
+
+        return new QueueTokenResponse
+        {
+            Id = t.Id,
+            TokenNumber = t.TokenNumber,
+            PatientId = p.Id,
+            PatientName = p.FullName,
+            PatientPhone = p.PhoneNumber,
+            DepartmentId = d.DepartmentId,
+            DepartmentName = d.Department?.Name ?? t.Department?.Name ?? string.Empty,
+            DepartmentCode = d.Department?.Code ?? t.Department?.Code ?? string.Empty,
+            DoctorId = d.Id,
+            DoctorName = doctorName,
+            RoomNumber = room,
+            Status = t.Status,
+            PriorityScore = t.PriorityScore,
+            BaseWeight = t.BaseWeight,
+            TriageLevel = t.TriageAssessment?.TriageLevel,
+            SpO2 = t.TriageAssessment?.SpO2,
+            SystolicBp = t.TriageAssessment?.SystolicBp,
+            DiastolicBp = t.TriageAssessment?.DiastolicBp,
+            HeartRate = t.TriageAssessment?.HeartRate,
+            Temperature = t.TriageAssessment?.Temperature,
+            PainScale = t.TriageAssessment?.PainScale,
+            NurseNotes = t.TriageAssessment?.NurseNotes,
+            NurseName = t.TriageAssessment?.NurseUser?.FullName,
+            SkipCount = skipCount,
+            NursingStationId = station?.Id,
+            NursingStationName = stationName,
+            LocationFloor = stationFloor,
+            NextStepInstruction = nextStepInstruction,
+            BookedAtUtc = t.BookedAtUtc,
+            TriagedAtUtc = t.TriagedAtUtc,
+            CalledAtUtc = t.CalledAtUtc,
+            CompletedAtUtc = t.CompletedAtUtc,
+            ConsultationNotes = t.ConsultationNotes,
+            RowVersion = t.RowVersion ?? Array.Empty<byte>()
+        };
+    }
 }

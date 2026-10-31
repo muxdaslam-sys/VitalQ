@@ -13,7 +13,7 @@
  * ============================================================================
  */
 
-import { Component, Input, Output, EventEmitter, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TeleportToBodyDirective } from '../../../../shared/directives/teleport.directive';
 import { QueueToken } from '../../../../shared/models/queue.model';
@@ -29,14 +29,14 @@ export class SkipPatientModalComponent {
   /** Patient token currently summoned in chamber */
   @Input({ required: true }) currentCalled!: QueueToken;
 
+  /** Loading state flag preventing duplicate requests and controlled by parent */
+  @Input() isSubmitting: boolean = false;
+
   /** Emitted when modal backdrop or cancel button is clicked */
   @Output() close = new EventEmitter<void>();
 
   /** Emitted when physician confirms marking absent / expiring */
   @Output() confirm = new EventEmitter<void>();
-
-  /** Loading state flag preventing duplicate requests */
-  isSubmitting = signal<boolean>(false);
 
   /**
    * Computed strike number if absent call is confirmed.
@@ -49,8 +49,7 @@ export class SkipPatientModalComponent {
    * Dispatches confirmation event to parent controller.
    */
   onConfirm(): void {
-    if (this.isSubmitting()) return;
-    this.isSubmitting.set(true);
+    if (this.isSubmitting) return;
     this.confirm.emit();
   }
 }

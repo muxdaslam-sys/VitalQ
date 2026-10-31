@@ -99,8 +99,10 @@ public class CancelTokenRequest
 /// </summary>
 public class CompleteConsultationRequest
 {
-    [MaxLength(2000)]
-    public string? ConsultationNotes { get; set; }
+    [Required(ErrorMessage = "Clinical consultation notes, diagnosis, or prescription advice are mandatory for patient discharge.")]
+    [MinLength(5, ErrorMessage = "Consultation notes must be at least 5 characters long.")]
+    [MaxLength(2000, ErrorMessage = "Consultation notes cannot exceed 2000 characters.")]
+    public string ConsultationNotes { get; set; } = null!;
 }
 
 #endregion

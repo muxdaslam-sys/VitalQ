@@ -7,6 +7,7 @@
  * Isolated modal dialog for physicians to finalize an active patient encounter:
  * - Summarizes current patient token, name, and total consultation duration.
  * - Captures clinical observations, diagnosis impressions, and prescription instructions.
+ * - Enforces mandatory non-empty clinical advice (minimum 5 characters).
  * - Submits notes and dispatches encounter conclusion event to release room chamber.
  * - Uses `teleportToBody` to escape parent layout clipping and guarantee viewport centering.
  * ============================================================================
@@ -32,6 +33,9 @@ export class CompleteConsultationModalComponent {
   /** Formatted stopwatch string of total encounter duration (MM:SS) */
   @Input() consultationTimerText: string = '00:00';
 
+  /** Submission state flag controlled by parent dashboard for clean error recovery */
+  @Input() isSubmitting: boolean = false;
+
   /** Emitted when modal backdrop or cancel button is clicked */
   @Output() close = new EventEmitter<void>();
 
@@ -41,15 +45,12 @@ export class CompleteConsultationModalComponent {
   /** Clinical observations, diagnosis, or prescription text */
   consultationNotes = signal<string>('');
 
-  /** Submission state flag preventing double submissions */
-  isSubmitting = signal<boolean>(false);
-
   /**
    * Finalizes the encounter and dispatches the notes to the parent controller.
    */
   onSubmit(): void {
-    if (this.isSubmitting()) return;
-    this.isSubmitting.set(true);
-    this.complete.emit(this.consultationNotes());
+    const trimmed = this.consultationNotes().trim();
+    if (this.isSubmitting || trimmed.length < 5) return;
+    this.complete.emit(trimmed);
   }
 }
