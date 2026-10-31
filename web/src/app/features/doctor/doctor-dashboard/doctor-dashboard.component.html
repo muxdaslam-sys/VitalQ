@@ -710,6 +710,7 @@
     <app-complete-consultation-modal
       [currentCalled]="currentCalled()!"
       [consultationTimerText]="consultationTimerText()"
+      [isSubmitting]="isActionLoading()"
       (close)="closeCompleteModal()"
       (complete)="submitCompleteConsultation($event)">
     </app-complete-consultation-modal>
@@ -719,6 +720,7 @@
   @if (isSkipModalOpen() && currentCalled()) {
     <app-skip-patient-modal
       [currentCalled]="currentCalled()!"
+      [isSubmitting]="isActionLoading()"
       (close)="closeSkipModal()"
       (confirm)="confirmSkipPatient()">
     </app-skip-patient-modal>

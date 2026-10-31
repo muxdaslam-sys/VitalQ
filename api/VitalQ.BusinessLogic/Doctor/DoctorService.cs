@@ -164,7 +164,6 @@ public class DoctorService : IDoctorService
             .Include(t => t.Patient)
             .Include(t => t.Department).ThenInclude(d => d.NursingStations)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NurseUser)
             .Where(t => t.DoctorId == doctorId &&
@@ -219,7 +218,6 @@ public class DoctorService : IDoctorService
             .Include(t => t.Patient)
             .Include(t => t.Department).ThenInclude(d => d.NursingStations)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NurseUser)
             .Where(t => t.DoctorId == doctorId &&
@@ -255,15 +253,19 @@ public class DoctorService : IDoctorService
         var todayUtc = DateTime.UtcNow.Date;
         var tomorrowUtc = todayUtc.AddDays(1);
 
-        // Automatically complete any existing 'Called' patient before calling next
-        var currentlyCalled = await _context.QueueTokens
+        // CLINICAL SAFETY GUARD:
+        // A doctor cannot summon a new patient while a patient is currently in the room.
+        // They must complete the active patient's consultation notes and discharge them first.
+        var activeInChamber = await _context.QueueTokens
+            .AsNoTracking()
             .Where(t => t.DoctorId == doctorId && t.Status == "Called" && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc)
-            .ToListAsync();
+            .FirstOrDefaultAsync();
 
-        foreach (var active in currentlyCalled)
+        if (activeInChamber != null)
         {
-            active.Status = "Completed";
-            active.CompletedAtUtc = DateTime.UtcNow;
+            throw new InvalidOperationException(
+                $"Cannot summon a new patient while Token #{activeInChamber.TokenNumber} is currently in Room {doctor.RoomNumber}. " +
+                "Please finalize clinical notes and discharge the current patient first.");
         }
 
         // Pick top-priority waiting patient
@@ -271,7 +273,6 @@ public class DoctorService : IDoctorService
             .Include(t => t.Patient)
             .Include(t => t.Department).ThenInclude(d => d.NursingStations)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NurseUser)
             .Where(t => t.DoctorId == doctorId &&
@@ -304,7 +305,6 @@ public class DoctorService : IDoctorService
             .Include(t => t.Patient)
             .Include(t => t.Department).ThenInclude(d => d.NursingStations)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NurseUser)
             .FirstOrDefaultAsync(t => t.Id == tokenId && t.DoctorId == doctorId);
@@ -344,6 +344,15 @@ public class DoctorService : IDoctorService
         if (token == null)
         {
             throw new KeyNotFoundException($"Token with ID {tokenId} was not found.");
+        }
+
+        // Security / Ownership check
+        var callerDoctor = await _context.Doctors.AsNoTracking().FirstOrDefaultAsync(d => d.UserId == doctorUserId);
+        var callerIsAdmin = await _context.Users.AsNoTracking().AnyAsync(u => u.Id == doctorUserId && u.Role == "Admin");
+
+        if (!callerIsAdmin && (callerDoctor == null || token.DoctorId != callerDoctor.Id))
+        {
+            throw new UnauthorizedAccessException("You are only authorized to manage patients assigned to your own consultation room.");
         }
 
         if (token.Status != "Called" && token.Status != "Waiting")
@@ -500,6 +509,12 @@ public class DoctorService : IDoctorService
     /// </summary>
     public async Task<QueueTokenResponse> CompleteConsultationAsync(Guid tokenId, Guid doctorUserId, CompleteConsultationRequest request)
     {
+        // 1. Mandatory Clinical Notes Validation
+        if (string.IsNullOrWhiteSpace(request?.ConsultationNotes) || request.ConsultationNotes.Trim().Length < 5)
+        {
+            throw new ArgumentException("Clinical consultation notes, diagnosis, or prescription instructions are mandatory (minimum 5 characters).");
+        }
+
         var token = await _context.QueueTokens
             .Include(t => t.Patient)
             .Include(t => t.Department)
@@ -512,6 +527,15 @@ public class DoctorService : IDoctorService
             throw new KeyNotFoundException($"Token with ID {tokenId} was not found.");
         }
 
+        // 2. Doctor Ownership & Authorization Guard
+        var callerDoctor = await _context.Doctors.AsNoTracking().FirstOrDefaultAsync(d => d.UserId == doctorUserId);
+        var callerIsAdmin = await _context.Users.AsNoTracking().AnyAsync(u => u.Id == doctorUserId && u.Role == "Admin");
+
+        if (!callerIsAdmin && (callerDoctor == null || token.DoctorId != callerDoctor.Id))
+        {
+            throw new UnauthorizedAccessException("You are only authorized to conclude consultations for your own assigned patients.");
+        }
+
         if (token.Status != "Called" && token.Status != "Waiting")
         {
             throw new InvalidOperationException($"Cannot complete consultation for token with status '{token.Status}'.");
@@ -519,7 +543,8 @@ public class DoctorService : IDoctorService
 
         token.Status = "Completed";
         token.CompletedAtUtc = DateTime.UtcNow;
-        token.ConsultationNotes = request.ConsultationNotes?.Trim();
+        token.CalledAtUtc ??= token.CompletedAtUtc; // Guarantees timestamp consistency for duration metrics
+        token.ConsultationNotes = request.ConsultationNotes.Trim();
 
         await _context.SaveChangesAsync();
         return MapToResponse(token, 0, 0);
@@ -542,7 +567,6 @@ public class DoctorService : IDoctorService
             .Include(t => t.Patient)
             .Include(t => t.Department).ThenInclude(d => d.NursingStations)
             .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.Doctor).ThenInclude(d => d.Department).ThenInclude(dept => dept.NursingStations)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NurseUser)
             .Where(t => t.DoctorId == doctorId &&
@@ -571,10 +595,14 @@ public class DoctorService : IDoctorService
             {
                 TokenId = t.Id,
                 TokenNumber = t.TokenNumber,
+                PatientId = t.PatientId,
+                PatientName = t.Patient != null ? t.Patient.FullName : string.Empty,
                 DepartmentName = t.Department != null ? t.Department.Name : string.Empty,
                 DoctorName = t.Doctor != null && t.Doctor.User != null ? t.Doctor.User.FullName : "Attending Physician",
                 Status = t.Status,
                 BookedAtUtc = t.BookedAtUtc,
+                TriagedAtUtc = t.TriagedAtUtc,
+                CalledAtUtc = t.CalledAtUtc,
                 CompletedAtUtc = t.CompletedAtUtc,
                 ConsultationNotes = t.ConsultationNotes,
                 TriageLevel = t.TriageAssessment != null ? t.TriageAssessment.TriageLevel : null

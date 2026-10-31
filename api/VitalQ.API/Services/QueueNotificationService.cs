@@ -43,6 +43,7 @@ public class QueueNotificationService : IQueueNotificationService
 
         // 2. Doctor PC, Nurse Desk, and all other patients waiting in this doctor's line receive QueueUpdated
         await _hubContext.Clients.Group(doctorGroup).SendAsync("QueueUpdated", token);
+        await _hubContext.Clients.Group("nurse-station").SendAsync("QueueUpdated", token);
         await _hubContext.Clients.Group("nurse-station").SendAsync("PatientCalled", token);
         await _hubContext.Clients.Group("nurse-station").SendAsync("QueueUpdated", token);
         await _hubContext.Clients.Group("nurse-station").SendAsync("QueueUpdated", token);
@@ -57,6 +58,7 @@ public class QueueNotificationService : IQueueNotificationService
     {
         var doctorGroup = $"doctor-{doctorId.ToString().ToLowerInvariant()}";
         await _hubContext.Clients.Group(doctorGroup).SendAsync("QueueUpdated", token);
+        await _hubContext.Clients.Group("nurse-station").SendAsync("QueueUpdated", token);
 
         // Explicitly update the specific patient whose token changed state (Skipped, Completed, Expired)
         if (token != null)
@@ -78,6 +80,7 @@ public class QueueNotificationService : IQueueNotificationService
         var patientGroup = $"patient-{token.Id.ToString().ToLowerInvariant()}";
 
         await _hubContext.Clients.Group(doctorGroup).SendAsync("QueueUpdated", token);
+        await _hubContext.Clients.Group("nurse-station").SendAsync("QueueUpdated", token);
         await _hubContext.Clients.Group("nurse-station").SendAsync("TriageCompleted", token);
         await _hubContext.Clients.Group("nurse-station").SendAsync("QueueUpdated", token);
         await _hubContext.Clients.Group(patientGroup).SendAsync("QueueUpdated", token);

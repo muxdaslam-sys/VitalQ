@@ -30,13 +30,24 @@
 
     <!-- Clinical Notes Input -->
     <div class="space-y-1.5">
-      <label class="block text-xs font-bold text-slate-700">Clinical Observations &amp; Prescription / Advice</label>
+      <div class="flex items-center justify-between">
+        <label class="block text-xs font-bold text-slate-700">
+          Clinical Observations, Prescription &amp; Advice <span class="text-rose-500">*</span>
+        </label>
+        <span class="text-[10px] text-slate-400 font-mono">
+          {{ consultationNotes().trim().length }} / 2000 chars
+        </span>
+      </div>
       <textarea 
         [ngModel]="consultationNotes()"
         (ngModelChange)="consultationNotes.set($event)"
         rows="4"
-        placeholder="Enter clinical impression, prescribed medications, follow-up instructions..."
+        placeholder="Enter clinical impression, prescribed medications, dosages, dietary or follow-up instructions for the patient..."
         class="w-full text-xs rounded-2xl border border-slate-200 p-3.5 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition resize-none"></textarea>
+
+      @if (consultationNotes().trim().length > 0 && consultationNotes().trim().length < 5) {
+        <p class="text-[11px] text-rose-500 font-medium">Please enter at least 5 characters of clinical instructions.</p>
+      }
     </div>
 
     <!-- Action Buttons -->
@@ -44,16 +55,16 @@
       <button 
         type="button"
         (click)="close.emit()"
-        [disabled]="isSubmitting()"
+        [disabled]="isSubmitting"
         class="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer">
         Cancel
       </button>
       <button 
         type="button"
         (click)="onSubmit()"
-        [disabled]="isSubmitting()"
-        class="px-5 py-2.5 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white shadow-md shadow-teal-600/20 transition flex items-center gap-2 cursor-pointer">
-        @if (isSubmitting()) {
+        [disabled]="isSubmitting || consultationNotes().trim().length < 5"
+        class="px-5 py-2.5 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white shadow-md shadow-teal-600/20 transition flex items-center gap-2 cursor-pointer">
+        @if (isSubmitting) {
           <span class="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
           <span>Finalizing...</span>
         } @else {
