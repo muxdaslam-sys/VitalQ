@@ -17,6 +17,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TeleportToBodyDirective } from '../../../../shared/directives/teleport.directive';
 import { NurseService } from '../../../../core/services/nurse.service';
+import { ToastService } from '../../../../core/services/toast.service';
 import { QueueToken } from '../../../../shared/models/queue.model';
 import { TriageRequest } from '../../../../shared/models/triage.model';
 
@@ -40,6 +41,7 @@ export class TriageModalComponent implements OnInit {
     }
   }
   private readonly nurseService = inject(NurseService);
+  private readonly toast = inject(ToastService);
 
   /** Active token undergoing clinical assessment */
   @Input({ required: true }) token!: QueueToken;
@@ -48,7 +50,7 @@ export class TriageModalComponent implements OnInit {
   @Output() close = new EventEmitter<void>();
 
   /** Emitted with validated triage payload upon form submission */
-  @Output() saved = new EventEmitter<TriageRequest>();
+  @Output() saved = new EventEmitter<QueueToken>();
 
   /** Indicates asynchronous submission state to prevent duplicate submissions */
   isSubmitting = signal<boolean>(false);
@@ -86,20 +88,47 @@ export class TriageModalComponent implements OnInit {
   }
 
   /**
-   * Pre-populates override level with the current calculated level upon toggle.
+   * Pre-populates override level with current calculated level upon toggle,
+   * or clears override data when toggled off.
    */
   onOverrideToggle(): void {
-    if (this.vitalsForm.isManualOverride && !this.vitalsForm.overrideTriageLevel) {
-      this.vitalsForm.overrideTriageLevel = this.effectiveLevel();
+    if (this.vitalsForm.isManualOverride) {
+      if (!this.vitalsForm.overrideTriageLevel) {
+        this.vitalsForm.overrideTriageLevel = this.effectiveLevel();
+      }
+    } else {
+      this.vitalsForm.overrideTriageLevel = null;
+      this.vitalsForm.overrideReason = null;
     }
   }
 
   /**
-   * Dispatches triage assessment payload to parent orchestrator.
+   * Validates mandatory inputs and submits triage assessment directly.
    */
   onSubmit(): void {
     if (this.isSubmitting()) return;
+
+    if (this.vitalsForm.isManualOverride) {
+      if (!this.vitalsForm.overrideTriageLevel) {
+        this.vitalsForm.overrideTriageLevel = this.effectiveLevel();
+      }
+      if (!this.vitalsForm.overrideReason?.trim()) {
+        this.toast.warning('Clinical override justification reason is mandatory.');
+        return;
+      }
+    }
+
     this.isSubmitting.set(true);
-    this.saved.emit(this.vitalsForm);
+    this.nurseService.submitTriage(this.token.id, this.vitalsForm).subscribe({
+      next: (updatedToken) => {
+        this.isSubmitting.set(false);
+        this.toast.success(`Vitals recorded for ${this.token.tokenNumber}. Routed to Dr. ${this.token.doctorName}.`);
+        this.saved.emit(updatedToken);
+      },
+      error: (err) => {
+        this.isSubmitting.set(false);
+        this.toast.error(err.error?.message || 'Failed to submit triage vitals.');
+      }
+    });
   }
 }

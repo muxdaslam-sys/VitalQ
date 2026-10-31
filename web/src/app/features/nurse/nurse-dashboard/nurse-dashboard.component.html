@@ -585,7 +585,7 @@
     <app-triage-modal 
       [token]="activeTriageToken()!" 
       (close)="activeTriageToken.set(null)" 
-      (saved)="submitTriage($event)" />
+      (saved)="onTriageSaved()" />
   }
 
   <!-- Modal 2: Doctor Live Room Queue -->
