@@ -187,6 +187,7 @@ export class StaffComponent implements OnInit {
    * Submits new staff account creation request to the API.
    */
   saveStaff(): void {
+    if (this.isSubmitting()) return;
     if (!this.newStaff.fullName || !this.newStaff.username || !this.newStaff.password) {
       this.toast.warning('Please fill in Name, Username, and Initial Password.');
       return;
@@ -231,6 +232,7 @@ export class StaffComponent implements OnInit {
    * Submits staff profile modifications and optional password reset to backend.
    */
   updateStaff(): void {
+    if (this.isSubmitting()) return;
     const id = this.editingStaffId();
     if (!id) return;
 

@@ -170,6 +170,7 @@ export class DoctorsComponent implements OnInit {
    * Validates and submits new physician registration to the backend.
    */
   saveDoctor(): void {
+    if (this.isSubmitting()) return;
     if (!this.newDoc.fullName || !this.newDoc.username || !this.newDoc.password || !this.newDoc.departmentId) {
       this.toast.warning('Please complete all required fields (Name, User, Password, Department).');
       return;
@@ -211,6 +212,7 @@ export class DoctorsComponent implements OnInit {
    * Submits physician updates (and optional password reset) to backend.
    */
   updateDoctor(): void {
+    if (this.isSubmitting()) return;
     const id = this.editingDoctorId();
     if (!id) return;
 

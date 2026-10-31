@@ -189,6 +189,8 @@ export class PatientBookComponent implements OnInit {
    * and navigates to the patient dashboard.
    */
   confirmBooking(): void {
+    if (this.submitting()) return;
+
     if (!this.selectedPatientId() || !this.selectedDepartmentId() || !this.selectedDoctorId()) {
       this.toast.warning('Please complete all 3 steps before confirming.');
       return;
