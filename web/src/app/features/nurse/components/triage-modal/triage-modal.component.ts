@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import { Component, Input, Output, EventEmitter, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TeleportToBodyDirective } from '../../../../shared/directives/teleport.directive';
@@ -27,7 +27,18 @@ import { TriageRequest } from '../../../../shared/models/triage.model';
   templateUrl: './triage-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TriageModalComponent {
+export class TriageModalComponent implements OnInit {
+  ngOnInit(): void {
+    if (this.token) {
+      this.vitalsForm.spO2 = this.token.spO2 ?? null;
+      this.vitalsForm.systolicBp = this.token.systolicBp ?? null;
+      this.vitalsForm.diastolicBp = this.token.diastolicBp ?? null;
+      this.vitalsForm.heartRate = this.token.heartRate ?? null;
+      this.vitalsForm.temperature = this.token.temperature ?? null;
+      this.vitalsForm.painScale = this.token.painScale ?? null;
+      this.vitalsForm.nurseNotes = this.token.nurseNotes ?? null;
+    }
+  }
   private readonly nurseService = inject(NurseService);
 
   /** Active token undergoing clinical assessment */
@@ -67,6 +78,7 @@ export class TriageModalComponent {
     return this.nurseService.evaluateLevel(
       this.vitalsForm.spO2,
       this.vitalsForm.systolicBp,
+      this.vitalsForm.diastolicBp,
       this.vitalsForm.heartRate,
       this.vitalsForm.temperature,
       this.vitalsForm.painScale

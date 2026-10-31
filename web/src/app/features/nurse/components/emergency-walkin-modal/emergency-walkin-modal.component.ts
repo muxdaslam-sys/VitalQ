@@ -12,7 +12,7 @@
  * ============================================================================
  */
 
-import { Component, Input, Output, EventEmitter, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnChanges, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TeleportToBodyDirective } from '../../../../shared/directives/teleport.directive';
@@ -30,7 +30,25 @@ import { QueueToken } from '../../../../shared/models/queue.model';
   templateUrl: './emergency-walkin-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class EmergencyWalkinModalComponent {
+export class EmergencyWalkinModalComponent implements OnChanges {
+  /** Optional pre-filled patient from Master Directory search */
+  @Input() prefillPatient: PatientSearchResult | null = null;
+
+  ngOnChanges(): void {
+    if (this.prefillPatient) {
+      this.walkInForm.phoneNumber = this.prefillPatient.phoneNumber;
+      this.walkInForm.fullName = this.prefillPatient.fullName;
+      this.walkInForm.gender = this.prefillPatient.gender || 'Male';
+      if (this.prefillPatient.dateOfBirth) {
+        this.walkInForm.dateOfBirth = this.prefillPatient.dateOfBirth.split('T')[0];
+      }
+      this.existingPatientMatch.set(this.prefillPatient);
+    }
+    if (this.doctors && this.doctors.length > 0 && !this.walkInForm.doctorId) {
+      const availableDoc = this.doctors.find(d => d.status !== 'OnLeave');
+      this.walkInForm.doctorId = availableDoc ? availableDoc.doctorId : this.doctors[0].doctorId;
+    }
+  }
   readonly auth = inject(AuthService);
   private readonly nurseService = inject(NurseService);
   private readonly toast = inject(ToastService);
@@ -94,6 +112,19 @@ export class EmergencyWalkinModalComponent {
   /**
    * Validates mandatory clinical inputs and submits walk-in registration.
    */
+  onDone(): void {
+    const token = this.successToken();
+    if (token) {
+      this.booked.emit(token);
+    } else {
+      this.close.emit();
+    }
+  }
+
+  printSlip(): void {
+    window.print();
+  }
+
   onSubmit(): void {
     if (!this.walkInForm.fullName.trim() || !this.walkInForm.phoneNumber.trim() || !this.walkInForm.doctorId) {
       this.toast.warning('Please complete patient name, phone number, and select a doctor.');
@@ -111,7 +142,6 @@ export class EmergencyWalkinModalComponent {
         this.isSubmitting.set(false);
         this.successToken.set(token);
         this.toast.success(`Token ${token.tokenNumber} issued successfully.`);
-        this.booked.emit(token);
       },
       error: (err: any) => {
         this.isSubmitting.set(false);
