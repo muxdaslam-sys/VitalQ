@@ -961,6 +961,14 @@ public class NurseService : INurseService
         var room = d?.RoomNumber ?? "Consultation Room";
         var doctorName = d?.User?.FullName ?? "Doctor";
 
+        int skipCount = 0;
+        if (!string.IsNullOrEmpty(t.ConsultationNotes))
+        {
+            if (t.ConsultationNotes.Contains("Call 3 of 3") || t.ConsultationNotes.Contains("Absent after 3 calls")) skipCount = 3;
+            else if (t.ConsultationNotes.Contains("Call 2 of 3")) skipCount = 2;
+            else if (t.ConsultationNotes.Contains("Call 1 of 3")) skipCount = 1;
+        }
+
         // Generate contextual wayfinding instruction based on current queue stage
         var nextStepInstruction = t.Status switch
         {
@@ -997,6 +1005,7 @@ public class NurseService : INurseService
             PainScale = t.TriageAssessment?.PainScale,
             NurseNotes = t.TriageAssessment?.NurseNotes,
             NurseName = t.TriageAssessment?.NurseUser?.FullName,
+            SkipCount = skipCount,
             BookedAtUtc = t.BookedAtUtc,
             TriagedAtUtc = t.TriagedAtUtc,
             CalledAtUtc = t.CalledAtUtc,
