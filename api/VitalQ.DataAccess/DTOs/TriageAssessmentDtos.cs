@@ -19,12 +19,12 @@ public class TriageAssessmentResponse
     public string? StationName { get; set; }
 
     // Vitals
-    public decimal SpO2 { get; set; }                      // Oxygen saturation %
-    public int SystolicBp { get; set; }                    // Systolic Blood Pressure
-    public int DiastolicBp { get; set; }                   // Diastolic Blood Pressure
-    public int HeartRate { get; set; }                     // Heart rate (BPM)
-    public decimal Temperature { get; set; }               // Body temperature (°C)
-    public int PainScale { get; set; }                     // 0 to 10
+    public decimal? SpO2 { get; set; }                     // Oxygen saturation %
+    public int? SystolicBp { get; set; }                   // Systolic Blood Pressure
+    public int? DiastolicBp { get; set; }                  // Diastolic Blood Pressure
+    public int? HeartRate { get; set; }                    // Heart rate (BPM)
+    public decimal? Temperature { get; set; }              // Body temperature (°C)
+    public int? PainScale { get; set; }                    // 0 to 10
 
     // Computed or overridden triage level
     public string TriageLevel { get; set; } = null!;       // "Red", "Yellow", "Green"
