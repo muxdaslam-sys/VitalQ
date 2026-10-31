@@ -68,6 +68,11 @@ public interface INurseService
     /// Issues a token for an existing registered patient with optional Code-Red emergency bypass without re-entering demographics.
     /// </summary>
     Task<QueueTokenResponse> BookTokenForExistingPatientAsync(Guid patientId, ExistingPatientTokenBookingRequest request, Guid nurseUserId, Guid? nursingStationId);
+
+    /// <summary>
+    /// Cancels an untriaged walk-in token if patient departed or checked in mistakenly.
+    /// </summary>
+    Task<QueueTokenResponse> CancelUntriagedTokenAsync(Guid tokenId, Guid nurseUserId);
     #endregion
 }
 

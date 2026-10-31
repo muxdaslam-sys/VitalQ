@@ -67,11 +67,21 @@
             @for (visit of patient.visits; track visit.tokenId) {
               <div class="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-2">
                 <div class="flex items-center justify-between text-xs flex-wrap gap-2">
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 flex-wrap">
                     <span class="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                       {{ visit.tokenNumber }}
                     </span>
                     <span class="font-bold text-slate-800">{{ visit.departmentName }} · Dr. {{ visit.doctorName }}</span>
+                    @if (visit.triageLevel) {
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold"
+                            [ngClass]="{
+                              'bg-red-100 text-red-700 border border-red-200': visit.triageLevel === 'Red',
+                              'bg-amber-100 text-amber-700 border border-amber-200': visit.triageLevel === 'Yellow',
+                              'bg-emerald-100 text-emerald-700 border border-emerald-200': visit.triageLevel === 'Green'
+                            }">
+                        {{ visit.triageLevel }}
+                      </span>
+                    }
                   </div>
                   <span class="text-slate-400 text-[11px]">{{ visit.bookedAtUtc | date:'mediumDate' }}</span>
                 </div>

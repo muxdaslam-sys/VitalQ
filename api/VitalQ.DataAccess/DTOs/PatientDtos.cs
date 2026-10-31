@@ -35,6 +35,8 @@ public class PatientSearchResult
     public Guid? ActiveTokenId { get; set; }
     public string? ActiveTokenNumber { get; set; }
     public string? ActiveTokenStatus { get; set; }
+    public string? ActiveDoctorName { get; set; }
+    public string? ActiveDepartmentName { get; set; }
 }
 
 /// <summary>

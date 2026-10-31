@@ -61,6 +61,8 @@ export interface PatientSearchResult {
   activeTokenId?: string;
   activeTokenNumber?: string;
   activeTokenStatus?: string;
+  activeDoctorName?: string;
+  activeDepartmentName?: string;
 }
 
 // #endregion

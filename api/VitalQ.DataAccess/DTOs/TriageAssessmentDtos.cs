@@ -47,22 +47,22 @@ public class TriageRequest
     public Guid? NursingStationId { get; set; }
 
     [Range(0, 100, ErrorMessage = "SpO2 must be between 0 and 100")]
-    public decimal SpO2 { get; set; }
+    public decimal? SpO2 { get; set; }
 
     [Range(0, 300, ErrorMessage = "Systolic BP must be between 0 and 300")]
-    public int SystolicBp { get; set; }
+    public int? SystolicBp { get; set; }
 
     [Range(0, 200, ErrorMessage = "Diastolic BP must be between 0 and 200")]
-    public int DiastolicBp { get; set; }
+    public int? DiastolicBp { get; set; }
 
     [Range(0, 300, ErrorMessage = "Heart rate must be between 0 and 300")]
-    public int HeartRate { get; set; }
+    public int? HeartRate { get; set; }
 
-    [Range(30, 45, ErrorMessage = "Temperature must be between 30 and 45 °C")]
-    public decimal Temperature { get; set; }
+    [Range(20, 45, ErrorMessage = "Temperature must be between 20 and 45 °C")]
+    public decimal? Temperature { get; set; }
 
     [Range(0, 10, ErrorMessage = "Pain scale must be between 0 and 10")]
-    public int PainScale { get; set; }
+    public int? PainScale { get; set; }
 
     // Clinical override (if nurse feels patient is worse than numbers show)
     public bool IsManualOverride { get; set; } = false;

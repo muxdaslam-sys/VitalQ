@@ -246,6 +246,12 @@ public class DoctorService : IDoctorService
             throw new InvalidOperationException("Doctor record not found.");
         }
 
+        if (!string.Equals(doctor.Status, "Available", StringComparison.OrdinalIgnoreCase))
+        {
+            var statusLabel = string.Equals(doctor.Status, "Busy", StringComparison.OrdinalIgnoreCase) ? "On Break (Paused)" : doctor.Status;
+            throw new InvalidOperationException($"Cannot summon patients while duty status is '{statusLabel}'. Please switch status to 'Available in Clinic' to resume consultations.");
+        }
+
         var todayUtc = DateTime.UtcNow.Date;
         var tomorrowUtc = todayUtc.AddDays(1);
 

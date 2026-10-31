@@ -14,6 +14,7 @@ export interface DoctorQueueSummaryDto {
   currentCallingToken?: string | null;
   waitingCount: number;
   totalAssignedToday: number;
+  skippedCount: number;
 }
 
 /**
@@ -23,6 +24,7 @@ export interface NurseDashboardStatsResponse {
   totalBookingsToday: number;
   totalTriagedToday: number;
   totalCompletedToday: number;
+  totalSkippedToday: number;
   doctorsPresent: number;
   doctorsAbsent: number;
   doctors: DoctorQueueSummaryDto[];

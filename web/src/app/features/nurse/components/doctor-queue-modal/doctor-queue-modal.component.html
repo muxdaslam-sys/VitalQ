@@ -13,7 +13,7 @@
             <h3 class="text-base font-bold text-slate-900 leading-tight">Dr. {{ queueData.doctorName }}</h3>
             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0"
                   [ngClass]="queueData.status === 'Available' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'">
-              {{ queueData.status }}
+              {{ queueData.status === 'Available' ? 'Available in Clinic' : queueData.status === 'Busy' ? 'On Break (Paused)' : queueData.status }}
             </span>
           </div>
           <p class="text-xs text-slate-500">{{ queueData.specialization }} · Room {{ queueData.roomNumber }}</p>
@@ -119,23 +119,23 @@
                   <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center text-xs">
                     <div class="bg-white p-2 rounded-xl border border-slate-200">
                       <span class="text-[10px] text-slate-400 font-bold block">SpO2</span>
-                      <span class="font-bold text-slate-800">{{ item.triageAssessment.spO2 }}%</span>
+                      <span class="font-bold text-slate-800">{{ item.triageAssessment.spO2 != null ? (item.triageAssessment.spO2 + '%') : '--' }}</span>
                     </div>
                     <div class="bg-white p-2 rounded-xl border border-slate-200">
                       <span class="text-[10px] text-slate-400 font-bold block">BP</span>
-                      <span class="font-bold text-slate-800">{{ item.triageAssessment.systolicBp }}/{{ item.triageAssessment.diastolicBp }}</span>
+                      <span class="font-bold text-slate-800">{{ item.triageAssessment.systolicBp != null && item.triageAssessment.diastolicBp != null ? (item.triageAssessment.systolicBp + '/' + item.triageAssessment.diastolicBp) : '--' }}</span>
                     </div>
                     <div class="bg-white p-2 rounded-xl border border-slate-200">
                       <span class="text-[10px] text-slate-400 font-bold block">Heart Rate</span>
-                      <span class="font-bold text-slate-800">{{ item.triageAssessment.heartRate }} bpm</span>
+                      <span class="font-bold text-slate-800">{{ item.triageAssessment.heartRate != null ? (item.triageAssessment.heartRate + ' bpm') : '--' }}</span>
                     </div>
                     <div class="bg-white p-2 rounded-xl border border-slate-200">
                       <span class="text-[10px] text-slate-400 font-bold block">Temp</span>
-                      <span class="font-bold text-slate-800">{{ item.triageAssessment.temperature }}°C</span>
+                      <span class="font-bold text-slate-800">{{ item.triageAssessment.temperature != null ? (item.triageAssessment.temperature + '°C') : '--' }}</span>
                     </div>
                     <div class="bg-white p-2 rounded-xl border border-slate-200">
                       <span class="text-[10px] text-slate-400 font-bold block">Pain</span>
-                      <span class="font-bold text-slate-800">{{ item.triageAssessment.painScale }}/10</span>
+                      <span class="font-bold text-slate-800">{{ item.triageAssessment.painScale != null ? (item.triageAssessment.painScale + '/10') : '--' }}</span>
                     </div>
                     <div class="bg-white p-2 rounded-xl border border-slate-200">
                       <span class="text-[10px] text-slate-400 font-bold block">Score</span>

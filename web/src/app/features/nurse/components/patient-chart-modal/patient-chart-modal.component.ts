@@ -36,8 +36,13 @@ export class PatientChartModalComponent {
   calculateAge(dobString?: string): number | null {
     if (!dobString) return null;
     const dob = new Date(dobString);
-    const diffMs = Date.now() - dob.getTime();
-    const ageDt = new Date(diffMs);
-    return Math.abs(ageDt.getUTCFullYear() - 1970);
+    if (isNaN(dob.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    return Math.max(0, age);
   }
 }
