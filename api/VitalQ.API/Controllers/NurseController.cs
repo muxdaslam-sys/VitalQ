@@ -47,17 +47,13 @@ public class NurseController : ControllerBase
     [HttpGet("triage/pending")]
     public async Task<IActionResult> GetPendingTriage([FromQuery] Guid? departmentId = null, [FromQuery] Guid? nursingStationId = null)
     {
-        // Enforce SBAC: If the caller is a Nurse, lock them exclusively to their assigned station
+        // Enforce SBAC: If the caller is a Nurse with an assigned station, scope to their station
         if (User.IsInRole("Nurse"))
         {
             var stationClaim = User.FindFirst("nursingStationId")?.Value;
             if (Guid.TryParse(stationClaim, out var assignedStationId))
             {
                 nursingStationId = assignedStationId;
-            }
-            else
-            {
-                return Forbid();
             }
         }
 
@@ -326,6 +322,31 @@ public class NurseController : ControllerBase
         try
         {
             var token = await _doctorService.RequeuePatientAsync(id, nurseUserId);
+            await _notificationService.NotifyQueueUpdatedAsync(token.DoctorId, token);
+            return Ok(token);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Cancels an untriaged walk-in token if patient departed before vitals intake (POST /api/nurse/tokens/{id}/cancel).
+    /// </summary>
+    [HttpPost("tokens/{id:guid}/cancel")]
+    public async Task<IActionResult> CancelToken(Guid id)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        Guid.TryParse(userIdStr, out var nurseUserId);
+
+        try
+        {
+            var token = await _nurseService.CancelUntriagedTokenAsync(id, nurseUserId);
             await _notificationService.NotifyQueueUpdatedAsync(token.DoctorId, token);
             return Ok(token);
         }

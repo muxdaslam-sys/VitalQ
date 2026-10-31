@@ -48,8 +48,10 @@ public class NurseService : INurseService
 
         var mrnClean = Regex.Replace(q, @"^mrn[\s\-_]*", "", RegexOptions.IgnoreCase).Trim();
 
-        // 1. If searching by Token Number (e.g. "CARD-261005-001" or "CARD-")
-        if (q.Contains('-') && !q.StartsWith("MRN", StringComparison.OrdinalIgnoreCase))
+        var digitsOnly = Regex.Replace(q, @"[^\d]", "");
+
+        // 1. If searching by Token Number (must start with department code letters then dash, e.g. "CARD-")
+        if (Regex.IsMatch(q, @"^[A-Za-z]+-") && !q.StartsWith("MRN", StringComparison.OrdinalIgnoreCase))
         {
             var matchedPatientIds = await _context.QueueTokens
                 .AsNoTracking()
@@ -59,25 +61,24 @@ public class NurseService : INurseService
                 .Take(15)
                 .ToListAsync();
 
-            patientQuery = patientQuery.Where(p => matchedPatientIds.Contains(p.Id) 
-                                                || p.MedicalRecordNumber.Contains(q) 
-                                                || p.MedicalRecordNumber.Contains(mrnClean));
+            patientQuery = patientQuery.Where(p => matchedPatientIds.Contains(p.Id));
         }
         else if (q.StartsWith("MRN", StringComparison.OrdinalIgnoreCase))
         {
             patientQuery = patientQuery.Where(p => p.MedicalRecordNumber.StartsWith(q) 
                                                 || p.MedicalRecordNumber.Contains(mrnClean));
         }
-        else if (q.All(char.IsDigit))
+        else if (!string.IsNullOrEmpty(digitsOnly) && digitsOnly.Length >= 3 && !Regex.IsMatch(q, @"[a-zA-Z]"))
         {
-            patientQuery = patientQuery.Where(p => p.PhoneNumber.StartsWith(q) 
+            // Phone number search (handles 123-456, (123) 456, +1 1234, etc.)
+            patientQuery = patientQuery.Where(p => p.PhoneNumber.Contains(digitsOnly) 
                                                 || p.MedicalRecordNumber.Contains(q));
         }
         else
         {
-            patientQuery = patientQuery.Where(p => p.MedicalRecordNumber.Contains(mrnClean)
-                                                || p.FullName.StartsWith(q) 
-                                                || p.FullName.Contains(q));
+            patientQuery = patientQuery.Where(p => p.FullName.Contains(q) 
+                                                || p.MedicalRecordNumber.Contains(q) 
+                                                || p.MedicalRecordNumber.Contains(mrnClean));
         }
 
         return await patientQuery
@@ -104,6 +105,16 @@ public class NurseService : INurseService
                     .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
                     .OrderByDescending(t => t.BookedAtUtc)
                     .Select(t => t.Status)
+                    .FirstOrDefault(),
+                ActiveDoctorName = p.QueueTokens
+                    .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
+                    .OrderByDescending(t => t.BookedAtUtc)
+                    .Select(t => t.Doctor.User.FullName)
+                    .FirstOrDefault(),
+                ActiveDepartmentName = p.QueueTokens
+                    .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
+                    .OrderByDescending(t => t.BookedAtUtc)
+                    .Select(t => t.Department.Name)
                     .FirstOrDefault()
             })
             .ToListAsync();
@@ -128,7 +139,7 @@ public class NurseService : INurseService
             .Include(t => t.Doctor).ThenInclude(d => d.User)
             .Include(t => t.Doctor).ThenInclude(d => d.Department)
             .Include(t => t.TriageAssessment).ThenInclude(a => a!.NursingStation)
-            .Where(t => t.Status == "Booked" && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc);
+            .Where(t => (t.Status == "Booked" || t.Status == "Skipped" || (t.Status == "Waiting" && t.BaseWeight >= 1000)) && t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc);
 
         if (departmentId.HasValue && departmentId.Value != Guid.Empty)
         {
@@ -212,6 +223,7 @@ public class NurseService : INurseService
             triageLevel = CalculateAutomatedTriageLevel(
                 request.SpO2,
                 request.SystolicBp,
+                request.DiastolicBp,
                 request.HeartRate,
                 request.Temperature,
                 request.PainScale);
@@ -236,12 +248,12 @@ public class NurseService : INurseService
         // Bind all vitals and station audit info
         assessment.NursingStationId = request.NursingStationId;
         assessment.NurseUserId = nurseUserId;
-        assessment.SpO2 = request.SpO2;
-        assessment.SystolicBp = request.SystolicBp;
-        assessment.DiastolicBp = request.DiastolicBp;
-        assessment.HeartRate = request.HeartRate;
-        assessment.Temperature = request.Temperature;
-        assessment.PainScale = request.PainScale;
+        assessment.SpO2 = request.SpO2 ?? 0;
+        assessment.SystolicBp = request.SystolicBp ?? 0;
+        assessment.DiastolicBp = request.DiastolicBp ?? 0;
+        assessment.HeartRate = request.HeartRate ?? 0;
+        assessment.Temperature = request.Temperature ?? 0;
+        assessment.PainScale = request.PainScale ?? 0;
         assessment.TriageLevel = triageLevel;
         assessment.IsManualOverride = request.IsManualOverride;
         assessment.OverrideReason = request.OverrideReason?.Trim();
@@ -347,6 +359,7 @@ public class NurseService : INurseService
         var totalBookings = tokenStats.Sum(x => x.Count);
         var totalCompleted = tokenStats.Where(x => x.Status == "Completed").Sum(x => x.Count);
         var totalTriaged = tokenStats.Where(x => x.Status != "Booked" && x.Status != "Cancelled").Sum(x => x.Count);
+        var totalSkipped = tokenStats.Where(x => x.Status == "Skipped").Sum(x => x.Count);
 
         // 2. Query doctors for the station's department
         var doctorQuery = _context.Doctors
@@ -393,7 +406,8 @@ public class NurseService : INurseService
                 Status = d.Status,
                 CurrentCallingToken = currentCalling,
                 WaitingCount = docTokens.Count(t => t.Status == "Waiting"),
-                TotalAssignedToday = docTokens.Count
+                TotalAssignedToday = docTokens.Count,
+                SkippedCount = docTokens.Count(t => t.Status == "Skipped")
             };
         }).ToList();
 
@@ -402,6 +416,7 @@ public class NurseService : INurseService
             TotalBookingsToday = totalBookings,
             TotalTriagedToday = totalTriaged,
             TotalCompletedToday = totalCompleted,
+            TotalSkippedToday = totalSkipped,
             DoctorsPresent = doctorsPresent,
             DoctorsAbsent = doctorsAbsent,
             Doctors = doctorSummaries
@@ -458,11 +473,11 @@ public class NurseService : INurseService
                 Status = t.Status,
                 PriorityScore = t.PriorityScore,
                 TriageLevel = t.TriageAssessment?.TriageLevel,
-            SpO2 = t.TriageAssessment?.SpO2,
-            SystolicBp = t.TriageAssessment?.SystolicBp,
-            DiastolicBp = t.TriageAssessment?.DiastolicBp,
-            HeartRate = t.TriageAssessment?.HeartRate,
-            Temperature = t.TriageAssessment?.Temperature,
+            SpO2 = t.TriageAssessment != null && t.TriageAssessment.SpO2 > 0 ? t.TriageAssessment.SpO2 : (decimal?)null,
+            SystolicBp = t.TriageAssessment != null && t.TriageAssessment.SystolicBp > 0 ? t.TriageAssessment.SystolicBp : (int?)null,
+            DiastolicBp = t.TriageAssessment != null && t.TriageAssessment.DiastolicBp > 0 ? t.TriageAssessment.DiastolicBp : (int?)null,
+            HeartRate = t.TriageAssessment != null && t.TriageAssessment.HeartRate > 0 ? t.TriageAssessment.HeartRate : (int?)null,
+            Temperature = t.TriageAssessment != null && t.TriageAssessment.Temperature > 0 ? t.TriageAssessment.Temperature : (decimal?)null,
             PainScale = t.TriageAssessment?.PainScale,
             NurseNotes = t.TriageAssessment?.NurseNotes,
             NurseName = t.TriageAssessment?.NurseUser?.FullName,
@@ -735,6 +750,11 @@ public class NurseService : INurseService
             .FirstOrDefaultAsync(d => d.Id == request.DoctorId)
             ?? throw new KeyNotFoundException("Doctor was not found.");
 
+        if (!doctor.User.IsActive || string.Equals(doctor.Status, "OnLeave", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Dr. {doctor.User.FullName} is currently on leave or inactive and cannot accept patient appointments.");
+        }
+
         // 2b. Prevent duplicate active booking today for this patient and doctor
         var today = DateTime.UtcNow.Date;
         var tomorrow = today.AddDays(1);
@@ -844,6 +864,11 @@ public class NurseService : INurseService
             .FirstOrDefaultAsync(d => d.Id == request.DoctorId)
             ?? throw new KeyNotFoundException("Doctor was not found.");
 
+        if (!doctor.User.IsActive || string.Equals(doctor.Status, "OnLeave", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Dr. {doctor.User.FullName} is currently on leave or inactive and cannot accept patient appointments.");
+        }
+
         // Prevent duplicate active booking today for this patient and doctor
         var today = DateTime.UtcNow.Date;
         var tomorrow = today.AddDays(1);
@@ -935,6 +960,30 @@ public class NurseService : INurseService
 
     #endregion
 
+        /// <summary>
+    /// Cancels an untriaged walk-in token if patient departed or checked in mistakenly.
+    /// </summary>
+    public async Task<QueueTokenResponse> CancelUntriagedTokenAsync(Guid tokenId, Guid nurseUserId)
+    {
+        var token = await _context.QueueTokens
+            .Include(t => t.Patient)
+            .Include(t => t.Doctor).ThenInclude(d => d.User)
+            .Include(t => t.Department)
+            .FirstOrDefaultAsync(t => t.Id == tokenId)
+            ?? throw new KeyNotFoundException($"Token with ID '{tokenId}' was not found.");
+
+        if (token.Status != "Booked")
+        {
+            throw new InvalidOperationException($"Cannot cancel a token with status '{token.Status}'. Only untriaged 'Booked' tokens can be cancelled at the nursing desk.");
+        }
+
+        token.Status = "Cancelled";
+        token.ConsultationNotes = "Cancelled at Nurse Desk - Patient departed before vitals intake.";
+        await _context.SaveChangesAsync();
+
+        return MapToTokenResponse(token, token.Patient, token.Doctor);
+    }
+
     #region 5. Clinical Decision Support & Entity Mapping
 
     /// <summary>
@@ -943,21 +992,35 @@ public class NurseService : INurseService
     /// - Yellow (Urgent Assessment): SpO2 90-94%, borderline vitals, severe fever, Pain &gt;= 6/10.
     /// - Green (Standard Ambulatory): Hemodynamically stable parameters.
     /// </summary>
-    private static string CalculateAutomatedTriageLevel(decimal spo2, int systolicBp, int heartRate, decimal temperature, int painScale)
+    private static string CalculateAutomatedTriageLevel(
+        decimal? spo2, 
+        int? systolicBp, 
+        int? diastolicBp, 
+        int? heartRate, 
+        decimal? temperature, 
+        int? painScale)
     {
         // 1. Red (Resuscitation / Immediate Life Threat)
-        if (spo2 < 90m || systolicBp < 90 || systolicBp > 200 || heartRate > 140 || heartRate < 40 || temperature > 40.0m || painScale == 10)
+        if ((spo2.HasValue && spo2.Value > 0 && spo2.Value < 90m) ||
+            (systolicBp.HasValue && systolicBp.Value > 0 && (systolicBp.Value < 90 || systolicBp.Value > 200)) ||
+            (diastolicBp.HasValue && diastolicBp.Value > 0 && diastolicBp.Value >= 130) ||
+            (heartRate.HasValue && heartRate.Value > 0 && (heartRate.Value > 140 || heartRate.Value < 40)) ||
+            (temperature.HasValue && temperature.Value > 0 && (temperature.Value > 40.0m || temperature.Value < 32.0m)) ||
+            (painScale.HasValue && painScale.Value == 10))
+        {
             return "Red";
+        }
 
         // 2. Yellow (Urgent / Serious Medical Concern)
-        if ((spo2 >= 90m && spo2 <= 94m) ||
-            (systolicBp >= 90 && systolicBp <= 99) ||
-            (systolicBp >= 160 && systolicBp <= 200) ||
-            (heartRate >= 110 && heartRate <= 140) ||
-            (heartRate >= 40 && heartRate < 50) ||
-            (temperature >= 38.5m && temperature <= 40.0m) ||
-            painScale >= 6)
+        if ((spo2.HasValue && spo2.Value >= 90m && spo2.Value <= 94m) ||
+            (systolicBp.HasValue && ((systolicBp.Value >= 90 && systolicBp.Value <= 99) || (systolicBp.Value >= 160 && systolicBp.Value <= 200))) ||
+            (diastolicBp.HasValue && diastolicBp.Value >= 105 && diastolicBp.Value < 130) ||
+            (heartRate.HasValue && ((heartRate.Value >= 110 && heartRate.Value <= 140) || (heartRate.Value >= 40 && heartRate.Value < 50))) ||
+            (temperature.HasValue && ((temperature.Value >= 38.5m && temperature.Value <= 40.0m) || (temperature.Value >= 32.0m && temperature.Value < 35.0m))) ||
+            (painScale.HasValue && painScale.Value >= 6))
+        {
             return "Yellow";
+        }
 
         // 3. Green (Routine / Standard Ambulatory)
         return "Green";
