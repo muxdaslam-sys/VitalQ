@@ -124,6 +124,13 @@ export class NurseService {
     return this.http.post<QueueToken>(`${this.baseUrl}/tokens/${tokenId}/requeue`, {});
   }
 
+  /**
+   * Cancels an untriaged walk-in token if patient departed before vitals intake.
+   */
+  cancelToken(tokenId: string): Observable<QueueToken> {
+    return this.http.post<QueueToken>(`${this.baseUrl}/tokens/${tokenId}/cancel`, {});
+  }
+
   // #endregion
 
   // #region 5. Client-Side Clinical Decision Support
@@ -135,19 +142,21 @@ export class NurseService {
   evaluateLevel(
     spo2: number | null | undefined,
     sys: number | null | undefined,
+    dia: number | null | undefined,
     hr: number | null | undefined,
     temp: number | null | undefined,
     pain: number | null | undefined
   ): 'Red' | 'Yellow' | 'Green' {
-    if (spo2 == null && sys == null && hr == null && temp == null && pain == null) {
+    if (spo2 == null && sys == null && dia == null && hr == null && temp == null && pain == null) {
       return 'Green';
     }
 
     const isRed =
-      (spo2 != null && spo2 < 90) ||
-      (sys != null && (sys < 90 || sys > 200)) ||
-      (hr != null && (hr > 140 || hr < 40)) ||
-      (temp != null && temp > 40.0) ||
+      (spo2 != null && spo2 > 0 && spo2 < 90) ||
+      (sys != null && sys > 0 && (sys < 90 || sys > 200)) ||
+      (dia != null && dia > 0 && dia >= 130) ||
+      (hr != null && hr > 0 && (hr > 140 || hr < 40)) ||
+      (temp != null && temp > 0 && (temp > 40.0 || temp < 32.0)) ||
       (pain != null && pain === 10);
 
     if (isRed) return 'Red';
@@ -155,8 +164,9 @@ export class NurseService {
     const isYellow =
       (spo2 != null && spo2 >= 90 && spo2 <= 94) ||
       (sys != null && ((sys >= 90 && sys <= 99) || (sys >= 160 && sys <= 200))) ||
+      (dia != null && dia >= 105 && dia < 130) ||
       (hr != null && ((hr >= 110 && hr <= 140) || (hr >= 40 && hr < 50))) ||
-      (temp != null && temp >= 38.5 && temp <= 40.0) ||
+      (temp != null && ((temp >= 38.5 && temp <= 40.0) || (temp >= 32.0 && temp < 35.0))) ||
       (pain != null && pain >= 6);
 
     if (isYellow) return 'Yellow';
