@@ -254,20 +254,9 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     this.activeTriageToken.set(token);
   }
 
-  submitTriage(request: TriageRequest): void {
-    const token = this.activeTriageToken();
-    if (!token) return;
-
-    this.nurseService.submitTriage(token.id, request).subscribe({
-      next: () => {
-        this.toast.success(`Vitals recorded for ${token.tokenNumber}. Routed to Dr. ${token.doctorName}.`);
-        this.activeTriageToken.set(null);
-        this.loadAllData(false);
-      },
-      error: (err) => {
-        this.toast.error(err.error?.message || 'Failed to submit triage vitals.');
-      }
-    });
+  onTriageSaved(): void {
+    this.activeTriageToken.set(null);
+    this.loadAllData(false);
   }
 
   cancelToken(token: QueueToken): void {

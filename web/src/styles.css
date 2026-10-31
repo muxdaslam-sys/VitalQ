@@ -56,3 +56,43 @@
 .animate-fadeIn {
   animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+
+/* ==========================================================================
+   PRINT STYLES: Official Hospital Consultation Slip & Thermal Passes
+   ========================================================================== */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .printable-slip, .printable-slip * {
+    visibility: visible;
+  }
+
+  .printable-slip {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 80mm;
+    max-width: 100%;
+    margin: 0;
+    padding: 12px;
+    border: 1px dashed #475569 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border-radius: 8px !important;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

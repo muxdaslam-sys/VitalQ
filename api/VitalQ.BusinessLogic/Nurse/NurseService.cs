@@ -81,43 +81,45 @@ public class NurseService : INurseService
                                                 || p.MedicalRecordNumber.Contains(mrnClean));
         }
 
-        return await patientQuery
+        var results = await patientQuery
             .Take(15)
-            .Select(p => new PatientSearchResult
+            .Select(p => new
             {
-                PatientId = p.Id,
-                MedicalRecordNumber = p.MedicalRecordNumber,
-                FullName = p.FullName,
-                PhoneNumber = p.PhoneNumber,
-                DateOfBirth = p.DateOfBirth,
-                Gender = p.Gender,
-                ActiveTokenId = p.QueueTokens
+                p.Id,
+                p.MedicalRecordNumber,
+                p.FullName,
+                p.PhoneNumber,
+                p.DateOfBirth,
+                p.Gender,
+                ActiveToken = p.QueueTokens
                     .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
                     .OrderByDescending(t => t.BookedAtUtc)
-                    .Select(t => (Guid?)t.Id)
-                    .FirstOrDefault(),
-                ActiveTokenNumber = p.QueueTokens
-                    .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
-                    .OrderByDescending(t => t.BookedAtUtc)
-                    .Select(t => t.TokenNumber)
-                    .FirstOrDefault(),
-                ActiveTokenStatus = p.QueueTokens
-                    .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
-                    .OrderByDescending(t => t.BookedAtUtc)
-                    .Select(t => t.Status)
-                    .FirstOrDefault(),
-                ActiveDoctorName = p.QueueTokens
-                    .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
-                    .OrderByDescending(t => t.BookedAtUtc)
-                    .Select(t => t.Doctor.User.FullName)
-                    .FirstOrDefault(),
-                ActiveDepartmentName = p.QueueTokens
-                    .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
-                    .OrderByDescending(t => t.BookedAtUtc)
-                    .Select(t => t.Department.Name)
+                    .Select(t => new
+                    {
+                        t.Id,
+                        t.TokenNumber,
+                        t.Status,
+                        DoctorName = t.Doctor.User.FullName,
+                        DepartmentName = t.Department.Name
+                    })
                     .FirstOrDefault()
             })
             .ToListAsync();
+
+        return results.Select(p => new PatientSearchResult
+        {
+            PatientId = p.Id,
+            MedicalRecordNumber = p.MedicalRecordNumber,
+            FullName = p.FullName,
+            PhoneNumber = p.PhoneNumber,
+            DateOfBirth = p.DateOfBirth,
+            Gender = p.Gender,
+            ActiveTokenId = p.ActiveToken != null ? (Guid?)p.ActiveToken.Id : null,
+            ActiveTokenNumber = p.ActiveToken?.TokenNumber,
+            ActiveTokenStatus = p.ActiveToken?.Status,
+            ActiveDoctorName = p.ActiveToken?.DoctorName,
+            ActiveDepartmentName = p.ActiveToken?.DepartmentName
+        }).ToList();
     }
 
     #endregion
@@ -295,28 +297,7 @@ public class NurseService : INurseService
             .Include(a => a.NursingStation)
             .FirstOrDefaultAsync(a => a.QueueTokenId == tokenId);
 
-        if (assessment == null) return null;
-
-        return new TriageAssessmentResponse
-        {
-            Id = assessment.Id,
-            QueueTokenId = assessment.QueueTokenId,
-            NurseUserId = assessment.NurseUserId,
-            NurseName = assessment.NurseUser?.FullName ?? string.Empty,
-            NursingStationId = assessment.NursingStationId,
-            StationName = assessment.NursingStation?.StationName,
-            SpO2 = assessment.SpO2,
-            SystolicBp = assessment.SystolicBp,
-            DiastolicBp = assessment.DiastolicBp,
-            HeartRate = assessment.HeartRate,
-            Temperature = assessment.Temperature,
-            PainScale = assessment.PainScale,
-            TriageLevel = assessment.TriageLevel,
-            IsManualOverride = assessment.IsManualOverride,
-            OverrideReason = assessment.OverrideReason,
-            NurseNotes = assessment.NurseNotes,
-            AssessedAtUtc = assessment.AssessedAtUtc
-        };
+        return assessment != null ? MapToTriageResponse(assessment) : null;
     }
 
     #endregion
@@ -473,38 +454,11 @@ public class NurseService : INurseService
                 Status = t.Status,
                 PriorityScore = t.PriorityScore,
                 TriageLevel = t.TriageAssessment?.TriageLevel,
-            SpO2 = t.TriageAssessment != null && t.TriageAssessment.SpO2 > 0 ? t.TriageAssessment.SpO2 : (decimal?)null,
-            SystolicBp = t.TriageAssessment != null && t.TriageAssessment.SystolicBp > 0 ? t.TriageAssessment.SystolicBp : (int?)null,
-            DiastolicBp = t.TriageAssessment != null && t.TriageAssessment.DiastolicBp > 0 ? t.TriageAssessment.DiastolicBp : (int?)null,
-            HeartRate = t.TriageAssessment != null && t.TriageAssessment.HeartRate > 0 ? t.TriageAssessment.HeartRate : (int?)null,
-            Temperature = t.TriageAssessment != null && t.TriageAssessment.Temperature > 0 ? t.TriageAssessment.Temperature : (decimal?)null,
-            PainScale = t.TriageAssessment?.PainScale,
-            NurseNotes = t.TriageAssessment?.NurseNotes,
-            NurseName = t.TriageAssessment?.NurseUser?.FullName,
                 SkipCount = skipCount,
                 BookedAtUtc = t.BookedAtUtc,
                 TriagedAtUtc = t.TriagedAtUtc,
                 CalledAtUtc = t.CalledAtUtc,
-                TriageAssessment = t.TriageAssessment != null ? new TriageAssessmentResponse
-            {
-                Id = t.TriageAssessment.Id,
-                QueueTokenId = t.TriageAssessment.QueueTokenId,
-                NurseUserId = t.TriageAssessment.NurseUserId,
-                NurseName = t.TriageAssessment.NurseUser?.FullName ?? string.Empty,
-                NursingStationId = t.TriageAssessment.NursingStationId,
-                StationName = t.TriageAssessment.NursingStation?.StationName,
-                SpO2 = t.TriageAssessment.SpO2,
-                SystolicBp = t.TriageAssessment.SystolicBp,
-                DiastolicBp = t.TriageAssessment.DiastolicBp,
-                HeartRate = t.TriageAssessment.HeartRate,
-                Temperature = t.TriageAssessment.Temperature,
-                PainScale = t.TriageAssessment.PainScale,
-                TriageLevel = t.TriageAssessment.TriageLevel,
-                IsManualOverride = t.TriageAssessment.IsManualOverride,
-                OverrideReason = t.TriageAssessment.OverrideReason,
-                NurseNotes = t.TriageAssessment.NurseNotes,
-                AssessedAtUtc = t.TriageAssessment.AssessedAtUtc
-            } : null
+                TriageAssessment = t.TriageAssessment != null ? MapToTriageResponse(t.TriageAssessment) : null
             };
         }).ToList();
 
@@ -632,17 +586,11 @@ public class NurseService : INurseService
             Status = t.Status,
             PriorityScore = t.PriorityScore,
             TriageLevel = t.TriageAssessment?.TriageLevel,
-            SpO2 = t.TriageAssessment?.SpO2,
-            SystolicBp = t.TriageAssessment?.SystolicBp,
-            DiastolicBp = t.TriageAssessment?.DiastolicBp,
-            HeartRate = t.TriageAssessment?.HeartRate,
-            Temperature = t.TriageAssessment?.Temperature,
-            PainScale = t.TriageAssessment?.PainScale,
-            NurseNotes = t.TriageAssessment?.NurseNotes,
-            NurseName = t.TriageAssessment?.NurseUser?.FullName,
+            SkipCount = t.Status == "Skipped" ? 1 : 0,
             BookedAtUtc = t.BookedAtUtc,
             TriagedAtUtc = t.TriagedAtUtc,
-            CalledAtUtc = t.CalledAtUtc
+            CalledAtUtc = t.CalledAtUtc,
+            TriageAssessment = t.TriageAssessment != null ? MapToTriageResponse(t.TriageAssessment) : null
         }).ToList();
 
         // Calculate position among Waiting tokens
@@ -743,109 +691,7 @@ public class NurseService : INurseService
             await _context.SaveChangesAsync();
         }
 
-        // 2. Validate Doctor
-        var doctor = await _context.Doctors
-            .Include(d => d.Department).ThenInclude(dept => dept.NursingStations)
-            .Include(d => d.User)
-            .FirstOrDefaultAsync(d => d.Id == request.DoctorId)
-            ?? throw new KeyNotFoundException("Doctor was not found.");
-
-        if (!doctor.User.IsActive || string.Equals(doctor.Status, "OnLeave", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException($"Dr. {doctor.User.FullName} is currently on leave or inactive and cannot accept patient appointments.");
-        }
-
-        // 2b. Prevent duplicate active booking today for this patient and doctor
-        var today = DateTime.UtcNow.Date;
-        var tomorrow = today.AddDays(1);
-
-        var existingActiveToken = await _context.QueueTokens
-            .AsNoTracking()
-            .FirstOrDefaultAsync(t => t.PatientId == patient.Id
-                                   && t.DoctorId == doctor.Id
-                                   && t.BookedAtUtc >= today
-                                   && t.BookedAtUtc < tomorrow
-                                   && (t.Status == "Booked" || t.Status == "Waiting" || t.Status == "Called"));
-
-        if (existingActiveToken != null)
-        {
-            throw new InvalidOperationException($"Patient '{patient.FullName}' already has an active appointment with Dr. {doctor.User.FullName} today (Token #{existingActiveToken.TokenNumber}, Status: {existingActiveToken.Status}).");
-        }
-
-        // 3. Generate atomic token sequence
-        var tokenNumber = await TokenGenerator.GenerateAsync(_context, doctor.DepartmentId, doctor.Department.Code);
-
-        // 4. If Code-Red Emergency Bypass:
-        if (request.IsEmergencyCodeRed)
-        {
-            // Set directly to Waiting with maximum priority score (1000) to jump to front of doctor's queue
-            var token = new QueueToken
-            {
-                Id = Guid.NewGuid(),
-                TokenNumber = tokenNumber,
-                PatientId = patient.Id,
-                DepartmentId = doctor.DepartmentId,
-                DoctorId = doctor.Id,
-                Status = "Waiting",
-                BaseWeight = PriorityScoreCalculator.BaseWeightRed, // 1000: Guaranteed top priority
-                PriorityScore = PriorityScoreCalculator.BaseWeightRed, // 1000: Uncompromised Code-Red score
-                BookedAtUtc = DateTime.UtcNow,
-                TriagedAtUtc = DateTime.UtcNow,
-                ConsultationNotes = null // Kept clean for physician's consultation notes
-            };
-
-            var emergencyReason = string.IsNullOrWhiteSpace(request.ClinicalNotes)
-                ? "Immediate Emergency Walk-In Bypass (Acute Life Threat)"
-                : $"Immediate Emergency Bypass: {request.ClinicalNotes.Trim()}";
-
-            var assessment = new TriageAssessment
-            {
-                Id = Guid.NewGuid(),
-                QueueTokenId = token.Id,
-                NurseUserId = nurseUserId,
-                NursingStationId = nursingStationId,
-                SpO2 = 0,
-                SystolicBp = 0,
-                DiastolicBp = 0,
-                HeartRate = 0,
-                Temperature = 0,
-                PainScale = 10,
-                TriageLevel = "Red",
-                IsManualOverride = true,
-                OverrideReason = emergencyReason,
-                NurseNotes = request.ClinicalNotes?.Trim(),
-                AssessedAtUtc = DateTime.UtcNow
-            };
-
-            await _context.QueueTokens.AddAsync(token);
-            await _context.TriageAssessments.AddAsync(assessment);
-            await _context.SaveChangesAsync();
-
-            token.TriageAssessment = assessment;
-            return MapToTokenResponse(token, patient, doctor);
-        }
-        else
-        {
-            // Standard Booked status awaiting vitals
-            var token = new QueueToken
-            {
-                Id = Guid.NewGuid(),
-                TokenNumber = tokenNumber,
-                PatientId = patient.Id,
-                DepartmentId = doctor.DepartmentId,
-                DoctorId = doctor.Id,
-                Status = "Booked",
-                BaseWeight = 0,
-                PriorityScore = 0,
-                BookedAtUtc = DateTime.UtcNow,
-                ConsultationNotes = null // Kept clean for physician's consultation notes
-            };
-
-            await _context.QueueTokens.AddAsync(token);
-            await _context.SaveChangesAsync();
-
-            return MapToTokenResponse(token, patient, doctor);
-        }
+        return await CreateAndIssueTokenAsync(patient, request.DoctorId, request.IsEmergencyCodeRed, request.ClinicalNotes, nurseUserId, nursingStationId);
     }
 
     /// <summary>
@@ -858,10 +704,25 @@ public class NurseService : INurseService
             .FirstOrDefaultAsync(p => p.Id == patientId)
             ?? throw new KeyNotFoundException($"Patient with ID '{patientId}' was not found.");
 
+        return await CreateAndIssueTokenAsync(patient, request.DoctorId, request.IsEmergencyCodeRed, request.ClinicalNotes, nurseUserId, nursingStationId);
+    }
+
+    /// <summary>
+    /// Core centralized token issuance: validates physician duty, blocks duplicate active visits today,
+    /// assigns daily atomic token number, and activates Code-Red bypass or routine intake.
+    /// </summary>
+    private async Task<QueueTokenResponse> CreateAndIssueTokenAsync(
+        Patient patient,
+        Guid doctorId,
+        bool isEmergencyCodeRed,
+        string? clinicalNotes,
+        Guid nurseUserId,
+        Guid? nursingStationId)
+    {
         var doctor = await _context.Doctors
             .Include(d => d.Department).ThenInclude(dept => dept.NursingStations)
             .Include(d => d.User)
-            .FirstOrDefaultAsync(d => d.Id == request.DoctorId)
+            .FirstOrDefaultAsync(d => d.Id == doctorId)
             ?? throw new KeyNotFoundException("Doctor was not found.");
 
         if (!doctor.User.IsActive || string.Equals(doctor.Status, "OnLeave", StringComparison.OrdinalIgnoreCase))
@@ -869,7 +730,6 @@ public class NurseService : INurseService
             throw new InvalidOperationException($"Dr. {doctor.User.FullName} is currently on leave or inactive and cannot accept patient appointments.");
         }
 
-        // Prevent duplicate active booking today for this patient and doctor
         var today = DateTime.UtcNow.Date;
         var tomorrow = today.AddDays(1);
 
@@ -888,7 +748,7 @@ public class NurseService : INurseService
 
         var tokenNumber = await TokenGenerator.GenerateAsync(_context, doctor.DepartmentId, doctor.Department.Code);
 
-        if (request.IsEmergencyCodeRed)
+        if (isEmergencyCodeRed)
         {
             var token = new QueueToken
             {
@@ -902,12 +762,12 @@ public class NurseService : INurseService
                 PriorityScore = PriorityScoreCalculator.BaseWeightRed, // 1000: Uncompromised Code-Red score
                 BookedAtUtc = DateTime.UtcNow,
                 TriagedAtUtc = DateTime.UtcNow,
-                ConsultationNotes = null // Kept clean for physician's consultation notes
+                ConsultationNotes = null
             };
 
-            var emergencyReason = string.IsNullOrWhiteSpace(request.ClinicalNotes)
+            var emergencyReason = string.IsNullOrWhiteSpace(clinicalNotes)
                 ? "Immediate Emergency Walk-In Bypass (Acute Life Threat)"
-                : $"Immediate Emergency Bypass: {request.ClinicalNotes.Trim()}";
+                : $"Immediate Emergency Bypass: {clinicalNotes.Trim()}";
 
             var assessment = new TriageAssessment
             {
@@ -924,7 +784,7 @@ public class NurseService : INurseService
                 TriageLevel = "Red",
                 IsManualOverride = true,
                 OverrideReason = emergencyReason,
-                NurseNotes = request.ClinicalNotes?.Trim(),
+                NurseNotes = clinicalNotes?.Trim(),
                 AssessedAtUtc = DateTime.UtcNow
             };
 
@@ -948,7 +808,7 @@ public class NurseService : INurseService
                 BaseWeight = 0,
                 PriorityScore = 0,
                 BookedAtUtc = DateTime.UtcNow,
-                ConsultationNotes = null // Kept clean for physician's consultation notes
+                ConsultationNotes = null
             };
 
             await _context.QueueTokens.AddAsync(token);
@@ -958,31 +818,31 @@ public class NurseService : INurseService
         }
     }
 
-    #endregion
-
-        /// <summary>
+    /// <summary>
     /// Cancels an untriaged walk-in token if patient departed or checked in mistakenly.
-    /// </summary>
-    public async Task<QueueTokenResponse> CancelUntriagedTokenAsync(Guid tokenId, Guid nurseUserId)
-    {
-        var token = await _context.QueueTokens
-            .Include(t => t.Patient)
-            .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.Department)
-            .FirstOrDefaultAsync(t => t.Id == tokenId)
-            ?? throw new KeyNotFoundException($"Token with ID '{tokenId}' was not found.");
-
-        if (token.Status != "Booked")
+        /// </summary>
+        public async Task<QueueTokenResponse> CancelUntriagedTokenAsync(Guid tokenId, Guid nurseUserId)
         {
-            throw new InvalidOperationException($"Cannot cancel a token with status '{token.Status}'. Only untriaged 'Booked' tokens can be cancelled at the nursing desk.");
+            var token = await _context.QueueTokens
+                .Include(t => t.Patient)
+                .Include(t => t.Doctor).ThenInclude(d => d.User)
+                .Include(t => t.Department)
+                .FirstOrDefaultAsync(t => t.Id == tokenId)
+                ?? throw new KeyNotFoundException($"Token with ID '{tokenId}' was not found.");
+
+            if (token.Status != "Booked")
+            {
+                throw new InvalidOperationException($"Cannot cancel a token with status '{token.Status}'. Only untriaged 'Booked' tokens can be cancelled at the nursing desk.");
+            }
+
+            token.Status = "Cancelled";
+            token.ConsultationNotes = "Cancelled at Nurse Desk - Patient departed before vitals intake.";
+            await _context.SaveChangesAsync();
+
+            return MapToTokenResponse(token, token.Patient, token.Doctor);
         }
 
-        token.Status = "Cancelled";
-        token.ConsultationNotes = "Cancelled at Nurse Desk - Patient departed before vitals intake.";
-        await _context.SaveChangesAsync();
-
-        return MapToTokenResponse(token, token.Patient, token.Doctor);
-    }
+    #endregion
 
     #region 5. Clinical Decision Support & Entity Mapping
 
@@ -1065,6 +925,30 @@ public class NurseService : INurseService
     /// <summary>
     /// Projects QueueToken entity into QueueTokenResponse with resolved nursing station and live wayfinding guidance.
     /// </summary>
+    private static TriageAssessmentResponse MapToTriageResponse(TriageAssessment a)
+    {
+        return new TriageAssessmentResponse
+        {
+            Id = a.Id,
+            QueueTokenId = a.QueueTokenId,
+            NurseUserId = a.NurseUserId,
+            NurseName = a.NurseUser?.FullName ?? string.Empty,
+            NursingStationId = a.NursingStationId,
+            StationName = a.NursingStation?.StationName,
+            SpO2 = a.SpO2 > 0 ? a.SpO2 : null,
+            SystolicBp = a.SystolicBp > 0 ? a.SystolicBp : null,
+            DiastolicBp = a.DiastolicBp > 0 ? a.DiastolicBp : null,
+            HeartRate = a.HeartRate > 0 ? a.HeartRate : null,
+            Temperature = a.Temperature > 0 ? a.Temperature : null,
+            PainScale = a.PainScale,
+            TriageLevel = a.TriageLevel,
+            IsManualOverride = a.IsManualOverride,
+            OverrideReason = a.OverrideReason,
+            NurseNotes = a.NurseNotes,
+            AssessedAtUtc = a.AssessedAtUtc
+        };
+    }
+
     private static QueueTokenResponse MapToTokenResponse(QueueToken t, Patient? p, Doctor? d)
     {
         // Resolve Nursing Station from TriageAssessment (if triaged) or from Department (if awaiting triage)
