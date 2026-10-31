@@ -81,43 +81,45 @@ public class NurseService : INurseService
                                                 || p.MedicalRecordNumber.Contains(mrnClean));
         }
 
-        return await patientQuery
+        var results = await patientQuery
             .Take(15)
-            .Select(p => new PatientSearchResult
+            .Select(p => new
             {
-                PatientId = p.Id,
-                MedicalRecordNumber = p.MedicalRecordNumber,
-                FullName = p.FullName,
-                PhoneNumber = p.PhoneNumber,
-                DateOfBirth = p.DateOfBirth,
-                Gender = p.Gender,
-                ActiveTokenId = p.QueueTokens
+                p.Id,
+                p.MedicalRecordNumber,
+                p.FullName,
+                p.PhoneNumber,
+                p.DateOfBirth,
+                p.Gender,
+                ActiveToken = p.QueueTokens
                     .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
                     .OrderByDescending(t => t.BookedAtUtc)
-                    .Select(t => (Guid?)t.Id)
-                    .FirstOrDefault(),
-                ActiveTokenNumber = p.QueueTokens
-                    .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
-                    .OrderByDescending(t => t.BookedAtUtc)
-                    .Select(t => t.TokenNumber)
-                    .FirstOrDefault(),
-                ActiveTokenStatus = p.QueueTokens
-                    .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
-                    .OrderByDescending(t => t.BookedAtUtc)
-                    .Select(t => t.Status)
-                    .FirstOrDefault(),
-                ActiveDoctorName = p.QueueTokens
-                    .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
-                    .OrderByDescending(t => t.BookedAtUtc)
-                    .Select(t => t.Doctor.User.FullName)
-                    .FirstOrDefault(),
-                ActiveDepartmentName = p.QueueTokens
-                    .Where(t => t.BookedAtUtc >= todayUtc && t.BookedAtUtc < tomorrowUtc && t.Status != "Completed" && t.Status != "Cancelled")
-                    .OrderByDescending(t => t.BookedAtUtc)
-                    .Select(t => t.Department.Name)
+                    .Select(t => new
+                    {
+                        t.Id,
+                        t.TokenNumber,
+                        t.Status,
+                        DoctorName = t.Doctor.User.FullName,
+                        DepartmentName = t.Department.Name
+                    })
                     .FirstOrDefault()
             })
             .ToListAsync();
+
+        return results.Select(p => new PatientSearchResult
+        {
+            PatientId = p.Id,
+            MedicalRecordNumber = p.MedicalRecordNumber,
+            FullName = p.FullName,
+            PhoneNumber = p.PhoneNumber,
+            DateOfBirth = p.DateOfBirth,
+            Gender = p.Gender,
+            ActiveTokenId = p.ActiveToken != null ? (Guid?)p.ActiveToken.Id : null,
+            ActiveTokenNumber = p.ActiveToken?.TokenNumber,
+            ActiveTokenStatus = p.ActiveToken?.Status,
+            ActiveDoctorName = p.ActiveToken?.DoctorName,
+            ActiveDepartmentName = p.ActiveToken?.DepartmentName
+        }).ToList();
     }
 
     #endregion
@@ -958,31 +960,31 @@ public class NurseService : INurseService
         }
     }
 
-    #endregion
-
-        /// <summary>
+    /// <summary>
     /// Cancels an untriaged walk-in token if patient departed or checked in mistakenly.
-    /// </summary>
-    public async Task<QueueTokenResponse> CancelUntriagedTokenAsync(Guid tokenId, Guid nurseUserId)
-    {
-        var token = await _context.QueueTokens
-            .Include(t => t.Patient)
-            .Include(t => t.Doctor).ThenInclude(d => d.User)
-            .Include(t => t.Department)
-            .FirstOrDefaultAsync(t => t.Id == tokenId)
-            ?? throw new KeyNotFoundException($"Token with ID '{tokenId}' was not found.");
-
-        if (token.Status != "Booked")
+        /// </summary>
+        public async Task<QueueTokenResponse> CancelUntriagedTokenAsync(Guid tokenId, Guid nurseUserId)
         {
-            throw new InvalidOperationException($"Cannot cancel a token with status '{token.Status}'. Only untriaged 'Booked' tokens can be cancelled at the nursing desk.");
+            var token = await _context.QueueTokens
+                .Include(t => t.Patient)
+                .Include(t => t.Doctor).ThenInclude(d => d.User)
+                .Include(t => t.Department)
+                .FirstOrDefaultAsync(t => t.Id == tokenId)
+                ?? throw new KeyNotFoundException($"Token with ID '{tokenId}' was not found.");
+
+            if (token.Status != "Booked")
+            {
+                throw new InvalidOperationException($"Cannot cancel a token with status '{token.Status}'. Only untriaged 'Booked' tokens can be cancelled at the nursing desk.");
+            }
+
+            token.Status = "Cancelled";
+            token.ConsultationNotes = "Cancelled at Nurse Desk - Patient departed before vitals intake.";
+            await _context.SaveChangesAsync();
+
+            return MapToTokenResponse(token, token.Patient, token.Doctor);
         }
 
-        token.Status = "Cancelled";
-        token.ConsultationNotes = "Cancelled at Nurse Desk - Patient departed before vitals intake.";
-        await _context.SaveChangesAsync();
-
-        return MapToTokenResponse(token, token.Patient, token.Doctor);
-    }
+    #endregion
 
     #region 5. Clinical Decision Support & Entity Mapping
 
