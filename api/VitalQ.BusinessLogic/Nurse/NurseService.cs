@@ -680,7 +680,7 @@ public class NurseService : INurseService
             {
                 Id = Guid.NewGuid(),
                 UserId = user.Id,
-                MedicalRecordNumber = MrnGenerator.Generate(),
+                MedicalRecordNumber = await MrnGenerator.GenerateMrnAsync(_context),
                 FullName = request.FullName.Trim(),
                 PhoneNumber = phone,
                 DateOfBirth = request.DateOfBirth,
@@ -688,7 +688,7 @@ public class NurseService : INurseService
                 CreatedAtUtc = DateTime.UtcNow
             };
             await _context.Patients.AddAsync(patient);
-            await _context.SaveChangesAsync();
+            await SaveChangesWithMrnRetryAsync();
         }
 
         return await CreateAndIssueTokenAsync(patient, request.DoctorId, request.IsEmergencyCodeRed, request.ClinicalNotes, nurseUserId, nursingStationId);
@@ -891,10 +891,10 @@ public class NurseService : INurseService
     /// </summary>
     private static int CalculateBaseWeight(string triageLevel) => triageLevel switch
     {
-        "Red" => 1000,
-        "Yellow" => 500,
-        "Green" => 100,
-        _ => 100
+        "Red" => PriorityScoreCalculator.BaseWeightRed,
+        "Yellow" => PriorityScoreCalculator.BaseWeightYellow,
+        "Green" => PriorityScoreCalculator.BaseWeightGreen,
+        _ => PriorityScoreCalculator.BaseWeightGreen
     };
 
     /// <summary>
@@ -920,6 +920,26 @@ public class NurseService : INurseService
             throw new ArgumentException("Date of birth must be in the past.");
         if (dob < today.AddYears(-130))
             throw new ArgumentException("Please provide a valid date of birth.");
+    }
+
+    private async Task SaveChangesWithMrnRetryAsync()
+    {
+        const int maxAttempts = 3;
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                await _context.SaveChangesAsync();
+                return;
+            }
+            catch (DbUpdateException) when (attempt < maxAttempts)
+            {
+                foreach (var entry in _context.ChangeTracker.Entries<Patient>().Where(e => e.State == EntityState.Added))
+                {
+                    entry.Entity.MedicalRecordNumber = await MrnGenerator.GenerateMrnAsync(_context);
+                }
+            }
+        }
     }
 
     /// <summary>

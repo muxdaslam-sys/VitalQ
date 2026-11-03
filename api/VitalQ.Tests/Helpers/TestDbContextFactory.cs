@@ -121,7 +121,7 @@ public static class TestDbContextFactory
         var patient = new PatientEntity
         {
             Id = Guid.NewGuid(),
-            MedicalRecordNumber = "MRN-261103-A1B2",
+            MedicalRecordNumber = "MRN-000001",
             FullName = "Jane Doe",
             PhoneNumber = "9998887777",
             Gender = "Female",
