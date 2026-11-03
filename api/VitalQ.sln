@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VitalQ.BusinessLogic", "Vit
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VitalQ.DataAccess", "VitalQ.DataAccess\VitalQ.DataAccess.csproj", "{8B784645-2904-4A36-9280-199265D95741}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VitalQ.Tests", "VitalQ.Tests\VitalQ.Tests.csproj", "{459D7B48-F493-4E74-A8CD-03009D8D9BA9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{8B784645-2904-4A36-9280-199265D95741}.Release|x64.Build.0 = Release|Any CPU
 		{8B784645-2904-4A36-9280-199265D95741}.Release|x86.ActiveCfg = Release|Any CPU
 		{8B784645-2904-4A36-9280-199265D95741}.Release|x86.Build.0 = Release|Any CPU
+		{459D7B48-F493-4E74-A8CD-03009D8D9BA9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{459D7B48-F493-4E74-A8CD-03009D8D9BA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{459D7B48-F493-4E74-A8CD-03009D8D9BA9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{459D7B48-F493-4E74-A8CD-03009D8D9BA9}.Debug|x64.Build.0 = Debug|Any CPU
+		{459D7B48-F493-4E74-A8CD-03009D8D9BA9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{459D7B48-F493-4E74-A8CD-03009D8D9BA9}.Debug|x86.Build.0 = Debug|Any CPU
+		{459D7B48-F493-4E74-A8CD-03009D8D9BA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{459D7B48-F493-4E74-A8CD-03009D8D9BA9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{459D7B48-F493-4E74-A8CD-03009D8D9BA9}.Release|x64.ActiveCfg = Release|Any CPU
+		{459D7B48-F493-4E74-A8CD-03009D8D9BA9}.Release|x64.Build.0 = Release|Any CPU
+		{459D7B48-F493-4E74-A8CD-03009D8D9BA9}.Release|x86.ActiveCfg = Release|Any CPU
+		{459D7B48-F493-4E74-A8CD-03009D8D9BA9}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

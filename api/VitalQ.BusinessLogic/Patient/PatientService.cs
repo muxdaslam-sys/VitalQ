@@ -76,7 +76,7 @@ public class PatientService : IPatientService
             {
                 Id = Guid.NewGuid(),
                 UserId = user.Id,
-                MedicalRecordNumber = MrnGenerator.Generate(),
+                MedicalRecordNumber = await MrnGenerator.GenerateMrnAsync(_context),
                 FullName = request.FullName.Trim(),
                 PhoneNumber = phone,
                 DateOfBirth = request.DateOfBirth,
@@ -124,7 +124,7 @@ public class PatientService : IPatientService
         {
             Id = Guid.NewGuid(),
             UserId = null,
-            MedicalRecordNumber = MrnGenerator.Generate(),
+            MedicalRecordNumber = await MrnGenerator.GenerateMrnAsync(_context),
             FullName = fullNameTrimmed,
             PhoneNumber = parentUser.PhoneNumber,
             DateOfBirth = request.DateOfBirth,
@@ -566,7 +566,7 @@ public class PatientService : IPatientService
             {
                 foreach (var entry in _context.ChangeTracker.Entries<Patient>().Where(e => e.State == EntityState.Added))
                 {
-                    entry.Entity.MedicalRecordNumber = MrnGenerator.Generate();
+                    entry.Entity.MedicalRecordNumber = await MrnGenerator.GenerateMrnAsync(_context);
                 }
             }
         }
