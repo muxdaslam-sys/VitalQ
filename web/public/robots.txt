@@ -1,0 +1,4 @@
+# VitalQ - Clinical Outpatient & Triage System
+# Search engine web crawlers are strictly disallowed to protect clinical data and patient privacy.
+User-agent: *
+Disallow: /
