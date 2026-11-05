@@ -238,6 +238,7 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
 
       osc.start();
       osc.stop(ctx.currentTime + 0.8);
+      setTimeout(() => { try { ctx.close(); } catch {} }, 1000);
     } catch {
       // Audio playback gracefully handled if browser policy blocks autoplay
     }
@@ -327,7 +328,7 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
     switch (status) {
       case 'Booked': return 'Step 1: Visit Nurse Desk';
       case 'Waiting': return 'In Line for Doctor';
-      case 'Called': return 'Doctor Calling — Enter Room';
+      case 'Called': return 'Doctor Calling: Enter Room';
       case 'Skipped': return 'On Hold (Missed Call)';
       case 'Completed': return 'Visit Completed';
       case 'Cancelled': return 'Cancelled';

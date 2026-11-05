@@ -78,7 +78,7 @@ VitalQ solves this with the **Single-Screen Smart Hub** located at `src/app/feat
 | Section | UI Purpose | Clinical / Hospital Logic |
 | :--- | :--- | :--- |
 | **Top Hub Header** | Welcome banner with live WebSocket connectivity badge | Reassures patient that their connection to the hospital server is active and updating live in real-time. |
-| **Multi-Slip Switcher** | Horizontal chips of today's tokens | Allows parents or guardians to manage 2–4 family members' queues from one device with single-tap switching. |
+| **Multi-Slip Switcher** | Horizontal chips of today's tokens | Allows parents or guardians to manage 2-4 family members' queues from one device with single-tap switching. |
 | **Active Pass Header** | Hospital department, room number, token number, status | Acts as the official digital sequence slip to be shown at reception and doctor chambers. |
 | **Stage 1 (`Booked`)** | Warning banner directing patient to Nursing Desk | Enforces hospital policy that vitals (BP, SpO2, HR, Temp) must be evaluated before queue position is activated. |
 | **Stage 2 (`Waiting`)** | "Patients Ahead" & "Estimated Wait" live counters + CTAS tier | Dynamic estimate based on doctor's consultation pace. Explains anti-starvation aging (score increases every minute). |

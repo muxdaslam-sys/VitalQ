@@ -1,4 +1,4 @@
-# VitalQ — Real-Time Hospital OPD Queue Orchestration & CTAS Triage Platform
+# VitalQ - Real-Time Hospital OPD Queue Orchestration & CTAS Triage Platform
 
 [![Status: Production Ready](https://img.shields.io/badge/Status-Production--Ready-success?logo=checkmarx&logoColor=white)](https://github.com/muxdaslam-sys/VitalQ)
 [![Tests](https://img.shields.io/badge/Tests-63%2F63%20Passing-brightgreen?logo=checkmarx&logoColor=white)](https://github.com/muxdaslam-sys/VitalQ)
@@ -46,7 +46,7 @@
 ### 1. 🩺 Doctor Consultation Console (`/doctor`)
 * **Real-Time Priority Queue**: High-urgency (Red/Yellow) patients dynamically prioritized ahead of routine visits using the CTAS algorithm + waiting aging formula (+2 pts/min).
 * **Audio Summon & Web Audio Chimes**: One-click "Call Next" triggers harmonic auditory chimes and sends SignalR broadcasts to patient devices and waiting room monitors.
-* **Mandatory Consultation Notes & Discharge Guard**: Physicians must record structured clinical advice/prescriptions (5–2000 chars) to finalize consultations; safety guard prevents summoning a new patient while an active consultation is in progress without finalized notes.
+* **Mandatory Consultation Notes & Discharge Guard**: Physicians must record structured clinical advice/prescriptions (5-2000 chars) to finalize consultations; safety guard prevents summoning a new patient while an active consultation is in progress without finalized notes.
 * **Physician Chamber Ownership**: Enforces strict room authorization so physicians can only discharge or skip patients assigned to their own examination room.
 * **Longitudinal History Drawer**: Slide-over drawer providing immediate access to historical visits, past clinical notes, vitals taken, and previous doctor diagnoses.
 * **3-Strike Absentee Policy**: Skipped/absent patients held on temporary hold with automated countdown timers before token expiration (`Call X of 3`).
@@ -80,7 +80,7 @@
 
 ## 🔒 Security & HIPAA Alignment
 
-* **Workstation Auto-Lock on Shutdown**: User credentials and tokens stored exclusively in `sessionStorage`—terminating sessions automatically upon browser close or workstation shutdown.
+* **Workstation Auto-Lock on Shutdown**: User credentials and tokens stored exclusively in `sessionStorage`, terminating sessions automatically upon browser close or workstation shutdown.
 * **15-Minute HIPAA Idle Lock**: Native mouse and keyboard activity tracker terminates inactive sessions after 15 minutes of inactivity.
 * **Brute-Force Shield**: .NET rate limiter (`10 requests/min/IP`) protects the authentication endpoints, returning HTTP `429 Too Many Requests`.
 * **Silent Token Rotation**: Concurrency-safe RxJS mutex (`shareReplay`) deduplicates parallel 401 refresh calls and tags replayed requests with `X-VitalQ-Retry` to prevent infinite loops.
@@ -209,4 +209,4 @@ cd web && npm test -- --watch=false
 ---
 
 ## 📄 License
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
