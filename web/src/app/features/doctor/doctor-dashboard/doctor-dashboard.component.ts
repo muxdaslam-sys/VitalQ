@@ -709,6 +709,7 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
 
       osc.start();
       osc.stop(ctx.currentTime + 0.85);
+      setTimeout(() => { try { ctx.close(); } catch {} }, 1000);
     } catch {
       // Audio autoplay gracefully handled if browser policy restricts audio context
     }

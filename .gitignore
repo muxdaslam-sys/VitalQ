@@ -39,3 +39,7 @@ PROJECT_STATE.md
 *.mdf
 *.ldf
 *.sql
+
+## Local deployment tools & tunnels
+tools/
+*.exe

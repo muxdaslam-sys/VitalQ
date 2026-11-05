@@ -42,15 +42,23 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddPolicy("LoginLimiter", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+    {
+        var rawForwarded = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        var clientIp = httpContext.Request.Headers["CF-Connecting-IP"].FirstOrDefault()
+            ?? (!string.IsNullOrWhiteSpace(rawForwarded) ? rawForwarded.Split(',')[0].Trim() : null)
+            ?? httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: clientIp,
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
-                PermitLimit = 10, // Max 10 login attempts per minute per IP
+                PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
-            }));
+            });
+    });
 });
 
 // 3. JWT Authentication Setup
@@ -102,6 +110,10 @@ builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddSignalR();
 builder.Services.AddHostedService<AgingWorker>();
 
+// 6.1 Native Health Checks (Database Readiness & Container Liveness)
+builder.Services.AddHealthChecks()
+    .AddCheck<VitalQ.API.Health.DatabaseHealthCheck>("sql_server", tags: new[] { "ready" });
+
 // 7. Controllers & JSON cycle handling
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -140,6 +152,21 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// 8.0 Asynchronous Database Connection Pool Priming & EF Core Query Compilation Warmup
+_ = Task.Run(async () =>
+{
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<VitalQDbContext>();
+        _ = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == "__warmup__");
+    }
+    catch
+    {
+        // Non-blocking opportunistic startup warmup
+    }
+});
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -169,5 +196,35 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<QueueHub>("/hubs/queue");
+
+// 10. Health Check Probes (Docker / Kubernetes / Hospital IT Monitoring)
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false // Instant ping (proves .NET process is alive and responsive)
+});
+
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = async (httpContext, report) =>
+    {
+        httpContext.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            totalDurationMs = Math.Round(report.TotalDuration.TotalMilliseconds, 2),
+            timestampUtc = DateTime.UtcNow,
+            checks = report.Entries.Select(e => new
+            {
+                component = e.Key,
+                status = e.Value.Status.ToString(),
+                durationMs = Math.Round(e.Value.Duration.TotalMilliseconds, 2),
+                description = e.Value.Description,
+                data = e.Value.Data
+            })
+        };
+        await httpContext.Response.WriteAsJsonAsync(response);
+    }
+});
 
 app.Run();

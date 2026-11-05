@@ -256,6 +256,7 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
       gain.connect(audioCtx.destination);
       osc.start();
       osc.stop(audioCtx.currentTime + 0.9);
+      setTimeout(() => { try { audioCtx.close(); } catch {} }, 1000);
     } catch {
       // Audio autoplay gracefully handled
     }

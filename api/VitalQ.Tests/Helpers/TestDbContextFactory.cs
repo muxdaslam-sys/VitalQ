@@ -8,20 +8,30 @@ namespace VitalQ.Tests.Helpers;
 
 public class TestVitalQDbContext : VitalQDbContext
 {
+    private static readonly object _saveLock = new();
+
     public TestVitalQDbContext(DbContextOptions<VitalQDbContext> options) : base(options)
     {
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        PopulateRowVersions();
-        return base.SaveChangesAsync(cancellationToken);
+        lock (_saveLock)
+        {
+            PopulateRowVersions();
+            EnforceUniqueConstraints();
+            return base.SaveChangesAsync(cancellationToken);
+        }
     }
 
     public override int SaveChanges()
     {
-        PopulateRowVersions();
-        return base.SaveChanges();
+        lock (_saveLock)
+        {
+            PopulateRowVersions();
+            EnforceUniqueConstraints();
+            return base.SaveChanges();
+        }
     }
 
     private void PopulateRowVersions()
@@ -31,6 +41,22 @@ public class TestVitalQDbContext : VitalQDbContext
             if (entry.Entity.RowVersion == null || entry.Entity.RowVersion.Length == 0)
             {
                 entry.Entity.RowVersion = new byte[] { 1, 0, 0, 0 };
+            }
+        }
+    }
+
+    private void EnforceUniqueConstraints()
+    {
+        var addedMrns = ChangeTracker.Entries<PatientEntity>()
+            .Where(e => e.State == EntityState.Added && !string.IsNullOrEmpty(e.Entity.MedicalRecordNumber))
+            .Select(e => e.Entity.MedicalRecordNumber)
+            .ToList();
+
+        foreach (var mrn in addedMrns)
+        {
+            if (Patients.AsNoTracking().Any(p => p.MedicalRecordNumber == mrn))
+            {
+                throw new DbUpdateException($"Violation of UNIQUE KEY constraint 'UQ_Patients_MRN'. Cannot insert duplicate key in object 'dbo.Patients'. The duplicate key value is ({mrn}).");
             }
         }
     }
