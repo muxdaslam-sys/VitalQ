@@ -42,15 +42,23 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddPolicy("LoginLimiter", httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+    {
+        var rawForwarded = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        var clientIp = httpContext.Request.Headers["CF-Connecting-IP"].FirstOrDefault()
+            ?? (!string.IsNullOrWhiteSpace(rawForwarded) ? rawForwarded.Split(',')[0].Trim() : null)
+            ?? httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: clientIp,
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
-                PermitLimit = 10, // Max 10 login attempts per minute per IP
+                PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
-            }));
+            });
+    });
 });
 
 // 3. JWT Authentication Setup
@@ -143,6 +151,21 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
+
+// 8.0 Asynchronous Database Connection Pool Priming & EF Core Query Compilation Warmup
+_ = Task.Run(async () =>
+{
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<VitalQDbContext>();
+        _ = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == "__warmup__");
+    }
+    catch
+    {
+        // Non-blocking opportunistic startup warmup
+    }
+});
 
 if (app.Environment.IsDevelopment())
 {
