@@ -262,7 +262,6 @@
               </svg>
             </div>
             <input [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="credentials.password" name="password" required
-                   (keydown)="checkCapsLock($event)"
                    (keyup)="checkCapsLock($event)"
                    autocomplete="current-password"
                    placeholder="••••••••••••"

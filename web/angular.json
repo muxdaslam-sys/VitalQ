@@ -90,6 +90,13 @@
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json",
+            "disableHostCheck": true,
+            "allowedHosts": [
+              ".trycloudflare.com"
+            ]
+          },
           "configurations": {
             "production": {
               "buildTarget": "vitalq-web:build:production"

@@ -116,7 +116,10 @@ export class LoginComponent implements OnInit {
    */
   checkCapsLock(event: KeyboardEvent): void {
     if (event.getModifierState) {
-      this.capsLockOn.set(event.getModifierState('CapsLock'));
+      const isLocked = event.getModifierState('CapsLock');
+      if (this.capsLockOn() !== isLocked) {
+        this.capsLockOn.set(isLocked);
+      }
     }
   }
 
