@@ -159,6 +159,7 @@ export class PatientDashboardComponent implements OnInit, OnDestroy {
       this.syncTokenGroups(this.tokens());
 
       const sub1 = this.signalR.onPatientCalled$.subscribe((calledToken) => {
+        this.previousCalledIds.add(calledToken.id);
         this.playHospitalChime();
         this.selectedTokenId.set(calledToken.id);
         this.refreshTokensSilently();

@@ -194,10 +194,10 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
 
       // Refresh token if doctor calls patient or queue moves
       const callSub = this.signalR.onPatientCalled$.subscribe(calledToken => {
-        if (this.token() && this.token()!.id === calledToken.id) {
+        if (this.token() && this.token()!.id?.toLowerCase() === calledToken.id?.toLowerCase()) {
           this.token.set(calledToken);
           this.checkIfCalled(calledToken);
-        } else if (this.token() && this.token()!.doctorId === calledToken.doctorId) {
+        } else if (this.token() && this.token()!.doctorId?.toLowerCase() === calledToken.doctorId?.toLowerCase()) {
           // Another patient in this doctor's line was called; queue moved forward
           this.fetchTokenSilently(this.token()!.tokenNumber);
         }
@@ -211,17 +211,17 @@ export class PublicTrackerComponent implements OnInit, OnDestroy {
           return;
         }
 
-        if (this.token() && this.token()!.id === updatedToken.id) {
+        if (this.token() && this.token()!.id?.toLowerCase() === updatedToken.id?.toLowerCase()) {
           this.token.set(updatedToken);
           this.checkIfCalled(updatedToken);
-        } else if (this.token() && this.token()!.doctorId === updatedToken.doctorId) {
+        } else if (this.token() && this.token()!.doctorId?.toLowerCase() === updatedToken.doctorId?.toLowerCase()) {
           // Another patient in this doctor's line was completed, skipped, or progressed
           this.fetchTokenSilently(this.token()!.tokenNumber);
         }
       });
 
       const triageSub = this.signalR.onTriageCompleted$.subscribe(triagedToken => {
-        if (this.token() && this.token()!.id === triagedToken.id) {
+        if (this.token() && this.token()!.id?.toLowerCase() === triagedToken.id?.toLowerCase()) {
           this.token.set(triagedToken);
         }
       });
