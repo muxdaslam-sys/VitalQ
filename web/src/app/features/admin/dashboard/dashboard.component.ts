@@ -1,7 +1,8 @@
 import { Component, OnInit, OnDestroy, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, Subject } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { AdminService } from '../../../core/services/admin.service';
 import { SignalRService } from '../../../core/services/signalr.service';
 import { AdminDashboardStatsResponse } from '../../../shared/models/admin.model';
@@ -30,6 +31,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private adminService = inject(AdminService);
   private signalR = inject(SignalRService);
   private subs: Subscription[] = [];
+  private refreshSubject = new Subject<void>();
 
   // #region State Signals
 
@@ -54,6 +56,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // #region Lifecycle
 
   ngOnInit(): void {
+    const refreshSub = this.refreshSubject.pipe(
+      debounceTime(500)
+    ).subscribe(() => {
+      this.loadHospitalMetrics(true);
+    });
+    this.subs.push(refreshSub);
+
     this.loadHospitalMetrics();
     this.initSignalR();
   }
@@ -96,15 +105,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.signalR.joinAdminGroup();
 
       const docSub = this.signalR.onDoctorStatusChanged$.subscribe(() => {
-        this.loadHospitalMetrics(true);
+        this.refreshSubject.next();
       });
 
       const bookSub = this.signalR.onTokenBooked$.subscribe(() => {
-        this.loadHospitalMetrics(true);
+        this.refreshSubject.next();
       });
 
       const queueSub = this.signalR.onQueueUpdated$.subscribe(() => {
-        this.loadHospitalMetrics(true);
+        this.refreshSubject.next();
       });
 
       this.subs.push(docSub, bookSub, queueSub);

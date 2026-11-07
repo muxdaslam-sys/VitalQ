@@ -46,6 +46,12 @@ export class SignalRService {
   /** Boolean flag tracking live WebSocket connection health */
   public isConnected = false;
 
+  /** Tracks active broadcast groups to re-join after network reconnect */
+  private activeDoctorGroupId: string | null = null;
+  private isNurseStationGroupActive = false;
+  private isAdminGroupActive = false;
+  private activeTokenGroupIds = new Set<string>();
+
   /**
    * Initializes and starts the persistent WebSocket connection to the SignalR Hub.
    * Transmits JWT bearer token via `accessTokenFactory` for group authorization.
@@ -67,6 +73,23 @@ export class SignalRService {
       .configureLogging(signalR.LogLevel.Warning)
       .build();
 
+    // Automatically re-join active broadcast groups upon reconnection
+    this.hubConnection.onreconnected(async () => {
+      this.isConnected = true;
+      if (this.activeDoctorGroupId) {
+        await this.joinDoctorGroup(this.activeDoctorGroupId);
+      }
+      if (this.isNurseStationGroupActive) {
+        await this.joinNurseStationGroup();
+      }
+      if (this.isAdminGroupActive) {
+        await this.joinAdminGroup();
+      }
+      for (const tokenId of this.activeTokenGroupIds) {
+        await this.joinTokenGroup(tokenId);
+      }
+    });
+
     this.registerServerEvents();
 
     return this.hubConnection
@@ -84,6 +107,10 @@ export class SignalRService {
    * Cleanly closes the WebSocket connection during user logout or teardown.
    */
   stopConnection(): Promise<void> {
+    this.activeDoctorGroupId = null;
+    this.isNurseStationGroupActive = false;
+    this.isAdminGroupActive = false;
+    this.activeTokenGroupIds.clear();
     if (this.hubConnection) {
       return this.hubConnection.stop().then(() => {
         this.isConnected = false;
@@ -99,13 +126,15 @@ export class SignalRService {
 
   /** Joins real-time updates for a specific doctor's room queue */
   async joinDoctorGroup(doctorId: string): Promise<void> {
+    this.activeDoctorGroupId = doctorId.toLowerCase();
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
-      await this.hubConnection.invoke('JoinDoctorGroup', doctorId.toLowerCase());
+      await this.hubConnection.invoke('JoinDoctorGroup', this.activeDoctorGroupId);
     }
   }
 
   /** Leaves a doctor's room queue broadcast */
   async leaveDoctorGroup(doctorId: string): Promise<void> {
+    this.activeDoctorGroupId = null;
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
       await this.hubConnection.invoke('LeaveDoctorGroup', doctorId.toLowerCase());
     }
@@ -113,6 +142,7 @@ export class SignalRService {
 
   /** Joins real-time updates for the nurse triage desk station */
   async joinNurseStationGroup(): Promise<void> {
+    this.isNurseStationGroupActive = true;
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
       await this.hubConnection.invoke('JoinNurseStationGroup');
     }
@@ -120,6 +150,7 @@ export class SignalRService {
 
   /** Leaves the nurse triage desk broadcast group */
   async leaveNurseStationGroup(): Promise<void> {
+    this.isNurseStationGroupActive = false;
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
       await this.hubConnection.invoke('LeaveNurseStationGroup');
     }
@@ -127,6 +158,7 @@ export class SignalRService {
 
   /** Joins real-time hospital administration KPI overview group */
   async joinAdminGroup(): Promise<void> {
+    this.isAdminGroupActive = true;
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
       await this.hubConnection.invoke('JoinAdminGroup');
     }
@@ -134,6 +166,7 @@ export class SignalRService {
 
   /** Leaves the administration broadcast group */
   async leaveAdminGroup(): Promise<void> {
+    this.isAdminGroupActive = false;
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
       await this.hubConnection.invoke('LeaveAdminGroup');
     }
@@ -155,15 +188,19 @@ export class SignalRService {
 
   /** Subscribes a patient to targeted alerts for their specific consultation slip */
   async joinTokenGroup(tokenId: string): Promise<void> {
+    const cleanId = tokenId.toLowerCase();
+    this.activeTokenGroupIds.add(cleanId);
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
-      await this.hubConnection.invoke('JoinTokenGroup', tokenId.toLowerCase());
+      await this.hubConnection.invoke('JoinTokenGroup', cleanId);
     }
   }
 
   /** Unsubscribes from a specific token group upon completion or cancellation */
   async leaveTokenGroup(tokenId: string): Promise<void> {
+    const cleanId = tokenId.toLowerCase();
+    this.activeTokenGroupIds.delete(cleanId);
     if (this.hubConnection?.state === signalR.HubConnectionState.Connected) {
-      await this.hubConnection.invoke('LeaveTokenGroup', tokenId.toLowerCase());
+      await this.hubConnection.invoke('LeaveTokenGroup', cleanId);
     }
   }
 

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Memory;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using VitalQ.BusinessLogic.Interfaces;
@@ -13,10 +14,12 @@ namespace VitalQ.BusinessLogic.Services;
 public class AdminService : IAdminService
 {
     private readonly VitalQDbContext _context;
+    private readonly IMemoryCache? _cache;
 
-    public AdminService(VitalQDbContext context)
+    public AdminService(VitalQDbContext context, IMemoryCache? cache = null)
     {
         _context = context;
+        _cache = cache;
     }
 
     #region 0. Dashboard Stats & Analytics
@@ -376,6 +379,12 @@ public class AdminService : IAdminService
 
     public async Task<DoctorResponse> UpdateDoctorStatusAsync(Guid doctorId, UpdateDoctorStatusRequest request)
     {
+        var validStatuses = new[] { "Available", "Busy", "OnLeave" };
+        if (!validStatuses.Contains(request.Status))
+        {
+            throw new ArgumentException($"Invalid doctor status '{request.Status}'. Allowed values: Available, Busy, OnLeave.");
+        }
+
         var doctor = await _context.Doctors
             .Include(d => d.User)
             .Include(d => d.Department)
@@ -388,6 +397,7 @@ public class AdminService : IAdminService
 
         doctor.Status = request.Status;
         await _context.SaveChangesAsync();
+        _cache?.Remove($"AvailableDoctors_{doctor.DepartmentId}");
 
         return new DoctorResponse
         {

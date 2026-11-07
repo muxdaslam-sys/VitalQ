@@ -2,11 +2,13 @@
  * DoctorsComponent: Admin management for physician directory, schedules, room assignments, and credentials.
  */
 
-import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminService } from '../../../core/services/admin.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { SignalRService } from '../../../core/services/signalr.service';
 import { DoctorResponse, DepartmentResponse, CreateDoctorRequest, UpdateDoctorRequest } from '../../../shared/models/admin.model';
 import { TeleportToBodyDirective } from '../../../shared/directives/teleport.directive';
 
@@ -18,12 +20,14 @@ import { TeleportToBodyDirective } from '../../../shared/directives/teleport.dir
   styleUrl: './doctors.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class DoctorsComponent implements OnInit {
+export class DoctorsComponent implements OnInit, OnDestroy {
   // --------------------------------------------------------------------------
   // 1. DEPENDENCY INJECTION
   // --------------------------------------------------------------------------
   private adminService = inject(AdminService);
   private toast = inject(ToastService);
+  private signalR = inject(SignalRService);
+  private subs: Subscription[] = [];
 
   // --------------------------------------------------------------------------
   // 2. COMPONENT STATE (SIGNALS)
@@ -111,6 +115,27 @@ export class DoctorsComponent implements OnInit {
   // --------------------------------------------------------------------------
   ngOnInit(): void {
     this.loadData();
+    this.initSignalR();
+  }
+
+  ngOnDestroy(): void {
+    this.subs.forEach(s => s.unsubscribe());
+  }
+
+  private initSignalR(): void {
+    this.signalR.startConnection().then(() => {
+      const sub = this.signalR.onDoctorStatusChanged$.subscribe((data) => {
+        const current = this.doctors();
+        const updated = current.map(doc => {
+          if (doc.id.toLowerCase() === data.doctorId?.toLowerCase()) {
+            return { ...doc, status: data.status as 'Available' | 'OnLeave' | 'Busy' };
+          }
+          return doc;
+        });
+        this.doctors.set(updated);
+      });
+      this.subs.push(sub);
+    });
   }
 
   /**

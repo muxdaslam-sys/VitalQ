@@ -836,6 +836,7 @@ public class NurseService : INurseService
             }
 
             token.Status = "Cancelled";
+            token.CompletedAtUtc = DateTime.UtcNow;
             token.ConsultationNotes = "Cancelled at Nurse Desk - Patient departed before vitals intake.";
             await _context.SaveChangesAsync();
 

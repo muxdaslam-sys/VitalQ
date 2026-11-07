@@ -18,7 +18,8 @@ import { Component, OnInit, OnDestroy, inject, signal, computed, ChangeDetection
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Subscription, timer } from 'rxjs';
+import { Subscription, Subject, timer } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { AuthService } from '../../../core/services/auth.service';
 import { DoctorService } from '../../../core/services/doctor.service';
 import { SignalRService } from '../../../core/services/signalr.service';
@@ -156,12 +157,23 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
 
   // #region 3. Subscriptions & Timers
   private subs: Subscription[] = [];
+  private refreshSubject = new Subject<void>();
   private stopwatchIntervalId: any = null;
   // #endregion
 
   // #region 4. Lifecycle Hooks
 
   ngOnInit(): void {
+    const refreshSub = this.refreshSubject.pipe(
+      debounceTime(250)
+    ).subscribe(() => {
+      const doc = this.doctorProfile();
+      if (doc) {
+        this.fetchQueueAndStats(doc.id, false);
+      }
+    });
+    this.subs.push(refreshSub);
+
     this.loadDoctorProfileAndData();
   }
 
@@ -271,34 +283,54 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Consolidates embedded token vitals extraction with fallback nurse query.
+   */
+  private extractOrFetchVitals(
+    token: QueueToken,
+    onLoaded: (vitals: TriageAssessment | null) => void,
+    onLoadingState?: (isLoading: boolean) => void
+  ): void {
+    if (token.spO2 != null || token.systolicBp != null || token.heartRate != null) {
+      onLoadingState?.(false);
+      onLoaded({
+        id: '',
+        queueTokenId: token.id,
+        nurseUserId: '',
+        nurseName: token.nurseName || 'Triage Nurse',
+        stationName: token.nursingStationName || '',
+        spO2: token.spO2,
+        systolicBp: token.systolicBp,
+        diastolicBp: token.diastolicBp,
+        heartRate: token.heartRate,
+        temperature: token.temperature,
+        painScale: token.painScale,
+        triageLevel: (token.triageLevel as 'Red' | 'Yellow' | 'Green') || 'Green',
+        isManualOverride: false,
+        nurseNotes: token.nurseNotes,
+        assessedAtUtc: token.triagedAtUtc || token.bookedAtUtc
+      });
+    } else {
+      onLoadingState?.(true);
+      onLoaded(null);
+      this.nurseService.getTriageAssessment(token.id).subscribe({
+        next: (vitals) => {
+          onLoaded(vitals);
+          onLoadingState?.(false);
+        },
+        error: () => {
+          onLoaded(null);
+          onLoadingState?.(false);
+        }
+      });
+    }
+  }
+
+  /**
    * Retrieves vitals recorded by triage nurse for the active in-room patient.
    * Leverages embedded vitals on the token directly for zero-latency presentation.
    */
   loadCurrentPatientVitals(called: QueueToken): void {
-    if (called.spO2 != null || called.systolicBp != null || called.heartRate != null) {
-      this.currentVitals.set({
-        id: '',
-        queueTokenId: called.id,
-        nurseUserId: '',
-        nurseName: called.nurseName || 'Triage Nurse',
-        stationName: called.nursingStationName || '',
-        spO2: called.spO2,
-        systolicBp: called.systolicBp,
-        diastolicBp: called.diastolicBp,
-        heartRate: called.heartRate,
-        temperature: called.temperature,
-        painScale: called.painScale,
-        triageLevel: (called.triageLevel as 'Red' | 'Yellow' | 'Green') || 'Green',
-        isManualOverride: false,
-        nurseNotes: called.nurseNotes,
-        assessedAtUtc: called.triagedAtUtc || called.bookedAtUtc
-      });
-    } else {
-      this.nurseService.getTriageAssessment(called.id).subscribe({
-        next: (vitals) => this.currentVitals.set(vitals),
-        error: () => this.currentVitals.set(null)
-      });
-    }
+    this.extractOrFetchVitals(called, (vitals) => this.currentVitals.set(vitals));
   }
 
   // #endregion
@@ -313,19 +345,19 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
       this.signalR.joinDoctorGroup(doctorId);
 
       const sub1 = this.signalR.onQueueUpdated$.subscribe(() => {
-        this.fetchQueueAndStats(doctorId);
+        this.refreshSubject.next();
       });
 
       const sub2 = this.signalR.onTokenBooked$.subscribe(() => {
-        this.fetchQueueAndStats(doctorId);
+        this.refreshSubject.next();
       });
 
       const sub3 = this.signalR.onScoresRecalculated$.subscribe(() => {
-        this.fetchQueueAndStats(doctorId);
+        this.refreshSubject.next();
       });
 
       const sub4 = this.signalR.onDoctorStatusChanged$.subscribe((data) => {
-        if (data.doctorId === doctorId) {
+        if (data.doctorId?.toLowerCase() === doctorId.toLowerCase()) {
           const profile = this.doctorProfile();
           if (profile) {
             this.doctorProfile.set({ ...profile, status: data.status });
@@ -578,40 +610,11 @@ export class DoctorDashboardComponent implements OnInit, OnDestroy {
     }
 
     this.expandedVitalsTokenId.set(token.id);
-
-    if (token.spO2 != null || token.systolicBp != null || token.heartRate != null) {
-      this.expandedVitalsData.set({
-        id: '',
-        queueTokenId: token.id,
-        nurseUserId: '',
-        nurseName: token.nurseName || 'Triage Nurse',
-        stationName: token.nursingStationName || '',
-        spO2: token.spO2,
-        systolicBp: token.systolicBp,
-        diastolicBp: token.diastolicBp,
-        heartRate: token.heartRate,
-        temperature: token.temperature,
-        painScale: token.painScale,
-        triageLevel: (token.triageLevel as 'Red' | 'Yellow' | 'Green') || 'Green',
-        isManualOverride: false,
-        nurseNotes: token.nurseNotes,
-        assessedAtUtc: token.triagedAtUtc || token.bookedAtUtc
-      });
-      this.isLoadingExpandedVitals.set(false);
-    } else {
-      this.isLoadingExpandedVitals.set(true);
-      this.expandedVitalsData.set(null);
-      this.nurseService.getTriageAssessment(token.id).subscribe({
-        next: (vitals) => {
-          this.expandedVitalsData.set(vitals);
-          this.isLoadingExpandedVitals.set(false);
-        },
-        error: () => {
-          this.expandedVitalsData.set(null);
-          this.isLoadingExpandedVitals.set(false);
-        }
-      });
-    }
+    this.extractOrFetchVitals(
+      token,
+      (vitals) => this.expandedVitalsData.set(vitals),
+      (loading) => this.isLoadingExpandedVitals.set(loading)
+    );
   }
 
   // #endregion

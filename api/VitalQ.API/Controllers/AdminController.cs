@@ -202,6 +202,10 @@ public class AdminController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         catch (Exception)
         {
             return StatusCode(StatusCodes.Status500InternalServerError, new { message = "An internal error occurred while updating doctor status." });

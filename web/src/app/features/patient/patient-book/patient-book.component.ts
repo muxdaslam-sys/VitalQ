@@ -150,7 +150,7 @@ export class PatientBookComponent implements OnInit {
 
     this.bookingService.getDoctorsByDepartment(deptId).subscribe({
       next: (docs) => {
-        this.doctors.set(docs.filter(d => d.status !== 'OffDuty'));
+        this.doctors.set(docs.filter(d => d.status === 'Available'));
         this.loadingDoctors.set(false);
       },
       error: () => this.loadingDoctors.set(false)
