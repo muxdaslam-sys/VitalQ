@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # Service 1: Microsoft SQL Server Database
+  vitalq-db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: vitalq-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=VitalQ_Production_Password_2026!
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql/data
+    networks:
+      - vitalq-network
+
+  # Service 2: .NET 8 Web API
+  vitalq-api:
+    build:
+      context: ./api
+      dockerfile: VitalQ.API/Dockerfile
+    container_name: vitalq-backend
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=vitalq-db;Database=VitalQ;User Id=sa;Password=VitalQ_Production_Password_2026!;TrustServerCertificate=True;
+    ports:
+      - "5089:8080"
+    depends_on:
+      - vitalq-db
+    networks:
+      - vitalq-network
+
+  # Service 3: Angular 19 SPA + Nginx
+  vitalq-web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: vitalq-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - vitalq-api
+    networks:
+      - vitalq-network
+
+volumes:
+  sqlserver_data:
+
+networks:
+  vitalq-network:
+    driver: bridge

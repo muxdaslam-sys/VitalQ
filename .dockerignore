@@ -1,0 +1,14 @@
+**/.git
+**/.vs
+**/.idea
+**/.vscode
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.angular
+**/*.user
+**/*.suo
+**/*.mdf
+**/*.ldf
+**/*.bak

@@ -36,6 +36,16 @@ ng build
 
 This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
 
+## Production Container Build (Docker & Nginx)
+
+To build the production Nginx container for the Angular application:
+
+```bash
+docker build -t vitalq-web:latest .
+```
+
+This uses a multi-stage Dockerfile with Node.js 20 Alpine for compilation and Nginx Alpine for serving static assets and proxying `/api` and `/hubs`.
+
 ## Running unit tests
 
 To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
