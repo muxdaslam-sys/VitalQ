@@ -24,8 +24,8 @@ vitalq-web/src/app/
     ├── auth/              # Login & authentication screen
     ├── admin/             # Hospital operations management (Doctors, Staff, Departments, etc.)
     ├── patient/           # All-in-One Patient Smart Hub (Tokens, Live Wait, Express Booking, Family)
-    ├── doctor/            # Doctor Consultation Console (Hold)
-    └── nurse/             # Nurse Triage Station (Hold)
+    ├── doctor/            # Doctor Consultation Console (Queue, Call Next, Vitals Strip, History, Complete)
+    └── nurse/             # Nurse Triage Station (Station Arrivals, Live CTAS Triage, Emergency Walk-In)
 ```
 
 ---

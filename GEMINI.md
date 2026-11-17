@@ -1,0 +1,216 @@
+# VitalQ - System Architecture & Context Memory
+
+> **Last Updated**: 2026-11-14  
+> **Repository Root**: `d:\Projects\VitalQ`  
+> **Monorepo Structure**: `api/` (.NET 8 Web API & Test Suite) & `web/` (Angular 19 SPA)  
+> **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 50 xUnit Tests)  
+> **Frontend Status**: 100% Completed, Standalone, OnPush & Verified (Angular 19 & 13 Jasmine Tests)  
+> **Database**: Microsoft SQL Server Express (`DESKTOP-S6AF6OE\SQLEXPRESS`, Database: `VitalQ`)  
+> **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`)  
+> **Test Coverage**: 63 Unit & Stress Tests (50 Backend xUnit + 13 Frontend Jasmine, 100% Pass Rate)  
+> **Active Branch**: `perf/login-latency-and-typography-cleanup`  
+> **Upcoming Planned Phase**: Azure Cloud & DevOps Mastery (Documented in `AZURE_MASTER_ROADMAP.md`)
+
+---
+
+## 1. Master Documentation & Knowledge Index
+
+This central index provides direct links to all specialized documentation files across the repository:
+
+| Document | File Path | Scope & Primary Purpose |
+| :--- | :--- | :--- |
+| **Project Master State** | [`PROJECT_STATE.md`](file:///d:/Projects/VitalQ/PROJECT_STATE.md) | Exhaustive 580+ line historical log of all 10 completed development phases, physical database schema, 23 B-Tree indexes, and detailed architectural audit records. |
+| **Public README** | [`README.md`](file:///d:/Projects/VitalQ/README.md) | Public repository overview, badges, clinical role feature summaries, architecture diagrams, and test scorecards. |
+| **Frontend Architecture** | [`web/ARCHITECTURE.md`](file:///d:/Projects/VitalQ/web/ARCHITECTURE.md) | Deep technical guide for Angular 19: Signals reactive state, OnPush change detection, Web Audio harmonic chime synthesizer ($C_5 \rightarrow E_5 \rightarrow G_5$), and modal teleportation. |
+| **Web Client Guide** | [`web/README.md`](file:///d:/Projects/VitalQ/web/README.md) | Angular developer guide, npm commands, proxy configuration (`proxy.conf.json`), and build targets. |
+| **Azure Cloud Roadmap** | [`AZURE_MASTER_ROADMAP.md`](file:///d:/Projects/VitalQ/AZURE_MASTER_ROADMAP.md) | The 6-module cloud roadmap (Docker, Azure Container Apps, Azure SQL, Redis distributed caching, GitHub Actions CI/CD, Application Insights) and Infopark Kochi technical interview questions. |
+
+---
+
+## 2. Symmetrical 1:1 Architecture (Services ↔ Controllers)
+
+VitalQ strictly enforces a 1:1 symmetrical pattern between domain services and API controllers:
+
+```
+BUSINESS LOGIC SERVICES                    API CONTROLLERS
+────────────────────────                    ───────────────
+1. DoctorService              ──────►       1. DoctorController  (/api/doctor)
+2. NurseService               ──────►       2. NurseController   (/api/nurse)
+3. PatientService             ──────►       3. PatientController (/api/patient)
+4. PublicService              ──────►       4. PublicController  (/api/public)
+5. AdminService               ──────►       5. AdminController   (/api/admin)
+6. AuthService                ──────►       6. AuthController    (/api/auth)
+```
+
+### Solution Directory Structure
+```
+VitalQ/
+├── .github/workflows/ci.yml            # GitHub Actions CI (63 tests + Docker build gatekeeper)
+├── .dockerignore                       # Docker build context exclusions
+├── docker-compose.yml                  # Root multi-container orchestrator (API + Web + SQL)
+├── api/                                # ASP.NET Core 8 Web API Solution
+│   ├── VitalQ.sln
+│   ├── VitalQ.API/
+│   │   ├── Dockerfile                  # Multi-stage .NET 8 chiseled production image
+│   │   ├── Controllers/                # Role controllers (Admin, Auth, Doctor, Nurse, Patient, Public)
+│   │   ├── Health/                     # DatabaseHealthCheck.cs (/health & /health/live)
+│   │   ├── Hubs/                       # QueueHub.cs (SignalR WebSocket hub)
+│   │   ├── Services/                   # QueueNotificationService.cs (SignalR broadcaster)
+│   │   ├── BackgroundServices/         # AgingWorker.cs (Background priority loop runs every 60s)
+│   │   └── Program.cs                  # Pipeline, rate limiting, CORS, pooled DbContext warmup
+│   │
+│   ├── VitalQ.BusinessLogic/
+│   │   ├── Admin/                      # IAdminService.cs & AdminService.cs
+│   │   ├── Auth/                       # IAuthService.cs & AuthService.cs
+│   │   ├── Common/                     # TokenGenerator, MrnGenerator, PriorityScoreCalculator
+│   │   ├── Doctor/                     # IDoctorService.cs & DoctorService.cs
+│   │   ├── Notifications/              # IQueueNotificationService.cs
+│   │   ├── Nurse/                      # INurseService.cs & NurseService.cs
+│   │   ├── Patient/                    # IPatientService.cs & PatientService.cs
+│   │   └── Public/                     # IPublicService.cs & PublicService.cs
+│   │
+│   ├── VitalQ.DataAccess/
+│   │   ├── VitalQDbContext.cs          # EF Core DbContext with model configurations
+│   │   ├── Models/                     # Entities (User, Patient, QueueToken, NursingStation, etc.)
+│   │   └── DTOs/                       # Data Transfer Objects
+│   │
+│   └── VitalQ.Tests/                   # 50 xUnit Automated Unit & Concurrency Tests
+│       ├── Algorithms/                 # MrnGeneratorTests.cs & PriorityScoreCalculatorTests.cs
+│       ├── Auth/                       # AuthServiceTests.cs
+│       ├── Concurrency/                # ConcurrencyStressTests.cs (Atomic token & MRN stress tests)
+│       ├── Doctor/                     # DoctorServiceSafetyTests.cs
+│       ├── Health/                     # DatabaseHealthCheckTests.cs
+│       ├── Nurse/                      # NurseServiceTriageTests.cs
+│       ├── Patient/                    # PatientServiceTests.cs
+│       ├── Public/                     # PublicServiceTests.cs
+│       └── Helpers/                    # TestDbContextFactory.cs (InMemory EF Core Provider)
+│
+└── web/                                # Angular 19 SPA (Tailwind CSS 3.4)
+    ├── Dockerfile                      # Multi-stage Angular 19 + Nginx Alpine image
+    ├── nginx.conf                      # Production Nginx SPA routing & SignalR proxy
+    ├── package.json
+    ├── angular.json
+    ├── karma.conf.js                   # Karma test runner with ChromeHeadlessNoSandbox
+    └── src/
+        ├── app/
+        │   ├── core/                   # Guards, Interceptors, Global Services
+        │   ├── shared/                 # Models, Directives, Toast System
+        │   └── features/
+        │       ├── auth/               # /login - Dual-mode staff & patient login
+        │       ├── patient/            # /patient - OPD dashboard, booking wizard, family, history
+        │       ├── doctor/             # /doctor - Room queue console & consultation notes
+        │       ├── nurse/              # /nurse - Station-filtered intake & vitals triage
+        │       └── admin/              # /admin - Multi-page hospital management suite
+        └── environments/               # API endpoints & environment configurations
+```
+
+---
+
+## 3. Core Business Logic & Clinical Engines
+
+### A. Canadian Triage and Acuity Scale (CTAS) Urgency Rules
+- **Red (Resuscitation / Emergency)**: Base Weight = **1000** (Uncapped ceiling).  
+  Criteria: SpO2 < 90%, Systolic BP < 80, HR > 150, or Temp > 40.5 C.
+- **Yellow (Urgent)**: Base Weight = **500** (Max ceiling = 999).  
+  Criteria: SpO2 90-94%, Systolic BP 80-89, HR 121-150 or < 45, Temp 39.0-40.5 C, or Pain >= 7/10.
+- **Green (Routine / Non-Urgent)**: Base Weight = **100** (Max ceiling = 499). Default category.
+- **Nurse Clinical Override**: The triage nurse can manually set any triage level with a mandatory clinical reason.
+
+### B. Anti-Starvation Priority Aging Loop & 60-Minute Outpatient SLA
+- **Class**: `PriorityScoreCalculator.cs` and `AgingWorker.cs`
+- Every 60 seconds, `AgingWorker` calls `IDoctorService.RecalculateQueueScoresAsync()`.
+- **Dynamic Formula**: `PriorityScore = BaseWeight + (ElapsedWaitingMinutes * 2)`.
+- **60-Minute Outpatient Anti-Starvation SLA**: When a Green patient waits >= 60 minutes, their base weight auto-promotes from `100` to `500` (Yellow equivalent). Combined with their accrued waiting timestamp, they immediately jump ahead of newly arrived Yellow patients.
+- **Red Emergency Firewall**: Yellow and SLA-escalated Green scores are strictly capped at `999`, guaranteeing that emergency Red patients (base weight `1000`) can never be bypassed under any circumstances.
+
+### C. Collision-Proof Sequential MRN Engine (`MrnGenerator.cs`)
+- Generates sequential format: `MRN-000001` (minimum 6 digits).
+- Dynamically scales past 1 Million (`MRN-1000000`) without truncating within `NVARCHAR(30)`.
+- Length-aware B-Tree indexing with optimistic database collision retry loops (`SaveChangesWithMrnRetryAsync`).
+- Shared identically across `PatientService` (self-registration) and `NurseService` (clinic desk intake).
+
+### D. Concurrency-Safe Atomic Token Generator (`TokenGenerator.cs`)
+- Direct ADO.NET SQL update executed against the `Departments` table.
+- Generates collision-free tokens: `DEPT-YYMMDD-NNN` (e.g. `CARD-261114-001`). Zero memory locks, immune to multi-threaded race conditions.
+
+### E. SignalR Reconnection Resilience (`signalr.service.ts`)
+- Client tracks `activeTokenGroupIds = new Set<string>()`.
+- Upon network reconnect (`onreconnected`), automatically re-joins all active `patient-{tokenId}` rooms so mobile users never lose live position updates.
+
+---
+
+## 4. Complete API Route Contract Table
+
+| Controller | Method | HTTP | Modern Route | Payload / Query | Response DTO | Real-Time SignalR Event Pushed |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **`Public`** | `GetDepartments` | `GET` | `/api/public/departments` | - | `DepartmentResponse[]` | - |
+| **`Public`** | `GetDoctorsByDept` | `GET` | `/api/public/departments/{id}/doctors` | `id: Guid` | `DoctorResponse[]` | - |
+| **`Public`** | `TrackToken` | `GET` | `/api/public/track/{tokenNumber}` | `tokenNumber: string` | `QueueTokenResponse` | - |
+| **`Auth`** | `Login` | `POST` | `/api/auth/login` | `{ username, password }` | `AuthResponse` | - |
+| **`Auth`** | `Refresh` | `POST` | `/api/auth/refresh` | Cookie / RefreshToken | `AuthResponse` | - |
+| **`Auth`** | `Logout` | `POST` | `/api/auth/logout` | - | `200 OK` | - |
+| **`Patient`** | `SelfRegister` | `POST` | `/api/patient/self-register` | `SelfRegisterRequest` | `AuthResponse` | - |
+| **`Patient`** | `GetMyFamily` | `GET` | `/api/patient/family` | JWT claims | `PatientResponse[]` | - |
+| **`Patient`** | `AddFamilyMember` | `POST` | `/api/patient/family` | `AddFamilyMemberRequest` | `PatientResponse` | - |
+| **`Patient`** | `GetMyVisitHistory`| `GET` | `/api/patient/history` | JWT claims | `PatientVisitHistoryDto[]` | - |
+| **`Patient`** | `GetVisitHistory` | `GET` | `/api/patient/history/{id}` | `id: Guid` | `PatientVisitHistoryDto[]` | - |
+| **`Patient`** | `BookAppointment` | `POST` | `/api/patient/bookings` | `BookTokenRequest` | `QueueTokenResponse` | `TokenBooked` -> `doctor-{id}`, `nurse-station` |
+| **`Patient`** | `GetActiveBookings`| `GET` | `/api/patient/bookings/active` | JWT claims | `QueueTokenResponse[]` | - |
+| **`Patient`** | `GetPatientActive` | `GET` | `/api/patient/bookings/active/{id}` | `id: Guid` | `QueueTokenResponse` | - |
+| **`Patient`** | `CancelBooking` | `POST` | `/api/patient/bookings/{id}/cancel` | `{ notes?: string }` | `QueueTokenResponse` | `QueueUpdated` -> `doctor-{id}` |
+| **`Patient`** | `GetProfile` | `GET` | `/api/patient/profile/{id}` | `id: Guid` | `PatientResponse` | - |
+| **`Patient`** | `UpdateProfile` | `PUT` | `/api/patient/profile/{id}` | `UpdatePatientRequest` | `PatientResponse` | - |
+| **`Nurse`** | `SearchPatients` | `GET` | `/api/nurse/patients/search` | `?query={search}` | `PatientSearchResult[]` | - |
+| **`Nurse`** | `GetPendingTriage`| `GET` | `/api/nurse/triage/pending` | `?departmentId={guid}&nursingStationId={guid}` | `QueueTokenResponse[]` | - |
+| **`Nurse`** | `SubmitTriage` | `POST` | `/api/nurse/triage/{id}` | `TriageRequest` | `QueueTokenResponse` | `TriageCompleted` -> `doctor-{id}`, `nurse-station` |
+| **`Nurse`** | `GetTriageAssessment`|`GET`| `/api/nurse/triage/{id}` | `id: Guid` | `TriageAssessmentResponse` | - |
+| **`Nurse`** | `GetDashboardStats` | `GET` | `/api/nurse/dashboard/stats` | - | `NurseDashboardStatsDto` | - |
+| **`Nurse`** | `GetDoctorQueue` | `GET` | `/api/nurse/doctors/{doctorId}/queue` | `doctorId: Guid` | `QueueTokenResponse[]` | - |
+| **`Nurse`** | `GetPatientActiveTokens`|`GET`| `/api/nurse/patients/{patientId}/tokens/today` | `patientId: Guid` | `QueueTokenResponse[]` | - |
+| **`Nurse`** | `GetPatientDetails`| `GET` | `/api/nurse/patients/{patientId}/details` | `patientId: Guid` | `PatientDetailResponse` | - |
+| **`Nurse`** | `GetQueuePosition`| `GET` | `/api/nurse/tokens/{tokenId}/queue-position` | `tokenId: Guid` | `PatientQueuePositionDto` | - |
+| **`Nurse`** | `ProcessEmergencyWalkIn`|`POST`| `/api/nurse/tokens/walk-in-emergency` | `EmergencyWalkInBookingRequest` | `QueueTokenResponse` | `TokenBooked` -> `doctor-{id}`, `nurse-station` |
+| **`Nurse`** | `BookTokenForExisting`| `POST` | `/api/nurse/patients/{patientId}/book-token` | `ExistingPatientTokenBookingRequest` | `QueueTokenResponse` | `TokenBooked` -> `doctor-{id}`, `nurse-station` |
+| **`Nurse`** | `CancelToken` | `POST` | `/api/nurse/tokens/{id}/cancel` | `id: Guid` | `QueueTokenResponse` | `QueueUpdated` -> `doctor-{id}` |
+| **`Doctor`** | `GetCurrentDoctor` | `GET` | `/api/doctor/me` | JWT claims | `DoctorResponse` | - |
+| **`Doctor`** | `UpdateStatus` | `PUT` | `/api/doctor/status` | `UpdateDoctorStatusRequest` | `DoctorResponse` | `DoctorStatusChanged` -> All clients |
+| **`Doctor`** | `GetQueue` | `GET` | `/api/doctor/queue/{id}` | `id: Guid` | `QueueTokenResponse[]` | - |
+| **`Doctor`** | `GetCurrentCalled` | `GET` | `/api/doctor/current/{id}` | `id: Guid` | `QueueTokenResponse` | - |
+| **`Doctor`** | `CallNext` | `POST` | `/api/doctor/call-next/{id}` | `id: Guid` | `QueueTokenResponse` | `PatientCalled` -> `patient-{id}`, `doctor-{id}` |
+| **`Doctor`** | `SkipPatient` | `POST` | `/api/doctor/tokens/{id}/skip` | `id: Guid` | `QueueTokenResponse` | `QueueUpdated` -> `doctor-{id}` |
+| **`Doctor`** | `RequeuePatient` | `POST` | `/api/doctor/tokens/{id}/requeue` | `id: Guid` | `QueueTokenResponse` | `QueueUpdated` -> `doctor-{id}` |
+| **`Doctor`** | `CompleteConsultation`|`POST`| `/api/doctor/tokens/{id}/complete` | `CompleteConsultationRequest` | `QueueTokenResponse` | `QueueUpdated` -> `doctor-{id}` |
+| **`Admin`** | `GetDashboardStats`| `GET` | `/api/admin/dashboard/stats` | - | `AdminDashboardStatsDto` | - |
+| **`Admin`** | `GetStaffUsers` | `GET` | `/api/admin/users` | - | `StaffUserResponse[]` | - |
+| **`Admin`** | `CreateAdminUser` | `POST` | `/api/admin/users` | `CreateUserRequest` | `StaffUserResponse` | - |
+| **`Admin`** | `UpdateUser` | `PUT` | `/api/admin/users/{id}` | `UpdateUserRequest` | `StaffUserResponse` | - |
+| **`Admin`** | `GetDoctors` | `GET` | `/api/admin/doctors` | - | `DoctorResponse[]` | - |
+| **`Admin`** | `CreateDoctor` | `POST` | `/api/admin/doctors` | `CreateDoctorRequest` | `DoctorResponse` | - |
+| **`Admin`** | `ToggleDoctorStatus`| `PATCH`| `/api/admin/doctors/{id}/status` | `UpdateDoctorStatusRequest` | `DoctorResponse` | `DoctorStatusChanged` -> All clients |
+| **`Admin`** | `GetPatients` | `GET` | `/api/admin/patients` | `?search={query}` | `PatientDetailResponse[]` | - |
+| **`Admin`** | `GetPatientById` | `GET` | `/api/admin/patients/{id}` | `id: Guid` | `PatientDetailResponse` | - |
+| **`Health`** | `LivenessProbe` | `GET` | `/health/live` | - | `200 OK` (`Healthy`) | - |
+| **`Health`** | `ReadinessProbe` | `GET` | `/health` | - | JSON HealthReport | - |
+
+---
+
+## 5. Strict Engineering & Typography Rules (AI Agent Guardrails)
+
+Whenever modifying or analyzing this codebase, every AI agent must strictly follow these rules:
+
+1. **Zero Em/En Dashes**: Never use em dashes or en dashes anywhere in text, documentation, comments, commit messages, or code. Use standard hyphens `-` or colons `:`.
+2. **Preserve 100% Test Pass Rate**: All 63 automated tests (50 backend and 13 frontend) must remain green on every modification. Run tests before declaring any task complete:
+   - Backend: `dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --no-restore`
+   - Frontend: `npm --prefix web test -- --watch=false`
+3. **Angular 19 Standalone Standard**:
+   - Use Standalone Components only (`imports: [...]`). Never create or introduce `NgModule`.
+   - Use Angular Signals (`signal()`, `computed()`, `effect()`) for reactive state management.
+   - Enforce `ChangeDetectionStrategy.OnPush` on all components.
+   - Clean up RxJS subscriptions using `takeUntilDestroyed()`.
+4. **Pure SVGs & Zero Emojis**: All UI components must use clean inline SVGs. Zero raw platform emojis (`⚡`, `🚨`, `✓`, `✕`).
+5. **Session Security & HIPAA Compliance**:
+   - Store user session data in `sessionStorage` (auto-lock on browser shutdown).
+   - Use `IdleTimeoutService` to automatically terminate sessions after 15 minutes of inactivity.
+   - Use HttpOnly cookies for refresh tokens.
+6. **Clickable Links**: Reference all files with the `file:///` URI scheme using forward slashes (e.g. `[Program.cs](file:///d:/Projects/VitalQ/api/VitalQ.API/Program.cs)`).
+7. **Cloud & Containerization Scope**: Multi-stage Dockerfiles, Nginx configuration, Docker Compose, and GitHub Actions CI test/build workflows are implemented. Cloud hosting (Azure Container Apps, Azure SQL, Redis, ACR) is documented in [`AZURE_MASTER_ROADMAP.md`](file:///d:/Projects/VitalQ/AZURE_MASTER_ROADMAP.md) as the next live deployment phase.

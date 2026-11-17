@@ -146,6 +146,20 @@
 
 ---
 
+### Containerized Setup (Docker Compose)
+
+Run the complete full-stack environment (.NET 8 Web API, Angular 19 SPA, and SQL Server 2022) in isolated containers with a single command:
+
+```bash
+docker compose up --build
+```
+
+* **Frontend SPA**: `http://localhost:4200`
+* **Backend API**: `http://localhost:5089` (Swagger: `http://localhost:5089/swagger`)
+* **SQL Server**: `localhost:1433`
+
+---
+
 ## 🧪 Default Test Credentials
 
 | Role | Username / Mobile | Password | Authorized Portal |
@@ -186,7 +200,7 @@ The solution includes an enterprise test suite of **63 automated tests across th
 ### Running the Test Suite
 
 ```bash
-# Run all 49 backend unit and concurrency stress tests
+# Run all 50 backend unit and concurrency stress tests
 dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj
 
 # Run all 13 frontend Jasmine unit tests
