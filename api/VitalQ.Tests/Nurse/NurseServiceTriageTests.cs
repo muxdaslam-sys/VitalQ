@@ -288,7 +288,7 @@ public class NurseServiceTriageTests
     }
 
     [Fact]
-    public async Task CancelUntriagedTokenAsync_BookedStatus_CancelsToken()
+    public async Task CancelTokenAsync_BookedStatus_CancelsToken()
     {
         // Arrange
         using var context = TestDbContextFactory.Create();
@@ -324,15 +324,15 @@ public class NurseServiceTriageTests
         var service = new NurseService(context);
 
         // Act
-        var cancelled = await service.CancelUntriagedTokenAsync(token.Id, nurseUser.Id);
+        var cancelled = await service.CancelTokenAsync(token.Id, nurseUser.Id);
 
         // Assert
         cancelled.Status.Should().Be("Cancelled");
-        cancelled.ConsultationNotes.Should().Contain("Cancelled at Nurse Desk");
+        cancelled.ConsultationNotes.Should().Be("Cancelled at Nursing Desk");
     }
 
     [Fact]
-    public async Task CancelUntriagedTokenAsync_AlreadyTriagedToken_ThrowsInvalidOperationException()
+    public async Task CancelTokenAsync_WaitingStatus_TransfersToCasualtyWithCustomReason()
     {
         // Arrange
         using var context = TestDbContextFactory.Create();
@@ -355,12 +355,14 @@ public class NurseServiceTriageTests
         {
             RowVersion = new byte[] { 1, 0, 0, 0 },
             Id = Guid.NewGuid(),
-            TokenNumber = "CARD-001",
+            TokenNumber = "CARD-002",
             PatientId = patient.Id,
             DepartmentId = dept.Id,
             DoctorId = doctor.Id,
-            Status = "Waiting", // Already triaged!
-            BookedAtUtc = DateTime.UtcNow,
+            Status = "Waiting",
+            BaseWeight = 500,
+            PriorityScore = 510,
+            BookedAtUtc = DateTime.UtcNow.AddMinutes(-5),
             TriagedAtUtc = DateTime.UtcNow
         };
         await context.QueueTokens.AddAsync(token);
@@ -369,10 +371,55 @@ public class NurseServiceTriageTests
         var service = new NurseService(context);
 
         // Act
-        var act = async () => await service.CancelUntriagedTokenAsync(token.Id, nurseUser.Id);
+        var cancelled = await service.CancelTokenAsync(token.Id, nurseUser.Id, "Transferred to Casualty / Emergency Ward");
+
+        // Assert
+        cancelled.Status.Should().Be("Cancelled");
+        cancelled.ConsultationNotes.Should().Be("Cancelled at Nursing Desk: Transferred to Casualty / Emergency Ward");
+    }
+
+    [Fact]
+    public async Task CancelTokenAsync_CompletedToken_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        using var context = TestDbContextFactory.Create();
+        var (dept, doctor, doctorUser, patient) = await TestDbContextFactory.SeedTestClinicAsync(context);
+
+        var nurseUser = new User
+        {
+            Id = Guid.NewGuid(),
+            Username = "nurse.test",
+            FullName = "Nurse Sarah",
+            Role = "Nurse",
+            PhoneNumber = "5551112222",
+            Password = "hash",
+            IsActive = true,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+        await context.Users.AddAsync(nurseUser);
+
+        var token = new QueueToken
+        {
+            RowVersion = new byte[] { 1, 0, 0, 0 },
+            Id = Guid.NewGuid(),
+            TokenNumber = "CARD-003",
+            PatientId = patient.Id,
+            DepartmentId = dept.Id,
+            DoctorId = doctor.Id,
+            Status = "Completed",
+            BookedAtUtc = DateTime.UtcNow.AddHours(-1),
+            CompletedAtUtc = DateTime.UtcNow
+        };
+        await context.QueueTokens.AddAsync(token);
+        await context.SaveChangesAsync();
+
+        var service = new NurseService(context);
+
+        // Act
+        var act = async () => await service.CancelTokenAsync(token.Id, nurseUser.Id);
 
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*Cannot cancel a token with status 'Waiting'*");
+            .WithMessage("*Cannot cancel a consultation that has already been completed*");
     }
 }

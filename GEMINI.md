@@ -1,15 +1,15 @@
 # VitalQ - System Architecture & Context Memory
 
-> **Last Updated**: 2026-11-14  
+> **Last Updated**: 2026-11-17  
 > **Repository Root**: `d:\Projects\VitalQ`  
 > **Monorepo Structure**: `api/` (.NET 8 Web API & Test Suite) & `web/` (Angular 19 SPA)  
-> **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 50 xUnit Tests)  
+> **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 51 xUnit Tests)  
 > **Frontend Status**: 100% Completed, Standalone, OnPush & Verified (Angular 19 & 13 Jasmine Tests)  
 > **Database**: Microsoft SQL Server Express (`DESKTOP-S6AF6OE\SQLEXPRESS`, Database: `VitalQ`)  
 > **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`)  
-> **Test Coverage**: 63 Unit & Stress Tests (50 Backend xUnit + 13 Frontend Jasmine, 100% Pass Rate)  
-> **Active Branch**: `perf/login-latency-and-typography-cleanup`  
-> **Upcoming Planned Phase**: Azure Cloud & DevOps Mastery (Documented in `AZURE_MASTER_ROADMAP.md`)
+> **Test Coverage**: 64 Unit & Stress Tests (51 Backend xUnit + 13 Frontend Jasmine, 100% Pass Rate)  
+> **Active PR**: [PR #23](https://github.com/muxdaslam-sys/VitalQ/pull/23) (`perf/login-latency-and-typography-cleanup` -> `main`, State: Clean)  
+> **Upcoming Planned Phase**: Azure Cloud Infrastructure & Live Deployment (Documented in `AZURE_MASTER_ROADMAP.md`)
 
 ---
 
@@ -19,7 +19,7 @@ This central index provides direct links to all specialized documentation files 
 
 | Document | File Path | Scope & Primary Purpose |
 | :--- | :--- | :--- |
-| **Project Master State** | [`PROJECT_STATE.md`](file:///d:/Projects/VitalQ/PROJECT_STATE.md) | Exhaustive 580+ line historical log of all 10 completed development phases, physical database schema, 23 B-Tree indexes, and detailed architectural audit records. |
+| **Project Master State** | [`PROJECT_STATE.md`](file:///d:/Projects/VitalQ/PROJECT_STATE.md) | Exhaustive historical log of all 11 completed development phases, physical database schema, 23 B-Tree indexes, and detailed architectural audit records. |
 | **Public README** | [`README.md`](file:///d:/Projects/VitalQ/README.md) | Public repository overview, badges, clinical role feature summaries, architecture diagrams, and test scorecards. |
 | **Frontend Architecture** | [`web/ARCHITECTURE.md`](file:///d:/Projects/VitalQ/web/ARCHITECTURE.md) | Deep technical guide for Angular 19: Signals reactive state, OnPush change detection, Web Audio harmonic chime synthesizer ($C_5 \rightarrow E_5 \rightarrow G_5$), and modal teleportation. |
 | **Web Client Guide** | [`web/README.md`](file:///d:/Projects/VitalQ/web/README.md) | Angular developer guide, npm commands, proxy configuration (`proxy.conf.json`), and build targets. |
@@ -45,13 +45,13 @@ BUSINESS LOGIC SERVICES                    API CONTROLLERS
 ### Solution Directory Structure
 ```
 VitalQ/
-├── .github/workflows/ci.yml            # GitHub Actions CI (63 tests + Docker build gatekeeper)
+├── .github/workflows/ci.yml            # Parallel CI (Backend, Frontend, Gated Docker Builds)
 ├── .dockerignore                       # Docker build context exclusions
 ├── docker-compose.yml                  # Root multi-container orchestrator (API + Web + SQL)
 ├── api/                                # ASP.NET Core 8 Web API Solution
 │   ├── VitalQ.sln
 │   ├── VitalQ.API/
-│   │   ├── Dockerfile                  # Multi-stage .NET 8 chiseled production image
+│   │   ├── Dockerfile                  # Multi-stage .NET 8 chiseled production image (~120MB)
 │   │   ├── Controllers/                # Role controllers (Admin, Auth, Doctor, Nurse, Patient, Public)
 │   │   ├── Health/                     # DatabaseHealthCheck.cs (/health & /health/live)
 │   │   ├── Hubs/                       # QueueHub.cs (SignalR WebSocket hub)
@@ -86,7 +86,7 @@ VitalQ/
 │       └── Helpers/                    # TestDbContextFactory.cs (InMemory EF Core Provider)
 │
 └── web/                                # Angular 19 SPA (Tailwind CSS 3.4)
-    ├── Dockerfile                      # Multi-stage Angular 19 + Nginx Alpine image
+    ├── Dockerfile                      # Multi-stage Angular 19 + Nginx Alpine image (<25MB)
     ├── nginx.conf                      # Production Nginx SPA routing & SignalR proxy
     ├── package.json
     ├── angular.json
@@ -137,6 +137,12 @@ VitalQ/
 - Client tracks `activeTokenGroupIds = new Set<string>()`.
 - Upon network reconnect (`onreconnected`), automatically re-joins all active `patient-{tokenId}` rooms so mobile users never lose live position updates.
 
+### F. Waiting Lounge Emergency Casualty Transfer & Exclusive Nurse Cancellation
+- When a patient collapses or requires immediate resuscitation in the outpatient lounge, waiting for the 60-minute automatic expiry loop is clinically unacceptable.
+- The Triage Nurse holds exclusive authority to cancel or transfer active tokens (`Booked`, `Waiting`, `Skipped`) with clinical notes (e.g. `"Transferred to Casualty / Emergency Ward"`).
+- Doctors operate inside examination rooms on tight consultation blocks and are not burdened with administrative queue management.
+- Upon cancellation, SignalR immediately pushes a `QueueUpdated` event to the assigned doctor, automatically removing the patient and sliding the queue forward in real time.
+
 ---
 
 ## 4. Complete API Route Contract Table
@@ -171,7 +177,7 @@ VitalQ/
 | **`Nurse`** | `GetQueuePosition`| `GET` | `/api/nurse/tokens/{tokenId}/queue-position` | `tokenId: Guid` | `PatientQueuePositionDto` | - |
 | **`Nurse`** | `ProcessEmergencyWalkIn`|`POST`| `/api/nurse/tokens/walk-in-emergency` | `EmergencyWalkInBookingRequest` | `QueueTokenResponse` | `TokenBooked` -> `doctor-{id}`, `nurse-station` |
 | **`Nurse`** | `BookTokenForExisting`| `POST` | `/api/nurse/patients/{patientId}/book-token` | `ExistingPatientTokenBookingRequest` | `QueueTokenResponse` | `TokenBooked` -> `doctor-{id}`, `nurse-station` |
-| **`Nurse`** | `CancelToken` | `POST` | `/api/nurse/tokens/{id}/cancel` | `id: Guid` | `QueueTokenResponse` | `QueueUpdated` -> `doctor-{id}` |
+| **`Nurse`** | `CancelToken` | `POST` | `/api/nurse/tokens/{id}/cancel` | `id: Guid, [FromBody] CancelTokenRequest? { notes?: string }` | `QueueTokenResponse` | `QueueUpdated` -> `doctor-{id}` |
 | **`Doctor`** | `GetCurrentDoctor` | `GET` | `/api/doctor/me` | JWT claims | `DoctorResponse` | - |
 | **`Doctor`** | `UpdateStatus` | `PUT` | `/api/doctor/status` | `UpdateDoctorStatusRequest` | `DoctorResponse` | `DoctorStatusChanged` -> All clients |
 | **`Doctor`** | `GetQueue` | `GET` | `/api/doctor/queue/{id}` | `id: Guid` | `QueueTokenResponse[]` | - |
@@ -214,3 +220,35 @@ Whenever modifying or analyzing this codebase, every AI agent must strictly foll
    - Use HttpOnly cookies for refresh tokens.
 6. **Clickable Links**: Reference all files with the `file:///` URI scheme using forward slashes (e.g. `[Program.cs](file:///d:/Projects/VitalQ/api/VitalQ.API/Program.cs)`).
 7. **Cloud & Containerization Scope**: Multi-stage Dockerfiles, Nginx configuration, Docker Compose, and GitHub Actions CI test/build workflows are implemented. Cloud hosting (Azure Container Apps, Azure SQL, Redis, ACR) is documented in [`AZURE_MASTER_ROADMAP.md`](file:///d:/Projects/VitalQ/AZURE_MASTER_ROADMAP.md) as the next live deployment phase.
+
+---
+
+## 6. DevOps & Cloud CI/CD Mastery (Phase 11 Learnings & Next Steps)
+
+### A. What We Studied & Mastered in This Phase
+1. **Multi-Stage Container Architecture**:
+   - **Backend**: Built .NET 8 SDK build stage and runtime packaging on `mcr.microsoft.com/dotnet/aspnet:8.0-noble-chiseled`. Image size reduced to ~120MB with non-root security compliance.
+   - **Frontend**: Built Node.js 20 Alpine stage with production `ng build` and lightweight `nginx:alpine` runtime (<25MB) with custom SPA fallback routing and WebSocket reverse proxying for SignalR.
+   - **Local Orchestration**: Authored `docker-compose.yml` linking SQL Server 2022 (`vitalq-db`), Web API (`vitalq-api`), and Angular SPA (`vitalq-web`) over an isolated bridge network (`vitalq-network`).
+2. **Industry-Standard Parallel CI Pipelines**:
+   - Converted sequential scripts into a 3-job parallel pipeline in `.github/workflows/ci.yml`:
+     - `Backend Build (.NET 8)`: Restores, compiles, and runs 50 xUnit tests.
+     - `Frontend Build (Angular 19)`: Installs dependencies, runs 13 headless Jasmine tests with Chrome, and builds production bundle.
+     - `Verify Docker Container Builds`: Gated on both test jobs passing via `needs: [backend-ci, frontend-ci]`. Avoids building images when unit tests fail.
+3. **GitHub Branch Protection & PR Gatekeeping**:
+   - Learned how GitHub branch protection checks required statuses (`Backend Build (.NET 8)` and `Frontend Build (Angular 19)`).
+   - Resolved merge blocking states from `mergeable_state: unstable` to `clean`.
+4. **Rollback-Ready Container Versioning**:
+   - Implemented dual-tagging: `vitalq-api:${{ github.sha }}` and `vitalq-api:latest`. Guarantees zero-downtime, deterministic rollbacks to prior commits in cloud environments without rebuilding.
+
+### B. What We Are Going to Do Next
+1. **Merge PR #23**:
+   - Merge [PR #23](https://github.com/muxdaslam-sys/VitalQ/pull/23) into `main` on GitHub to establish the containerized, test-gated baseline.
+2. **Sync Local Main & Create Feature Branch**:
+   - Run `git checkout main && git pull origin main`.
+   - Create feature branch: `feat/azure-cloud-deployment`.
+3. **Execute Module 2 of Azure Cloud Roadmap (`AZURE_MASTER_ROADMAP.md`)**:
+   - **Step 1: Azure Resource Group**: Provision `rg-vitalq-prod-centralindia` using Azure CLI / Portal.
+   - **Step 2: Azure Container Registry (ACR)**: Provision `crvitalqprod` for private, secure enterprise container image hosting.
+   - **Step 3: Service Principal / Workload Identity**: Configure GitHub Actions authentication to push built images directly into ACR upon merge to `main`.
+   - **Step 4: Azure Container Apps Environment**: Provision managed container environment with auto-scaling rules (0 to 5 replicas) and HTTPS ingress.

@@ -103,6 +103,18 @@
                     </button>
                   }
 
+                  <!-- Cancel / Transfer to Casualty Button -->
+                  @if (item.status === 'Waiting' || item.status === 'Skipped') {
+                    <button 
+                      type="button"
+                      (click)="onCancel(item.tokenId, item.patientName)"
+                      [disabled]="isCancelling()"
+                      class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0"
+                      title="Transfer patient to Casualty / Emergency or cancel token">
+                      <span>Cancel / Transfer</span>
+                    </button>
+                  }
+
                   <!-- View More Accordion Toggle -->
                   @if (item.triageAssessment) {
                     <button (click)="toggleExpand(item.tokenId)"

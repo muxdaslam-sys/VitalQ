@@ -340,17 +340,17 @@ public class NurseController : ControllerBase
     }
 
     /// <summary>
-    /// Cancels an untriaged walk-in token if patient departed before vitals intake (POST /api/nurse/tokens/{id}/cancel).
+    /// Cancels an active token from the nurse desk with optional clinical reason (POST /api/nurse/tokens/{id}/cancel).
     /// </summary>
     [HttpPost("tokens/{id:guid}/cancel")]
-    public async Task<IActionResult> CancelToken(Guid id)
+    public async Task<IActionResult> CancelToken(Guid id, [FromBody] CancelTokenRequest? request = null)
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         Guid.TryParse(userIdStr, out var nurseUserId);
 
         try
         {
-            var token = await _nurseService.CancelUntriagedTokenAsync(id, nurseUserId);
+            var token = await _nurseService.CancelTokenAsync(id, nurseUserId, request?.Notes);
             await _notificationService.NotifyQueueUpdatedAsync(token.DoctorId, token);
             return Ok(token);
         }

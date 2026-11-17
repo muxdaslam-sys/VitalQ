@@ -125,10 +125,11 @@ export class NurseService {
   }
 
   /**
-   * Cancels an untriaged walk-in token if patient departed before vitals intake.
+   * Cancels or transfers an active token (e.g. departed or transferred to Casualty / Emergency).
    */
-  cancelToken(tokenId: string): Observable<QueueToken> {
-    return this.http.post<QueueToken>(`${this.baseUrl}/tokens/${tokenId}/cancel`, {});
+  cancelToken(tokenId: string, reason?: string): Observable<QueueToken> {
+    const payload = reason ? { notes: reason } : {};
+    return this.http.post<QueueToken>(`${this.baseUrl}/tokens/${tokenId}/cancel`, payload);
   }
 
   // #endregion
