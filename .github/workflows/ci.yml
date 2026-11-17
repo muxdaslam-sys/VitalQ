@@ -2,7 +2,7 @@ name: VitalQ CI - Test & Docker Build Verification
 
 on:
   push:
-    branches: [ main, "perf/*", "fix/*", "feat/*" ]
+    branches: [ main, "perf/**", "fix/**", "feat/**" ]
   pull_request:
     branches: [ main ]
 
@@ -11,8 +11,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test-and-build:
-    name: Run Automated Tests & Verify Docker Builds
+  # =========================================================================
+  # 1. BACKEND CI: .NET 8 Build & 50 Automated xUnit Tests
+  # =========================================================================
+  backend-ci:
+    name: Backend Build (.NET 8)
     runs-on: ubuntu-latest
 
     steps:
@@ -24,8 +27,25 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Restore NuGet Dependencies
+        run: dotnet restore api/VitalQ.sln
+
+      - name: Build Solution (Release)
+        run: dotnet build api/VitalQ.sln --configuration Release --no-restore
+
       - name: Run Backend Tests (50 xUnit Tests)
-        run: dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --configuration Release
+        run: dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --configuration Release --no-build
+
+  # =========================================================================
+  # 2. FRONTEND CI: Angular 19 Build & 13 Headless Jasmine Tests
+  # =========================================================================
+  frontend-ci:
+    name: Frontend Build (Angular 19)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
 
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
@@ -40,13 +60,28 @@ jobs:
       - name: Run Frontend Tests (13 Jasmine Tests)
         run: npm --prefix web test -- --watch=false --browsers=ChromeHeadlessNoSandbox
 
-      - name: Build Backend Docker Image
+      - name: Build Angular Application (Release)
+        run: npm --prefix web run build
+
+  # =========================================================================
+  # 3. DOCKER CI: Multi-Stage Production Container Image Verification
+  # =========================================================================
+  docker-ci:
+    name: Verify Docker Container Builds
+    needs: [backend-ci, frontend-ci]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Build Backend Docker Image (.NET 8 Chiseled)
         run: |
           docker build -f api/VitalQ.API/Dockerfile \
             -t vitalq-api:${{ github.sha }} \
             -t vitalq-api:latest ./api
 
-      - name: Build Frontend Docker Image
+      - name: Build Frontend Docker Image (Angular 19 + Nginx)
         run: |
           docker build -f web/Dockerfile \
             -t vitalq-web:${{ github.sha }} \
