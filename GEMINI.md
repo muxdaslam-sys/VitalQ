@@ -1,15 +1,18 @@
 # VitalQ - System Architecture & Context Memory
 
-> **Last Updated**: 2026-11-17  
+> **Last Updated**: 2026-11-18  
 > **Repository Root**: `d:\Projects\VitalQ`  
 > **Monorepo Structure**: `api/` (.NET 8 Web API & Test Suite) & `web/` (Angular 19 SPA)  
 > **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 51 xUnit Tests)  
 > **Frontend Status**: 100% Completed, Standalone, OnPush & Verified (Angular 19 & 13 Jasmine Tests)  
 > **Database**: Microsoft SQL Server Express (`DESKTOP-S6AF6OE\SQLEXPRESS`, Database: `VitalQ`)  
+> **Cloud Status**: Module 2 Completed: Live on Azure Container Apps (`centralindia`, Pune)  
+> **Live Web Client**: [ca-vitalq-web](https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io)  
+> **Live API Service**: [ca-vitalq-api](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io)  
 > **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`)  
 > **Test Coverage**: 64 Unit & Stress Tests (51 Backend xUnit + 13 Frontend Jasmine, 100% Pass Rate)  
-> **Active PR**: [PR #23](https://github.com/muxdaslam-sys/VitalQ/pull/23) (`perf/login-latency-and-typography-cleanup` -> `main`, State: Clean)  
-> **Upcoming Planned Phase**: Azure Cloud Infrastructure & Live Deployment (Documented in `AZURE_MASTER_ROADMAP.md`)
+> **Active Branch**: `feat/azure-cloud-deployment`  
+> **Upcoming Planned Phase**: Azure SQL Database Provisioning (Module 3 in `AZURE_MASTER_ROADMAP.md`)
 
 ---
 
@@ -223,32 +226,40 @@ Whenever modifying or analyzing this codebase, every AI agent must strictly foll
 
 ---
 
-## 6. DevOps & Cloud CI/CD Mastery (Phase 11 Learnings & Next Steps)
+## 6. DevOps & Cloud CI/CD Mastery (Phase 11 & Phase 12 Deployments)
 
-### A. What We Studied & Mastered in This Phase
+### A. Phase 11 Achievements: Multi-Stage Containers & Parallel CI
 1. **Multi-Stage Container Architecture**:
    - **Backend**: Built .NET 8 SDK build stage and runtime packaging on `mcr.microsoft.com/dotnet/aspnet:8.0-noble-chiseled`. Image size reduced to ~120MB with non-root security compliance.
    - **Frontend**: Built Node.js 20 Alpine stage with production `ng build` and lightweight `nginx:alpine` runtime (<25MB) with custom SPA fallback routing and WebSocket reverse proxying for SignalR.
    - **Local Orchestration**: Authored `docker-compose.yml` linking SQL Server 2022 (`vitalq-db`), Web API (`vitalq-api`), and Angular SPA (`vitalq-web`) over an isolated bridge network (`vitalq-network`).
 2. **Industry-Standard Parallel CI Pipelines**:
    - Converted sequential scripts into a 3-job parallel pipeline in `.github/workflows/ci.yml`:
-     - `Backend Build (.NET 8)`: Restores, compiles, and runs 50 xUnit tests.
+     - `Backend Build (.NET 8)`: Restores, compiles, and runs 51 xUnit tests.
      - `Frontend Build (Angular 19)`: Installs dependencies, runs 13 headless Jasmine tests with Chrome, and builds production bundle.
      - `Verify Docker Container Builds`: Gated on both test jobs passing via `needs: [backend-ci, frontend-ci]`. Avoids building images when unit tests fail.
-3. **GitHub Branch Protection & PR Gatekeeping**:
-   - Learned how GitHub branch protection checks required statuses (`Backend Build (.NET 8)` and `Frontend Build (Angular 19)`).
-   - Resolved merge blocking states from `mergeable_state: unstable` to `clean`.
-4. **Rollback-Ready Container Versioning**:
-   - Implemented dual-tagging: `vitalq-api:${{ github.sha }}` and `vitalq-api:latest`. Guarantees zero-downtime, deterministic rollbacks to prior commits in cloud environments without rebuilding.
 
-### B. What We Are Going to Do Next
-1. **Merge PR #23**:
-   - Merge [PR #23](https://github.com/muxdaslam-sys/VitalQ/pull/23) into `main` on GitHub to establish the containerized, test-gated baseline.
-2. **Sync Local Main & Create Feature Branch**:
-   - Run `git checkout main && git pull origin main`.
-   - Create feature branch: `feat/azure-cloud-deployment`.
-3. **Execute Module 2 of Azure Cloud Roadmap (`AZURE_MASTER_ROADMAP.md`)**:
-   - **Step 1: Azure Resource Group**: Provision `rg-vitalq-prod-centralindia` using Azure CLI / Portal.
-   - **Step 2: Azure Container Registry (ACR)**: Provision `crvitalqprod` for private, secure enterprise container image hosting.
-   - **Step 3: Service Principal / Workload Identity**: Configure GitHub Actions authentication to push built images directly into ACR upon merge to `main`.
-   - **Step 4: Azure Container Apps Environment**: Provision managed container environment with auto-scaling rules (0 to 5 replicas) and HTTPS ingress.
+### B. Phase 12 Achievements: Azure Cloud Infrastructure & Container Apps (Module 2)
+1. **Cloud Resource Group & Governance**:
+   - Provisioned `rg-vitalq-prod-centralindia` in Pune (`centralindia`) on Pay-As-You-Go subscription.
+   - Configured $10.00/month budget guardrail with proactive alert thresholds (50%, 75%, 90%, 100%).
+2. **Azure Container Registry (ACR)**:
+   - Provisioned private registry `crvitalqprod.azurecr.io` (Basic SKU).
+   - Built production container images in the cloud via ACR Tasks (`az acr build`) without local Docker daemon dependencies.
+3. **Azure Container Apps Serverless Microservices**:
+   - Provisioned managed Container Apps Environment `cae-vitalq-prod` backed by Log Analytics (`log-vitalq-prod`).
+   - Deployed Backend API (`ca-vitalq-api`): Running on .NET 8 chiseled runtime with HTTP 200 liveness probes.
+   - Deployed Frontend SPA (`ca-vitalq-web`): Running on Nginx Alpine with dynamic DNS resolution via Azure recursive resolver (`168.63.129.16`) and runtime environment variable substitution (`BACKEND_URL`).
+   - Reverse-proxied TLS traffic with SNI pass-through (`proxy_ssl_server_name on`). Verified live at `https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io`.
+
+### C. What We Are Going to Do Next (Module 3: Azure SQL Database)
+1. **Provision Azure SQL Server & Database**:
+   - Provision Azure SQL Server `sql-vitalq-prod` in `centralindia`.
+   - Provision serverless database `sqldb-vitalq-prod` with auto-pause enabled (1 hour idle timeout) to minimize cloud costs.
+2. **Firewall & Managed Identity Configuration**:
+   - Enable "Allow Azure services and resources to access this server" firewall rule.
+   - Secure connection string in Azure Container Apps Secret Store (`sql-connection-string`).
+3. **Automate EF Core Database Migrations**:
+   - Apply EF Core migration to create the 8 database tables, 23 B-Tree indexes, and initial admin/department seed data.
+4. **Validate End-to-End Live Workflow**:
+   - Test self-registration, token booking, CTAS triage vitals submission, and doctor consultation queue on the live Azure cloud deployment.
