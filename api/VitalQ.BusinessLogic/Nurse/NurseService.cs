@@ -819,29 +819,37 @@ public class NurseService : INurseService
     }
 
     /// <summary>
-    /// Cancels an untriaged walk-in token if patient departed or checked in mistakenly.
-        /// </summary>
-        public async Task<QueueTokenResponse> CancelUntriagedTokenAsync(Guid tokenId, Guid nurseUserId)
+    /// Cancels or transfers an active token (Booked, Waiting, Skipped) from the nursing desk
+    /// (e.g. patient departed, admitted to Casualty / Emergency, or clinical desk override).
+    /// </summary>
+    public async Task<QueueTokenResponse> CancelTokenAsync(Guid tokenId, Guid nurseUserId, string? reason = null)
+    {
+        var token = await _context.QueueTokens
+            .Include(t => t.Patient)
+            .Include(t => t.Doctor).ThenInclude(d => d.User)
+            .Include(t => t.Department)
+            .FirstOrDefaultAsync(t => t.Id == tokenId)
+            ?? throw new KeyNotFoundException($"Token with ID '{tokenId}' was not found.");
+
+        if (token.Status == "Completed")
         {
-            var token = await _context.QueueTokens
-                .Include(t => t.Patient)
-                .Include(t => t.Doctor).ThenInclude(d => d.User)
-                .Include(t => t.Department)
-                .FirstOrDefaultAsync(t => t.Id == tokenId)
-                ?? throw new KeyNotFoundException($"Token with ID '{tokenId}' was not found.");
-
-            if (token.Status != "Booked")
-            {
-                throw new InvalidOperationException($"Cannot cancel a token with status '{token.Status}'. Only untriaged 'Booked' tokens can be cancelled at the nursing desk.");
-            }
-
-            token.Status = "Cancelled";
-            token.CompletedAtUtc = DateTime.UtcNow;
-            token.ConsultationNotes = "Cancelled at Nurse Desk - Patient departed before vitals intake.";
-            await _context.SaveChangesAsync();
-
-            return MapToTokenResponse(token, token.Patient, token.Doctor);
+            throw new InvalidOperationException("Cannot cancel a consultation that has already been completed.");
         }
+
+        if (token.Status == "Cancelled")
+        {
+            throw new InvalidOperationException("This token has already been cancelled.");
+        }
+
+        token.Status = "Cancelled";
+        token.CompletedAtUtc = DateTime.UtcNow;
+        token.ConsultationNotes = string.IsNullOrWhiteSpace(reason)
+            ? "Cancelled at Nursing Desk"
+            : $"Cancelled at Nursing Desk: {reason.Trim()}";
+        await _context.SaveChangesAsync();
+
+        return MapToTokenResponse(token, token.Patient, token.Doctor);
+    }
 
     #endregion
 

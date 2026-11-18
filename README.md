@@ -1,7 +1,7 @@
 # VitalQ - Real-Time Hospital OPD Queue Orchestration & CTAS Triage Platform
 
 [![Status: Production Ready](https://img.shields.io/badge/Status-Production--Ready-success?logo=checkmarx&logoColor=white)](https://github.com/muxdaslam-sys/VitalQ)
-[![Tests](https://img.shields.io/badge/Tests-63%2F63%20Passing-brightgreen?logo=checkmarx&logoColor=white)](https://github.com/muxdaslam-sys/VitalQ)
+[![Tests](https://img.shields.io/badge/Tests-64%2F64%20Passing-brightgreen?logo=checkmarx&logoColor=white)](https://github.com/muxdaslam-sys/VitalQ)
 [![Version](https://img.shields.io/badge/Version-1.0.0-blue)](https://github.com/muxdaslam-sys/VitalQ)
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Angular 19](https://img.shields.io/badge/Angular-19-DD0031?logo=angular&logoColor=white)](https://angular.dev/)
@@ -173,19 +173,19 @@ docker compose up --build
 
 ## 🧪 Automated Testing & Concurrency Stress Verification
 
-The solution includes an enterprise test suite of **63 automated tests across the entire stack (100% pass rate)**:
-* **50 Backend xUnit Tests** (`api/VitalQ.Tests/`) covering algorithms, generators, clinical services, controllers, database health checks, and high-concurrency multi-threaded stress simulations.
+The solution includes an enterprise test suite of **64 automated tests across the entire stack (100% pass rate)**:
+* **51 Backend xUnit Tests** (`api/VitalQ.Tests/`) covering algorithms, generators, clinical services, controllers, database health checks, and high-concurrency multi-threaded stress simulations.
 * **13 Frontend Jasmine Tests** (`web/src/app/`) covering session management, token decoding, consultation discharge validation, and strike calculations using headless Chrome (`ChromeHeadlessNoSandbox`).
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                               63 FULL-STACK TESTS (100% PASS)                          │
+│                               64 FULL-STACK TESTS (100% PASS)                          │
 ├───────────────────────────────┬────────────────────────────────┬───────────────────────┤
-│ BACKEND UNIT TESTS (46)       │ CONCURRENCY STRESS TESTS (4)   │ FRONTEND TESTS (13)   │
+│ BACKEND UNIT TESTS (47)       │ CONCURRENCY STRESS TESTS (4)   │ FRONTEND TESTS (13)   │
 │ • MrnGeneratorTests (5)       │ • 30-Worker Race (0 Collision) │ • AuthService (4)     │
 │ • PriorityScoreTests (13)     │ • 100K SLA Benchmark (<500ms)  │ • CompleteModal (4)   │
 │ • DoctorSafetyTests (9)       │ • Past-1M Dynamic Scale (1)    │ • SkipModal (5)       │
-│ • NurseTriageTests (7)        │ • Token Format Integrity (1)   │                       │
+│ • NurseTriageTests (8)        │ • Token Format Integrity (1)   │                       │
 │ • Patient & Public Tests (8)  │                                │                       │
 │ • DatabaseHealthCheckTest (1) │                                │                       │
 │ • AuthServiceTests (3)        │                                │                       │
@@ -212,7 +212,7 @@ cd web && npm test -- --watch=false
 ## 🏁 Project State & Production Readiness
 
 - **Release Version**: `v1.0.0 (Production-Ready)`
-- **Test Coverage**: 63 Tests Across the Stack (50 .NET + 13 Angular, 100% Pass Rate)
+- **Test Coverage**: 64 Tests Across the Stack (51 .NET + 13 Angular, 100% Pass Rate)
 - **Backend Quality**: 0 Warnings, 0 Errors (`dotnet build api/VitalQ.sln`)
 - **Frontend Quality**: 0 Errors (`ng build`, Angular 19 AOT Ahead-Of-Time compilation)
 - **Health & Monitoring**: Native ASP.NET Core database connectivity and readiness probe (`/health`, `/health/live`).

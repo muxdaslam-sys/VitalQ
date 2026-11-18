@@ -260,12 +260,14 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
     this.loadAllData(false);
   }
 
-  cancelToken(token: QueueToken): void {
-    if (!confirm(`Cancel walk-in token ${token.tokenNumber} for ${token.patientName}?`)) {
+  cancelToken(token: QueueToken, defaultReason?: string): void {
+    const defaultText = defaultReason || (token.status === 'Waiting' ? 'Transferred to Casualty / Emergency Ward' : 'Patient departed before vitals intake');
+    const reason = prompt(`Reason for cancelling or transferring token ${token.tokenNumber} (${token.patientName}):`, defaultText);
+    if (reason === null) {
       return;
     }
 
-    this.nurseService.cancelToken(token.id).subscribe({
+    this.nurseService.cancelToken(token.id, reason).subscribe({
       next: () => {
         this.toast.success(`Token ${token.tokenNumber} has been cancelled.`);
         this.loadAllData(false);
@@ -299,6 +301,17 @@ export class NurseDashboardComponent implements OnInit, OnDestroy {
    * Refreshes the doctor's active chamber queue in place after a patient is restored.
    */
   onDoctorQueuePatientRequeued(doctorId: string): void {
+    this.loadAllData(false);
+    this.nurseService.getDoctorQueue(doctorId).subscribe({
+      next: data => this.activeDoctorQueue.set(data),
+      error: () => this.activeDoctorQueue.set(null)
+    });
+  }
+
+  /**
+   * Refreshes the doctor's active chamber queue in place after a patient is cancelled or transferred.
+   */
+  onDoctorQueuePatientCancelled(doctorId: string): void {
     this.loadAllData(false);
     this.nurseService.getDoctorQueue(doctorId).subscribe({
       next: data => this.activeDoctorQueue.set(data),

@@ -70,9 +70,9 @@ public interface INurseService
     Task<QueueTokenResponse> BookTokenForExistingPatientAsync(Guid patientId, ExistingPatientTokenBookingRequest request, Guid nurseUserId, Guid? nursingStationId);
 
     /// <summary>
-    /// Cancels an untriaged walk-in token if patient departed or checked in mistakenly.
+    /// Cancels or transfers an active token (Booked, Waiting, Skipped) from the nursing desk.
     /// </summary>
-    Task<QueueTokenResponse> CancelUntriagedTokenAsync(Guid tokenId, Guid nurseUserId);
+    Task<QueueTokenResponse> CancelTokenAsync(Guid tokenId, Guid nurseUserId, string? reason = null);
     #endregion
 }
 

@@ -39,8 +39,14 @@ export class DoctorQueueModalComponent {
   /** Emitted when a skipped patient is successfully restored to queue */
   @Output() patientRequeued = new EventEmitter<string>();
 
+  /** Emitted when an active patient is cancelled or transferred to casualty */
+  @Output() patientCancelled = new EventEmitter<string>();
+
   /** Loading state flag during requeue operation */
   isRequeuing = signal<boolean>(false);
+
+  /** Loading state flag during cancel operation */
+  isCancelling = signal<boolean>(false);
 
   /** ID of token currently expanded to view vitals accordion */
   expandedTokenId = signal<string | null>(null);
@@ -69,6 +75,28 @@ export class DoctorQueueModalComponent {
       error: (err: any) => {
         this.isRequeuing.set(false);
         this.toast.error(err.error?.message || 'Failed to re-queue patient.');
+      }
+    });
+  }
+
+  /**
+   * Cancels or transfers an active or skipped patient to Casualty / Emergency.
+   */
+  onCancel(tokenId: string, patientName: string): void {
+    if (this.isCancelling()) return;
+    const reason = prompt(`Reason for cancelling or transferring ${patientName}:`, 'Transferred to Casualty / Emergency Ward');
+    if (reason === null) return;
+
+    this.isCancelling.set(true);
+    this.nurseService.cancelToken(tokenId, reason).subscribe({
+      next: () => {
+        this.isCancelling.set(false);
+        this.toast.success(`${patientName} removed from queue: ${reason}`);
+        this.patientCancelled.emit(tokenId);
+      },
+      error: (err: any) => {
+        this.isCancelling.set(false);
+        this.toast.error(err.error?.message || 'Failed to cancel token.');
       }
     });
   }
