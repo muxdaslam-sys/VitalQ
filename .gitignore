@@ -18,7 +18,16 @@
 
 ## Sensitive / local configuration files
 appsettings.Development.json
+appsettings.Production.json
 secrets.json
+
+## Environment files & local credentials
+.env
+*.env
+*.env.local
+*.env.development.local
+*.env.test.local
+*.env.production.local
 
 ## OS generated files
 .DS_Store

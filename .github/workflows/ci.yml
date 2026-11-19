@@ -1,4 +1,4 @@
-name: VitalQ CI/CD - Automated Testing & Cloud Deployment
+name: VitalQ CI - Test & Docker Build Verification
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
   # 1. BACKEND CI: .NET 8 Build & 51 Automated xUnit Tests
   # =========================================================================
   backend-ci:
-    name: Backend Build & Tests (.NET 8)
+    name: Backend Build (.NET 8)
     runs-on: ubuntu-latest
 
     steps:
@@ -40,7 +40,7 @@ jobs:
   # 2. FRONTEND CI: Angular 19 Build & 13 Headless Jasmine Tests
   # =========================================================================
   frontend-ci:
-    name: Frontend Build & Tests (Angular 19)
+    name: Frontend Build (Angular 19)
     runs-on: ubuntu-latest
 
     steps:
@@ -64,9 +64,9 @@ jobs:
         run: npm --prefix web run build
 
   # =========================================================================
-  # 3. DOCKER VERIFICATION: Multi-Stage Production Container Verification
+  # 3. DOCKER CI: Multi-Stage Production Container Image Verification
   # =========================================================================
-  docker-verify:
+  docker-ci:
     name: Verify Docker Container Builds
     needs: [backend-ci, frontend-ci]
     runs-on: ubuntu-latest
@@ -92,7 +92,7 @@ jobs:
   # =========================================================================
   deploy-production:
     name: Deploy to Azure Container Apps
-    needs: [backend-ci, frontend-ci, docker-verify]
+    needs: [backend-ci, frontend-ci, docker-ci]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
 
