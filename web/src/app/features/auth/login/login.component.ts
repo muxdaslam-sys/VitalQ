@@ -4,9 +4,10 @@
  * ============================================================================
  * 
  * PURPOSE:
- * Serves as the universal login portal for both Hospital Staff (Doctors, Nurses, Admins)
- * and Outpatients. Provides mode switching, caps lock detection, password visibility,
- * quick paper slip tracking, and first-time patient self-registration.
+ * Serves as the universal single login portal for all Hospital Users:
+ * Clinicians (Doctors, Nurses, Admins) and Outpatients.
+ * Authenticates credentials against the unified /api/auth/login endpoint
+ * and automatically routes users to their role-specific workstation or portal.
  * ============================================================================
  */
 
@@ -37,9 +38,6 @@ export class LoginComponent implements OnInit {
   //#endregion
 
   //#region 2. Reactive State & Form Models
-
-  /** Active login mode: 'staff' vs 'patient' */
-  activeMode = signal<'staff' | 'patient'>('staff');
 
   /** Login credentials payload */
   credentials: LoginRequest = { username: '', password: '' };
@@ -93,16 +91,7 @@ export class LoginComponent implements OnInit {
 
   //#endregion
 
-  //#region 4. Mode Switching & UI Toggles
-
-  /**
-   * Switches portal mode between Hospital Staff and Patient OPD.
-   */
-  switchMode(mode: 'staff' | 'patient'): void {
-    this.activeMode.set(mode);
-    this.errorMessage.set(null);
-    this.credentials = { username: '', password: '' };
-  }
+  //#region 4. UI Toggles & Safety Helpers
 
   /**
    * Toggles password masking.
@@ -160,7 +149,7 @@ export class LoginComponent implements OnInit {
   onQuickTokenSubmit(): void {
     const token = this.quickTokenInput().trim();
     if (!token) {
-      this.quickTokenError.set('Please enter a valid token number (e.g. CARD-001 or GEN-012).');
+      this.quickTokenError.set('Please enter a valid token number (e.g. CARD-001 or GEN-014).');
       return;
     }
     this.showQuickTokenModal.set(false);
@@ -207,13 +196,12 @@ export class LoginComponent implements OnInit {
   }
 
   /**
-   * Authenticates credentials and routes user to their role-specific portal.
+   * Authenticates credentials and dynamically routes user to their role-specific portal.
    */
   onSubmit(): void {
     if (this.isLoading()) return;
     if (!this.credentials.username.trim() || !this.credentials.password) {
-      const fieldName = this.activeMode() === 'staff' ? 'Staff ID / Username' : 'Mobile / Patient ID';
-      this.errorMessage.set(`Please provide both your ${fieldName} and password/PIN.`);
+      this.errorMessage.set('Please provide both your Username/ID and password.');
       return;
     }
 
@@ -233,10 +221,7 @@ export class LoginComponent implements OnInit {
       },
       error: (err) => {
         this.isLoading.set(false);
-        const defaultMsg = this.activeMode() === 'staff' 
-          ? 'Authentication failed. Please verify your hospital staff credentials.'
-          : 'Patient login failed. Please verify your mobile number or PIN.';
-        this.errorMessage.set(err.error?.message || defaultMsg);
+        this.errorMessage.set(err.error?.message || 'Authentication failed. Please verify your credentials or contact Clinical IT.');
       }
     });
   }

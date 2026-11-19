@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   # =========================================================================
-  # 1. BACKEND CI: .NET 8 Build & 50 Automated xUnit Tests
+  # 1. BACKEND CI: .NET 8 Build & 51 Automated xUnit Tests
   # =========================================================================
   backend-ci:
     name: Backend Build (.NET 8)
@@ -33,7 +33,7 @@ jobs:
       - name: Build Solution (Release)
         run: dotnet build api/VitalQ.sln --configuration Release --no-restore
 
-      - name: Run Backend Tests (50 xUnit Tests)
+      - name: Run Backend Tests (51 xUnit Tests)
         run: dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --configuration Release --no-build
 
   # =========================================================================
@@ -86,3 +86,62 @@ jobs:
           docker build -f web/Dockerfile \
             -t vitalq-web:${{ github.sha }} \
             -t vitalq-web:latest ./web
+
+  # =========================================================================
+  # 4. CONTINUOUS DEPLOYMENT (CD): Deploy to Azure Container Apps (On Merge to Main)
+  # =========================================================================
+  deploy-production:
+    name: Deploy to Azure Container Apps
+    needs: [backend-ci, frontend-ci, docker-ci]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Authenticate Docker with Azure Container Registry
+        run: |
+          az acr login --name crvitalqprod
+
+      - name: Build and Push Backend Container Image
+        run: |
+          docker build -f api/VitalQ.API/Dockerfile \
+            -t crvitalqprod.azurecr.io/vitalq-api:${{ github.sha }} \
+            -t crvitalqprod.azurecr.io/vitalq-api:latest ./api
+          docker push crvitalqprod.azurecr.io/vitalq-api:${{ github.sha }}
+          docker push crvitalqprod.azurecr.io/vitalq-api:latest
+
+      - name: Build and Push Frontend Container Image
+        run: |
+          docker build -f web/Dockerfile \
+            -t crvitalqprod.azurecr.io/vitalq-web:${{ github.sha }} \
+            -t crvitalqprod.azurecr.io/vitalq-web:latest ./web
+          docker push crvitalqprod.azurecr.io/vitalq-web:${{ github.sha }}
+          docker push crvitalqprod.azurecr.io/vitalq-web:latest
+
+      - name: Deploy Backend Revision to Azure Container Apps
+        run: |
+          az containerapp update \
+            --name ca-vitalq-api \
+            --resource-group rg-vitalq-prod-centralindia \
+            --image crvitalqprod.azurecr.io/vitalq-api:${{ github.sha }}
+
+      - name: Deploy Frontend Revision to Azure Container Apps
+        run: |
+          az containerapp update \
+            --name ca-vitalq-web \
+            --resource-group rg-vitalq-prod-centralindia \
+            --image crvitalqprod.azurecr.io/vitalq-web:${{ github.sha }} \
+            --set-env-vars BACKEND_URL=https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io
+
+      - name: Verify Live Production Health Probe
+        run: |
+          sleep 15
+          curl -f -I "https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live"
+          curl -f -I "https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io/"

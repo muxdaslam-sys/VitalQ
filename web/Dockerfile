@@ -21,12 +21,15 @@ RUN npm run build -- --configuration=production
 # ==============================================================================
 FROM nginx:alpine AS final
 
-# Copy custom Nginx configuration
+# Copy custom Nginx configuration and entrypoint script
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh
 
 # Copy compiled static assets from build stage
 COPY --from=build /app/dist/vitalq-web/browser /usr/share/nginx/html
 
 EXPOSE 80
 
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

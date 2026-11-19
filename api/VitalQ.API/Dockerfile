@@ -22,9 +22,9 @@ WORKDIR "/src/VitalQ.API"
 RUN dotnet publish "VitalQ.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # ==============================================================================
-# STAGE 2: Minimal Production Runtime
+# STAGE 2: Minimal Production Runtime with ICU Globalization (for SQL Server)
 # ==============================================================================
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-noble-chiseled AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-noble-chiseled-extra AS final
 WORKDIR /app
 
 # Copy compiled binaries from build stage
