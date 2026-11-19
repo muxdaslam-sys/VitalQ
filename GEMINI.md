@@ -1,18 +1,19 @@
 # VitalQ - System Architecture & Context Memory
 
-> **Last Updated**: 2026-11-18  
+> **Last Updated**: 2026-11-19  
 > **Repository Root**: `d:\Projects\VitalQ`  
 > **Monorepo Structure**: `api/` (.NET 8 Web API & Test Suite) & `web/` (Angular 19 SPA)  
 > **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 51 xUnit Tests)  
 > **Frontend Status**: 100% Completed, Standalone, OnPush & Verified (Angular 19 & 13 Jasmine Tests)  
-> **Database**: Microsoft SQL Server Express (`DESKTOP-S6AF6OE\SQLEXPRESS`, Database: `VitalQ`)  
-> **Cloud Status**: Module 2 Completed: Live on Azure Container Apps (`centralindia`, Pune)  
+> **Database**: Microsoft SQL Server Express (Local) & Azure SQL Serverless `sql-vitalq-prod.database.windows.net` (`sqldb-vitalq-prod` in `centralindia`, Pune)  
+> **Cloud Status**: Modules 2 & 3 Completed: Live on Azure Container Apps with Serverless Azure SQL Database  
 > **Live Web Client**: [ca-vitalq-web](https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io)  
 > **Live API Service**: [ca-vitalq-api](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io)  
+> **Live Health Endpoint**: [ca-vitalq-api/health](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health) (HTTP 200 Healthy, ~90ms SQL latency)  
 > **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`)  
 > **Test Coverage**: 64 Unit & Stress Tests (51 Backend xUnit + 13 Frontend Jasmine, 100% Pass Rate)  
 > **Active Branch**: `feat/azure-cloud-deployment`  
-> **Upcoming Planned Phase**: Azure SQL Database Provisioning (Module 3 in `AZURE_MASTER_ROADMAP.md`)
+> **Upcoming Planned Phase**: Module 4 (Redis Distributed Caching & SignalR Scale-Out) or Custom Domain Setup
 
 ---
 
@@ -252,14 +253,25 @@ Whenever modifying or analyzing this codebase, every AI agent must strictly foll
    - Deployed Frontend SPA (`ca-vitalq-web`): Running on Nginx Alpine with dynamic DNS resolution via Azure recursive resolver (`168.63.129.16`) and runtime environment variable substitution (`BACKEND_URL`).
    - Reverse-proxied TLS traffic with SNI pass-through (`proxy_ssl_server_name on`). Verified live at `https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io`.
 
-### C. What We Are Going to Do Next (Module 3: Azure SQL Database)
-1. **Provision Azure SQL Server & Database**:
-   - Provision Azure SQL Server `sql-vitalq-prod` in `centralindia`.
-   - Provision serverless database `sqldb-vitalq-prod` with auto-pause enabled (1 hour idle timeout) to minimize cloud costs.
-2. **Firewall & Managed Identity Configuration**:
-   - Enable "Allow Azure services and resources to access this server" firewall rule.
-   - Secure connection string in Azure Container Apps Secret Store (`sql-connection-string`).
-3. **Automate EF Core Database Migrations**:
-   - Apply EF Core migration to create the 8 database tables, 23 B-Tree indexes, and initial admin/department seed data.
-4. **Validate End-to-End Live Workflow**:
-   - Test self-registration, token booking, CTAS triage vitals submission, and doctor consultation queue on the live Azure cloud deployment.
+### C. Phase 13 Achievements: Azure SQL Database & Cloud Persistence (Module 3)
+1. **Azure SQL Server & Serverless Database**:
+   - Provisioned logical Azure SQL Server `sql-vitalq-prod.database.windows.net` in `centralindia` (Pune).
+   - Deployed serverless database `sqldb-vitalq-prod` with 60-minute auto-pause and Azure monthly free-tier limits.
+2. **Cloud Security & Firewall**:
+   - Configured firewall rule `AllowAllWindowsAzureIps` (`0.0.0.0`) permitting Container Apps communication over port 1433 with TLS encryption.
+   - Whitelisted client developer IP for administrative migration tasks.
+   - Encrypted connection string stored in Azure Container Apps Secret Store (`sql-connection-string`).
+3. **Full Data & Schema Migration**:
+   - Exported and migrated all 7 tables and 23 B-Tree performance indexes via `vitalq_cloud_seed.sql`.
+   - Imported all 392 active clinical records (8 departments, 8 nursing stations, 121 users, 16 doctors, 103 patients, 90 tokens, 46 triage assessments) into Azure SQL.
+4. **Runtime ICU Globalization Hardening**:
+   - Upgraded .NET 8 runtime to `mcr.microsoft.com/dotnet/aspnet:8.0-noble-chiseled-extra` to supply ICU globalization libraries required by SQL Server collation.
+   - Built and deployed via ACR Tasks (`cu5`). Verified live `/health` returning HTTP 200 `Healthy` with ~90ms SQL roundtrip latency.
+
+### D. What We Are Going to Do Next (Module 4: Distributed Caching & Scaling)
+1. **Azure Cache for Redis**:
+   - Deploy Azure Cache for Redis (Basic SKU) for sub-millisecond distributed cache sharing across multiple API replicas.
+2. **Azure SignalR Backplane**:
+   - Scale WebSocket doctor call alerts across multiple backend instances without dropped events.
+3. **Custom Domain & TLS**:
+   - Bind custom domain with free managed SSL certificate on Azure Container Apps.
