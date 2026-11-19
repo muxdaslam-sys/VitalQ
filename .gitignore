@@ -42,6 +42,7 @@ dist/
 
 ## Project state & internal documentation
 PROJECT_STATE.md
+AZURE_MASTER_ROADMAP.md
 
 ## Database backups & local seed scripts
 *.bak
