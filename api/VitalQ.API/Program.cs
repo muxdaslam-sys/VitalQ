@@ -19,8 +19,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContextPool<VitalQDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 1.1 In-Memory Caching for hospital metadata
+// 1.1 Caching Architecture (L1 MemoryCache + L2 Redis Distributed Cache with In-Memory Fallback)
 builder.Services.AddMemoryCache();
+
+var redisConnection = builder.Configuration.GetConnectionString("RedisConnection");
+if (!string.IsNullOrWhiteSpace(redisConnection))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnection;
+        options.InstanceName = "VitalQ:";
+    });
+}
+else
+{
+    // Fallback to in-memory distributed cache when Redis connection is not specified (e.g. offline dev, tests)
+    builder.Services.AddDistributedMemoryCache();
+}
 
 // 2. DYNAMIC CORS (Production-Ready: configurable origins with localhost fallback)
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
@@ -106,8 +121,15 @@ builder.Services.AddScoped<INurseService, NurseService>();
 builder.Services.AddScoped<IDoctorService, DoctorService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 
-// 6. SignalR & Background Aging Worker
-builder.Services.AddSignalR();
+// 6. SignalR with Redis Scale-Out Backplane & Background Aging Worker
+var signalRBuilder = builder.Services.AddSignalR();
+if (!string.IsNullOrWhiteSpace(redisConnection))
+{
+    signalRBuilder.AddStackExchangeRedis(redisConnection, options =>
+    {
+        options.Configuration.ChannelPrefix = StackExchange.Redis.RedisChannel.Literal("VitalQ_SignalR");
+    });
+}
 builder.Services.AddHostedService<AgingWorker>();
 
 // 6.1 Native Health Checks (Database Readiness & Container Liveness)

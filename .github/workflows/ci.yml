@@ -33,7 +33,7 @@ jobs:
       - name: Build Solution (Release)
         run: dotnet build api/VitalQ.sln --configuration Release --no-restore
 
-      - name: Run Backend Tests (51 xUnit Tests)
+      - name: Run Backend Tests (53 xUnit Tests)
         run: dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --configuration Release --no-build
 
   # =========================================================================

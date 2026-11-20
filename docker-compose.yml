@@ -15,6 +15,16 @@ services:
     networks:
       - vitalq-network
 
+  # Service 1.1: Redis Distributed Cache & SignalR Backplane
+  vitalq-redis:
+    image: redis:alpine
+    container_name: vitalq-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - vitalq-network
+
   # Service 2: .NET 8 Web API
   vitalq-api:
     build:
@@ -24,10 +34,12 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Server=vitalq-db;Database=VitalQ;User Id=sa;Password=VitalQ_Production_Password_2026!;TrustServerCertificate=True;
+      - ConnectionStrings__RedisConnection=vitalq-redis:6379
     ports:
       - "5089:8080"
     depends_on:
       - vitalq-db
+      - vitalq-redis
     networks:
       - vitalq-network
 

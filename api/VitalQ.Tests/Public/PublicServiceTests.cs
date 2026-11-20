@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using VitalQ.BusinessLogic.Services;
 using VitalQ.Entities.Models;
 using VitalQ.Tests.Helpers;
@@ -127,5 +129,85 @@ public class PublicServiceTests
         result!.Status.Should().Be("Completed");
         result.ConsultationNotes.Should().Be("Normal ECG recorded. Maintain low-sodium diet and hydrate.");
         result.CompletedAtUtc.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetActiveDepartmentsAsync_PopulatesAndReadsFromDistributedCache()
+    {
+        // Arrange
+        using var context = TestDbContextFactory.Create();
+        var dept1 = new Department
+        {
+            Id = Guid.NewGuid(),
+            Name = "Cardiology",
+            Code = "CARD",
+            LocationFloor = "Floor 2",
+            IsActive = true,
+            LastTokenNumber = 0,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+        await context.Departments.AddAsync(dept1);
+        await context.SaveChangesAsync();
+
+        var memCache = new MemoryCache(new MemoryCacheOptions());
+        var distCache = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+        var service = new PublicService(context, memCache, distCache);
+
+        // Act 1: Initial call should query DB and populate distributed cache
+        var initialDepts = (await service.GetActiveDepartmentsAsync()).ToList();
+
+        // Assert 1: Returned DB data and saved into distributed cache
+        initialDepts.Should().HaveCount(1);
+        initialDepts[0].Code.Should().Be("CARD");
+
+        var cachedRawJson = await distCache.GetStringAsync("ActiveDepartments");
+        cachedRawJson.Should().NotBeNullOrEmpty();
+        cachedRawJson.Should().Contain("Cardiology");
+
+        // Act 2: Add a second department to DB, but clear L1 cache while keeping L2 distributed cache intact
+        var dept2 = new Department
+        {
+            Id = Guid.NewGuid(),
+            Name = "Neurology",
+            Code = "NEUR",
+            LocationFloor = "Floor 3",
+            IsActive = true,
+            LastTokenNumber = 0,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+        await context.Departments.AddAsync(dept2);
+        await context.SaveChangesAsync();
+
+        var freshMemCache = new MemoryCache(new MemoryCacheOptions());
+        var secondService = new PublicService(context, freshMemCache, distCache);
+
+        var cachedDepts = (await secondService.GetActiveDepartmentsAsync()).ToList();
+
+        // Assert 2: Second call served from L2 distributed cache, ignoring the new DB row
+        cachedDepts.Should().HaveCount(1);
+        cachedDepts[0].Code.Should().Be("CARD");
+    }
+
+    [Fact]
+    public async Task GetAvailableDoctorsAsync_PopulatesAndReadsFromDistributedCache()
+    {
+        // Arrange
+        using var context = TestDbContextFactory.Create();
+        var (dept, doctor, doctorUser, patient) = await TestDbContextFactory.SeedTestClinicAsync(context);
+
+        var memCache = new MemoryCache(new MemoryCacheOptions());
+        var distCache = new MemoryDistributedCache(Options.Create(new MemoryDistributedCacheOptions()));
+        var service = new PublicService(context, memCache, distCache);
+
+        // Act
+        var initialDoctors = (await service.GetAvailableDoctorsAsync(dept.Id)).ToList();
+
+        // Assert
+        initialDoctors.Should().HaveCount(1);
+        initialDoctors[0].DoctorName.Should().Be(doctorUser.FullName);
+
+        var cachedJson = await distCache.GetStringAsync($"AvailableDoctors_{dept.Id}");
+        cachedJson.Should().NotBeNullOrEmpty();
+        cachedJson.Should().Contain(doctorUser.FullName);
     }
 }
