@@ -1,19 +1,20 @@
 # VitalQ - System Architecture & Context Memory
 
-> **Last Updated**: 2026-11-19  
+> **Last Updated**: 2026-11-20  
 > **Repository Root**: `d:\Projects\VitalQ`  
 > **Monorepo Structure**: `api/` (.NET 8 Web API & Test Suite) & `web/` (Angular 19 SPA)  
-> **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 51 xUnit Tests)  
+> **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 53 xUnit Tests)  
 > **Frontend Status**: 100% Completed, Standalone, OnPush & Verified (Angular 19 & 13 Jasmine Tests)  
 > **Database**: Microsoft SQL Server Express (Local) & Azure SQL Serverless `sql-vitalq-prod.database.windows.net` (`sqldb-vitalq-prod` in `centralindia`, Pune)  
-> **Cloud Status**: Modules 2 & 3 Completed: Live on Azure Container Apps with Serverless Azure SQL Database  
+> **Cloud Status**: Modules 2, 3 & 4 Completed: Live on Azure Container Apps with Serverless Azure SQL Database & Redis Distributed Cache  
 > **Live Web Client**: [ca-vitalq-web](https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io)  
 > **Live API Service**: [ca-vitalq-api](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io)  
+> **Live Redis Service**: `ca-vitalq-redis` (Internal TCP Port 6379 in `cae-vitalq-prod`)  
 > **Live Health Endpoint**: [ca-vitalq-api/health](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health) (HTTP 200 Healthy, ~90ms SQL latency)  
-> **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`)  
-> **Test Coverage**: 64 Unit & Stress Tests (51 Backend xUnit + 13 Frontend Jasmine, 100% Pass Rate)  
-> **Active Branch**: `feat/azure-cloud-deployment`  
-> **Upcoming Planned Phase**: Module 4 (Redis Distributed Caching & SignalR Scale-Out) or Custom Domain Setup
+> **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`) with Redis Scale-Out Backplane  
+> **Test Coverage**: 66 Unit & Stress Tests (53 Backend xUnit + 13 Frontend Jasmine, 100% Pass Rate)  
+> **Active Branch**: `feat/redis-distributed-caching`  
+> **Upcoming Planned Phase**: Pull Request Merge into `main` & Module 5 (Application Insights APM & Distributed Tracing)
 
 ---
 
@@ -268,10 +269,25 @@ Whenever modifying or analyzing this codebase, every AI agent must strictly foll
    - Upgraded .NET 8 runtime to `mcr.microsoft.com/dotnet/aspnet:8.0-noble-chiseled-extra` to supply ICU globalization libraries required by SQL Server collation.
    - Built and deployed via ACR Tasks (`cu5`). Verified live `/health` returning HTTP 200 `Healthy` with ~90ms SQL roundtrip latency.
 
-### D. What We Are Going to Do Next (Module 4: Distributed Caching & Scaling)
-1. **Azure Cache for Redis**:
-   - Deploy Azure Cache for Redis (Basic SKU) for sub-millisecond distributed cache sharing across multiple API replicas.
-2. **Azure SignalR Backplane**:
-   - Scale WebSocket doctor call alerts across multiple backend instances without dropped events.
-3. **Custom Domain & TLS**:
-   - Bind custom domain with free managed SSL certificate on Azure Container Apps.
+### D. Phase 14 Achievements: Module 4 Redis Distributed Caching & Scale-Out
+1. **Serverless Redis Deployment**:
+   - Deployed internal Container App `ca-vitalq-redis` on TCP port 6379 in `cae-vitalq-prod`.
+   - Zero-cost architecture sharing existing Container Apps Environment quota.
+2. **Multi-Tier L1/L2 Caching Engine**:
+   - Implemented in `PublicService.cs`: L1 Memory (sub-millisecond) + L2 Redis (5-min shared cache across all replicas) + L3 Azure SQL fallback.
+   - Implemented targeted cache invalidation in `AdminService.cs` and `DoctorService.cs`.
+3. **SignalR WebSocket Redis Backplane**:
+   - Configured `AddStackExchangeRedis` on SignalR builder with channel prefix `VitalQ_SignalR`.
+   - Broadcasts real-time events (`PatientCalled`, `QueueUpdated`, `TokenBooked`) across multi-replica container instances.
+4. **Cloud API Revision Deployment**:
+   - Built and pushed `vitalq-api:redis-v1` to ACR (`crvitalqprod.azurecr.io`).
+   - Deployed revision `ca-vitalq-api--0000005` with `ConnectionStrings__RedisConnection=ca-vitalq-redis:6379`.
+   - Verified live `/health` returning HTTP 200 `Healthy`.
+5. **Test Coverage**:
+   - Added 2 new unit tests in `PublicServiceTests.cs`.
+   - Total test suite at 66 tests (53 backend + 13 frontend, 100% pass rate).
+
+### E. What We Are Going to Do Next (Module 5: Observability & APM)
+1. **Merge Pull Request**: Merge `feat/redis-distributed-caching` into `main`.
+2. **Azure Application Insights**: Integrate distributed tracing across Angular 19 and .NET 8 with W3C TraceContext headers.
+3. **Azure Key Vault & Managed Identity (Module 6)**: Transition to passwordless cloud authentication.
