@@ -6,16 +6,17 @@
 > **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 53 xUnit Tests)  
 > **Frontend Status**: 100% Completed, Standalone, OnPush & Verified (Angular 19 & 13 Jasmine Tests)  
 > **Database**: Microsoft SQL Server Express (Local) & Azure SQL Serverless `sql-vitalq-prod.database.windows.net` (`sqldb-vitalq-prod` in `centralindia`, Pune)  
-> **Cloud Status**: Modules 2, 3, 4 & 5 Completed: Live on Azure Container Apps with Serverless Azure SQL Database, Redis Distributed Cache & Application Insights APM  
+> **Cloud Status**: Modules 2, 3, 4, 5 & 6 Completed: Live on Azure Container Apps with Serverless Azure SQL Database (Managed Identity), Redis Distributed Cache, Application Insights APM & Azure Key Vault  
 > **Live Web Client**: [ca-vitalq-web](https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io)  
 > **Live API Service**: [ca-vitalq-api](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io)  
 > **Live Redis Service**: `ca-vitalq-redis` (Internal TCP Port 6379 in `cae-vitalq-prod`)  
 > **Live Telemetry**: `appi-vitalq-prod` (Azure Application Insights linked to `log-vitalq-prod`)  
+> **Live Key Vault**: `kv-vitalq-prod` (Azure Key Vault in `centralindia`)  
 > **Live Health Endpoint**: [ca-vitalq-api/health/live](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live) (HTTP 200 Healthy)  
 > **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`) with Redis Scale-Out Backplane  
 > **Test Coverage**: 66 Unit & Stress Tests (53 Backend xUnit + 13 Frontend Jasmine, 100% Pass Rate)  
-> **Active Branch**: `feat/application-insights-observability`  
-> **Upcoming Planned Phase**: Pull Request Merge into `main` & Module 6 (Zero-Secret Architecture: Managed Identity & Azure Key Vault)
+> **Active Branch**: `feat/zero-secret-managed-identity-and-migrations`  
+> **Upcoming Planned Phase**: Pull Request Merge into `main` & Module 7 (Infrastructure as Code: Azure Bicep & Production Alerting)
 
 ---
 

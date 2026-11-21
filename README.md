@@ -9,6 +9,8 @@
 [![Redis](https://img.shields.io/badge/Redis-Distributed%20Cache-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 [![Azure Container Apps](https://img.shields.io/badge/Azure-Container%20Apps-0078D4?logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com/)
 [![Azure App Insights](https://img.shields.io/badge/Azure-App%20Insights-68217A?logo=microsoft-azure&logoColor=white)](https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview)
+[![Azure Key Vault](https://img.shields.io/badge/Azure-Key%20Vault-0078D4?logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com/)
+[![Managed Identity](https://img.shields.io/badge/Security-Managed%20Identity-green?logo=azure-devops&logoColor=white)](https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/overview)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![SQL Server](https://img.shields.io/badge/SQL_Server-Express%20%26%20Azure%20SQL-CC292B?logo=microsoft-sql-server&logoColor=white)](https://www.microsoft.com/sql-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -22,7 +24,7 @@
 * **Live Web Client**: [ca-vitalq-web](https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io)
 * **Live API Service**: [ca-vitalq-api](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io)
 * **Live Health Check**: [ca-vitalq-api/health/live](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live) (HTTP 200 Healthy)
-* **Cloud Infrastructure**: Azure Container Apps (`cae-vitalq-prod`), Serverless Azure SQL (`sqldb-vitalq-prod`), Redis Cache (`ca-vitalq-redis`), and Application Insights (`appi-vitalq-prod`) in Pune, India (`centralindia`).
+* **Cloud Infrastructure**: Azure Container Apps (`cae-vitalq-prod`), Serverless Azure SQL (`sqldb-vitalq-prod` with Managed Identity), Redis Cache (`ca-vitalq-redis`), Application Insights (`appi-vitalq-prod`), and Azure Key Vault (`kv-vitalq-prod`) in Pune, India (`centralindia`).
 
 ---
 
