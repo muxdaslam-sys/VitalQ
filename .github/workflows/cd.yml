@@ -1,0 +1,101 @@
+name: VitalQ CD - Production Deployment to Azure
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy-production:
+    name: Deploy to Azure Container Apps
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure Cloud
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Authenticate Docker with Azure Container Registry
+        run: |
+          az acr login --name crvitalqprod
+
+      - name: Build and Push Backend Container Image (.NET 8)
+        run: |
+          docker build -f api/VitalQ.API/Dockerfile \
+            -t crvitalqprod.azurecr.io/vitalq-api:${{ github.sha }} \
+            -t crvitalqprod.azurecr.io/vitalq-api:latest ./api
+          docker push crvitalqprod.azurecr.io/vitalq-api:${{ github.sha }}
+          docker push crvitalqprod.azurecr.io/vitalq-api:latest
+
+      - name: Build and Push Frontend Container Image (Angular 19)
+        run: |
+          docker build -f web/Dockerfile \
+            -t crvitalqprod.azurecr.io/vitalq-web:${{ github.sha }} \
+            -t crvitalqprod.azurecr.io/vitalq-web:latest ./web
+          docker push crvitalqprod.azurecr.io/vitalq-web:${{ github.sha }}
+          docker push crvitalqprod.azurecr.io/vitalq-web:latest
+
+      - name: Deploy Backend Revision to Azure Container Apps
+        run: |
+          az containerapp update \
+            --name ca-vitalq-api \
+            --resource-group rg-vitalq-prod-centralindia \
+            --image crvitalqprod.azurecr.io/vitalq-api:${{ github.sha }}
+
+      - name: Deploy Frontend Revision to Azure Container Apps
+        run: |
+          az containerapp update \
+            --name ca-vitalq-web \
+            --resource-group rg-vitalq-prod-centralindia \
+            --image crvitalqprod.azurecr.io/vitalq-web:${{ github.sha }} \
+            --set-env-vars BACKEND_URL=https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io
+
+      - name: Automated Synthetic Smoke Testing
+        run: |
+          echo "Waiting 20 seconds for Container Apps revisions to become ready..."
+          sleep 20
+
+          echo "1. Probing Backend API Liveness..."
+          API_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live)
+          if [ "$API_STATUS" != "200" ]; then
+            echo "API Health Probe failed with HTTP $API_STATUS"
+            exit 1
+          fi
+          echo "API Health Probe passed (HTTP 200)."
+
+          echo "2. Probing Public Departments Endpoint (SQL + Redis)..."
+          DEPT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/api/public/departments)
+          if [ "$DEPT_STATUS" != "200" ]; then
+            echo "Public API endpoint probe failed with HTTP $DEPT_STATUS"
+            exit 1
+          fi
+          echo "Public API endpoint passed (HTTP 200)."
+
+          echo "3. Probing Frontend Web Client..."
+          WEB_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io/)
+          if [ "$WEB_STATUS" != "200" ]; then
+            echo "Frontend probe failed with HTTP $WEB_STATUS"
+            exit 1
+          fi
+          echo "Frontend Web Client passed (HTTP 200)."
+
+      - name: Generate Deployment Summary
+        if: always()
+        run: |
+          echo "### Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Status | Live Endpoint |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Web Client** | Deployed | [ca-vitalq-web](https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **API Service** | Deployed | [ca-vitalq-api](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image Tag** | \`${{ github.sha }}\` | \`crvitalqprod.azurecr.io\` |" >> $GITHUB_STEP_SUMMARY
