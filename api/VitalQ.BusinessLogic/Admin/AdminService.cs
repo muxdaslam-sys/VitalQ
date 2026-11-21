@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
@@ -15,11 +16,13 @@ public class AdminService : IAdminService
 {
     private readonly VitalQDbContext _context;
     private readonly IMemoryCache? _cache;
+    private readonly IDistributedCache? _distributedCache;
 
-    public AdminService(VitalQDbContext context, IMemoryCache? cache = null)
+    public AdminService(VitalQDbContext context, IMemoryCache? cache = null, IDistributedCache? distributedCache = null)
     {
         _context = context;
         _cache = cache;
+        _distributedCache = distributedCache;
     }
 
     #region 0. Dashboard Stats & Analytics
@@ -397,7 +400,12 @@ public class AdminService : IAdminService
 
         doctor.Status = request.Status;
         await _context.SaveChangesAsync();
-        _cache?.Remove($"AvailableDoctors_{doctor.DepartmentId}");
+        var adminDocCacheKey = $"AvailableDoctors_{doctor.DepartmentId}";
+        _cache?.Remove(adminDocCacheKey);
+        if (_distributedCache != null)
+        {
+            try { await _distributedCache.RemoveAsync(adminDocCacheKey); } catch { /* Non-blocking */ }
+        }
 
         return new DoctorResponse
         {
@@ -446,6 +454,11 @@ public class AdminService : IAdminService
 
         await _context.Departments.AddAsync(department);
         await _context.SaveChangesAsync();
+        _cache?.Remove("ActiveDepartments");
+        if (_distributedCache != null)
+        {
+            try { await _distributedCache.RemoveAsync("ActiveDepartments"); } catch { /* Non-blocking */ }
+        }
 
         return new DepartmentResponse
         {
@@ -490,6 +503,11 @@ public class AdminService : IAdminService
         department.IsActive = request.IsActive;
 
         await _context.SaveChangesAsync();
+        _cache?.Remove("ActiveDepartments");
+        if (_distributedCache != null)
+        {
+            try { await _distributedCache.RemoveAsync("ActiveDepartments"); } catch { /* Non-blocking */ }
+        }
 
         return new DepartmentResponse
         {

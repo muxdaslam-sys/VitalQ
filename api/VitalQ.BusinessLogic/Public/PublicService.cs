@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using VitalQ.BusinessLogic.Interfaces;
 using VitalQ.DataAccess;
@@ -9,76 +11,173 @@ namespace VitalQ.BusinessLogic.Services;
 
 /// <summary>
 /// Handles public department lookups, doctor schedules, and paper slip tracking.
-/// Uses in-memory caching to eliminate redundant database hits during peak hours.
+/// Uses multi-tier L1 (In-Memory) + L2 (Redis Distributed Cache) caching to eliminate redundant database hits during peak hours.
 /// </summary>
 public class PublicService : IPublicService
 {
     private readonly VitalQDbContext _context;
     private readonly IMemoryCache _cache;
+    private readonly IDistributedCache? _distributedCache;
 
-    public PublicService(VitalQDbContext context, IMemoryCache cache)
+    public PublicService(VitalQDbContext context, IMemoryCache cache, IDistributedCache? distributedCache = null)
     {
         _context = context;
         _cache = cache;
+        _distributedCache = distributedCache;
     }
 
     /// <summary>
-    /// Returns active clinical departments. Cached for 2 minutes.
+    /// Returns active clinical departments. Cached in L1 Memory (2 min) and L2 Redis (5 min).
     /// </summary>
     public async Task<IEnumerable<DepartmentResponse>> GetActiveDepartmentsAsync()
     {
-        return await _cache.GetOrCreateAsync("ActiveDepartments", async entry =>
+        const string cacheKey = "ActiveDepartments";
+
+        // 1. Check L1 Memory Cache
+        if (_cache.TryGetValue(cacheKey, out IEnumerable<DepartmentResponse>? memCached) && memCached != null)
         {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2);
-            return await _context.Departments
-                .AsNoTracking()
-                .Where(d => d.IsActive)
-                .OrderBy(d => d.Name)
-                .Select(d => new DepartmentResponse
+            return memCached;
+        }
+
+        // 2. Check L2 Distributed Cache (Redis)
+        if (_distributedCache != null)
+        {
+            try
+            {
+                var redisData = await _distributedCache.GetStringAsync(cacheKey);
+                if (!string.IsNullOrEmpty(redisData))
                 {
-                    Id = d.Id,
-                    Code = d.Code,
-                    Name = d.Name,
-                    LocationFloor = d.LocationFloor,
-                    LastTokenNumber = d.LastTokenNumber,
-                    IsActive = d.IsActive,
-                    CreatedAtUtc = d.CreatedAtUtc
-                })
-                .ToListAsync();
-        }) ?? Enumerable.Empty<DepartmentResponse>();
+                    var distributedCached = JsonSerializer.Deserialize<List<DepartmentResponse>>(redisData);
+                    if (distributedCached != null)
+                    {
+                        _cache.Set(cacheKey, distributedCached, TimeSpan.FromMinutes(1));
+                        return distributedCached;
+                    }
+                }
+            }
+            catch
+            {
+                // Non-blocking fallback to SQL if Redis connection transiently drops
+            }
+        }
+
+        // 3. L3 Database Query
+        var departments = await _context.Departments
+            .AsNoTracking()
+            .Where(d => d.IsActive)
+            .OrderBy(d => d.Name)
+            .Select(d => new DepartmentResponse
+            {
+                Id = d.Id,
+                Code = d.Code,
+                Name = d.Name,
+                LocationFloor = d.LocationFloor,
+                LastTokenNumber = d.LastTokenNumber,
+                IsActive = d.IsActive,
+                CreatedAtUtc = d.CreatedAtUtc
+            })
+            .ToListAsync();
+
+        // 4. Save to L1 & L2
+        _cache.Set(cacheKey, departments, TimeSpan.FromMinutes(2));
+
+        if (_distributedCache != null)
+        {
+            try
+            {
+                var serialized = JsonSerializer.Serialize(departments);
+                await _distributedCache.SetStringAsync(cacheKey, serialized, new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
+                });
+            }
+            catch
+            {
+                // Non-blocking
+            }
+        }
+
+        return departments;
     }
 
     /// <summary>
-    /// Returns on-duty doctors in a department. Cached for 1 minute.
+    /// Returns on-duty doctors in a department. Cached in L1 Memory (1 min) and L2 Redis (3 min).
     /// </summary>
     public async Task<IEnumerable<DoctorResponse>> GetAvailableDoctorsAsync(Guid departmentId)
     {
         var cacheKey = $"AvailableDoctors_{departmentId}";
-        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+
+        // 1. Check L1 Memory Cache
+        if (_cache.TryGetValue(cacheKey, out IEnumerable<DoctorResponse>? memCached) && memCached != null)
         {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1);
-            return await _context.Doctors
-                .AsNoTracking()
-                .Where(d => d.DepartmentId == departmentId && d.Status == "Available")
-                .Include(d => d.User)
-                .Include(d => d.Department)
-                .Select(d => new DoctorResponse
+            return memCached;
+        }
+
+        // 2. Check L2 Distributed Cache (Redis)
+        if (_distributedCache != null)
+        {
+            try
+            {
+                var redisData = await _distributedCache.GetStringAsync(cacheKey);
+                if (!string.IsNullOrEmpty(redisData))
                 {
-                    Id = d.Id,
-                    UserId = d.UserId,
-                    DoctorName = d.User.FullName,
-                    Username = d.User.Username,
-                    PhoneNumber = d.User.PhoneNumber,
-                    DepartmentId = d.DepartmentId,
-                    DepartmentName = d.Department.Name,
-                    Specialization = d.Specialization,
-                    RoomNumber = d.RoomNumber,
-                    Status = d.Status,
-                    AvgConsultationMinutes = d.AvgConsultationMinutes,
-                    CreatedAtUtc = d.CreatedAtUtc
-                })
-                .ToListAsync();
-        }) ?? Enumerable.Empty<DoctorResponse>();
+                    var distributedCached = JsonSerializer.Deserialize<List<DoctorResponse>>(redisData);
+                    if (distributedCached != null)
+                    {
+                        _cache.Set(cacheKey, distributedCached, TimeSpan.FromSeconds(30));
+                        return distributedCached;
+                    }
+                }
+            }
+            catch
+            {
+                // Non-blocking fallback to SQL if Redis connection transiently drops
+            }
+        }
+
+        // 3. L3 Database Query
+        var doctors = await _context.Doctors
+            .AsNoTracking()
+            .Where(d => d.DepartmentId == departmentId && d.Status == "Available")
+            .Include(d => d.User)
+            .Include(d => d.Department)
+            .Select(d => new DoctorResponse
+            {
+                Id = d.Id,
+                UserId = d.UserId,
+                DoctorName = d.User.FullName,
+                Username = d.User.Username,
+                PhoneNumber = d.User.PhoneNumber,
+                DepartmentId = d.DepartmentId,
+                DepartmentName = d.Department.Name,
+                Specialization = d.Specialization,
+                RoomNumber = d.RoomNumber,
+                Status = d.Status,
+                AvgConsultationMinutes = d.AvgConsultationMinutes,
+                CreatedAtUtc = d.CreatedAtUtc
+            })
+            .ToListAsync();
+
+        // 4. Save to L1 & L2
+        _cache.Set(cacheKey, doctors, TimeSpan.FromMinutes(1));
+
+        if (_distributedCache != null)
+        {
+            try
+            {
+                var serialized = JsonSerializer.Serialize(doctors);
+                await _distributedCache.SetStringAsync(cacheKey, serialized, new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(3)
+                });
+            }
+            catch
+            {
+                // Non-blocking
+            }
+        }
+
+        return doctors;
     }
 
     /// <summary>

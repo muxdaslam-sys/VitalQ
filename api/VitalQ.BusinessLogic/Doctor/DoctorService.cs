@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.EntityFrameworkCore;
 using VitalQ.BusinessLogic.Common;
@@ -16,11 +17,13 @@ public class DoctorService : IDoctorService
 {
     private readonly VitalQDbContext _context;
     private readonly IMemoryCache? _cache;
+    private readonly IDistributedCache? _distributedCache;
 
-    public DoctorService(VitalQDbContext context, IMemoryCache? cache = null)
+    public DoctorService(VitalQDbContext context, IMemoryCache? cache = null, IDistributedCache? distributedCache = null)
     {
         _context = context;
         _cache = cache;
+        _distributedCache = distributedCache;
     }
 
     #region 1. Doctor Profile, Identity & Shift KPIs
@@ -138,7 +141,12 @@ public class DoctorService : IDoctorService
 
         doctor.Status = status;
         await _context.SaveChangesAsync();
-        _cache?.Remove($"AvailableDoctors_{doctor.DepartmentId}");
+        var doctorDeptCacheKey = $"AvailableDoctors_{doctor.DepartmentId}";
+        _cache?.Remove(doctorDeptCacheKey);
+        if (_distributedCache != null)
+        {
+            try { await _distributedCache.RemoveAsync(doctorDeptCacheKey); } catch { /* Non-blocking */ }
+        }
 
         return new DoctorResponse
         {
