@@ -37,6 +37,18 @@ else
     builder.Services.AddDistributedMemoryCache();
 }
 
+// 1.2 Enterprise Observability & Distributed Tracing (Azure Application Insights)
+var appInsightsConnection = builder.Configuration["ApplicationInsights:ConnectionString"]
+    ?? builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
+if (!string.IsNullOrWhiteSpace(appInsightsConnection))
+{
+    builder.Services.AddApplicationInsightsTelemetry(options =>
+    {
+        options.ConnectionString = appInsightsConnection;
+        options.EnableAdaptiveSampling = false; // Capture all clinical transactions without sampling loss
+    });
+}
+
 // 2. DYNAMIC CORS (Production-Ready: configurable origins with localhost fallback)
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? new[] { "http://localhost:4200", "http://127.0.0.1:4200" };
