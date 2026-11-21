@@ -1,16 +1,28 @@
 # VitalQ - Real-Time Hospital OPD Queue Orchestration & CTAS Triage Platform
 
 [![Status: Production Ready](https://img.shields.io/badge/Status-Production--Ready-success?logo=checkmarx&logoColor=white)](https://github.com/muxdaslam-sys/VitalQ)
-[![Tests](https://img.shields.io/badge/Tests-64%2F64%20Passing-brightgreen?logo=checkmarx&logoColor=white)](https://github.com/muxdaslam-sys/VitalQ)
+[![Tests](https://img.shields.io/badge/Tests-66%2F66%20Passing-brightgreen?logo=checkmarx&logoColor=white)](https://github.com/muxdaslam-sys/VitalQ)
 [![Version](https://img.shields.io/badge/Version-1.0.0-blue)](https://github.com/muxdaslam-sys/VitalQ)
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Angular 19](https://img.shields.io/badge/Angular-19-DD0031?logo=angular&logoColor=white)](https://angular.dev/)
 [![SignalR](https://img.shields.io/badge/SignalR-Real--Time-blue?logo=signalr&logoColor=white)](https://learn.microsoft.com/aspnet/core/signalr/)
+[![Redis](https://img.shields.io/badge/Redis-Distributed%20Cache-DC382D?logo=redis&logoColor=white)](https://redis.io/)
+[![Azure Container Apps](https://img.shields.io/badge/Azure-Container%20Apps-0078D4?logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com/)
+[![Azure App Insights](https://img.shields.io/badge/Azure-App%20Insights-68217A?logo=microsoft-azure&logoColor=white)](https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![SQL Server](https://img.shields.io/badge/SQL_Server-Express-CC292B?logo=microsoft-sql-server&logoColor=white)](https://www.microsoft.com/sql-server)
+[![SQL Server](https://img.shields.io/badge/SQL_Server-Express%20%26%20Azure%20SQL-CC292B?logo=microsoft-sql-server&logoColor=white)](https://www.microsoft.com/sql-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**VitalQ** is a high-concurrency, enterprise-grade outpatient department (OPD) queue orchestration platform designed for modern hospitals and healthcare networks. Architected with a **.NET 8 Web API** and an **Angular 19 Standalone SPA**, VitalQ synchronizes queue positions, physician chamber pacing, and Canadian Triage and Acuity Scale (CTAS) vital signs intake in real time across the entire hospital via WebSockets.
+**VitalQ** is a high-concurrency, enterprise-grade outpatient department (OPD) queue orchestration platform designed for modern hospitals and healthcare networks. Architected with a **.NET 8 Web API** and an **Angular 19 Standalone SPA**, VitalQ synchronizes queue positions, physician chamber pacing, and Canadian Triage and Acuity Scale (CTAS) vital signs intake in real time across the entire hospital via WebSockets with a **Redis Scale-Out Backplane** and **Application Insights Distributed Tracing**.
+
+---
+
+## 🌐 Live Production Cloud Endpoints
+
+* **Live Web Client**: [ca-vitalq-web](https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io)
+* **Live API Service**: [ca-vitalq-api](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io)
+* **Live Health Check**: [ca-vitalq-api/health/live](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live) (HTTP 200 Healthy)
+* **Cloud Infrastructure**: Azure Container Apps (`cae-vitalq-prod`), Serverless Azure SQL (`sqldb-vitalq-prod`), Redis Cache (`ca-vitalq-redis`), and Application Insights (`appi-vitalq-prod`) in Pune, India (`centralindia`).
 
 ---
 
@@ -21,22 +33,24 @@
                        │          SignalR Real-Time Hub          │
                        │             (/hubs/queue)               │
                        └───────────────────▲─────────────────────┘
-                                           │ WebSocket Sync
-┌──────────────────────────────────────────┴──────────────────────────────────────────┐
-│                                 .NET 8 Web API Core                                 │
-│                                                                                     │
-│  [AdminController]   [DoctorController]   [NurseController]   [PatientController]   │
-│         ▲                    ▲                   ▲                    ▲             │
-│         │                    │                   │                    │             │
-│  [AdminService]      [DoctorService]      [NurseService]      [PatientService]      │
-│         │                    │                   │                    │             │
-│         ▼                    ▼                   ▼                    ▼             │
-│  [AsNoTracking Reads] [Aging Worker (60s)] [CTAS Evaluator]  [Atomic Token Counter] │
-└──────────────────────────────────────────┬──────────────────────────────────────────┘
-                                           │ Entity Framework Core 8 (RowVersion Concurrency)
-                       ┌───────────────────▼─────────────────────┐
-                       │   SQL Server Express (B-Tree Indexed)   │
-                       └─────────────────────────────────────────┘
+                                           │ WebSocket Sync (Redis Backplane)
+ ┌─────────────────────────────────────────┴─────────────────────────────────────────┐
+ │                                .NET 8 Web API Core                                │
+ │                                                                                   │
+ │ [AdminController]   [DoctorController]   [NurseController]   [PatientController]  │
+ │        ▲                    ▲                   ▲                    ▲            │
+ │        │                    │                   │                    │            │
+ │ [AdminService]      [DoctorService]      [NurseService]      [PatientService]     │
+ │        │                    │                   │                    │            │
+ │        ▼                    ▼                   ▼                    ▼            │
+ │ [L1/L2 Cache]      [Aging Worker (60s)] [CTAS Evaluator]  [Atomic Token Counter]  │
+ └────────┬─────────────────────────────────────────────────────────────┬────────────┘
+          │ Redis Distributed Cache (ca-vitalq-redis)                   │ EF Core 8
+          ▼                                                             ▼
+ ┌───────────────────┐                         ┌─────────────────────────────────────┐
+ │    Redis Cache    │                         │  Azure SQL Serverless / SQL Express │
+ │  (0.01ms - 1.5ms) │                         │  (7 Tables, 23 B-Tree Indexes)      │
+ └───────────────────┘                         └─────────────────────────────────────┘
 ```
 
 ---
