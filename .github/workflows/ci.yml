@@ -15,7 +15,7 @@ jobs:
   # 1. BACKEND CI: .NET 8 Build & 53 Automated xUnit Tests
   # =========================================================================
   backend-ci:
-    name: Backend Build & xUnit Tests (.NET 8)
+    name: Backend Build (.NET 8)
     runs-on: ubuntu-latest
 
     steps:
@@ -40,7 +40,7 @@ jobs:
   # 2. FRONTEND CI: Angular 19 Build & 13 Headless Jasmine Tests
   # =========================================================================
   frontend-ci:
-    name: Frontend Build & Jasmine Tests (Angular 19)
+    name: Frontend Build (Angular 19)
     runs-on: ubuntu-latest
 
     steps:
