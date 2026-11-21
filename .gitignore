@@ -44,6 +44,10 @@ dist/
 PROJECT_STATE.md
 AZURE_MASTER_ROADMAP.md
 
+## Local tools and binaries
+tools/
+*.exe
+
 ## Database backups & local seed scripts
 *.bak
 *.mdf
