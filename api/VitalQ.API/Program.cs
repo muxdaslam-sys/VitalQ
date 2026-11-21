@@ -15,9 +15,15 @@ using VitalQ.DataAccess;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Database Context (Pooled for high-concurrency 100k+ throughput)
+// 1. Database Context (Pooled for high-concurrency 100k+ throughput with Azure SQL transient fault resilience)
 builder.Services.AddDbContextPool<VitalQDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"), sqlOptions =>
+    {
+        sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorNumbersToAdd: null);
+    }));
 
 // 1.1 Caching Architecture (L1 MemoryCache + L2 Redis Distributed Cache with In-Memory Fallback)
 builder.Services.AddMemoryCache();
