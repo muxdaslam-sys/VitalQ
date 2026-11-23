@@ -192,7 +192,22 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// 8.0 Asynchronous Database Connection Pool Priming & EF Core Query Compilation Warmup
+// 8.0 Automated EF Core Database Migration using Container Managed Identity
+try
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<VitalQDbContext>();
+    if (db.Database.IsRelational())
+    {
+        await db.Database.MigrateAsync();
+    }
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine($"[Database Migration Warning] {ex.Message}");
+}
+
+// 8.1 Asynchronous Database Connection Pool Priming & EF Core Query Compilation Warmup
 _ = Task.Run(async () =>
 {
     try

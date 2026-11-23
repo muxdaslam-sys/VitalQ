@@ -227,6 +227,8 @@ Whenever modifying or analyzing this codebase, every AI agent must strictly foll
    - Use HttpOnly cookies for refresh tokens.
 6. **Clickable Links**: Reference all files with the `file:///` URI scheme using forward slashes (e.g. `[Program.cs](file:///d:/Projects/VitalQ/api/VitalQ.API/Program.cs)`).
 7. **Cloud & Containerization Scope**: Multi-stage Dockerfiles, Nginx configuration, Docker Compose, and GitHub Actions CI test/build workflows are implemented. Cloud hosting (Azure Container Apps, Azure SQL, Redis, ACR) is documented in [`AZURE_MASTER_ROADMAP.md`](file:///d:/Projects/VitalQ/AZURE_MASTER_ROADMAP.md) as the next live deployment phase.
+8. **Explain First & Await User Review**: Always provide a detailed explanation of proposed code or architecture changes first and allow the user to review before proceeding with execution.
+9. **Automatic Documentation Updates on Completion**: Automatically update master documentation and memory files (`GEMINI.md`, `PROJECT_STATE.md`, `README.md`) as soon as any task or phase completes without requiring separate user prompting.
 
 ---
 

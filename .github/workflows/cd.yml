@@ -26,32 +26,6 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Setup .NET 8 SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Apply EF Core Database Migrations
-        run: |
-          echo "Restoring NuGet dependencies for EF Core..."
-          dotnet restore api/VitalQ.sln
-
-          echo "Installing EF Core CLI tool (.NET 8)..."
-          dotnet tool install --global dotnet-ef --version 8.* || true
-
-          echo "Retrieving Azure SQL connection string securely from Azure Container Apps..."
-          SQL_CONN=$(az containerapp secret show \
-            --name ca-vitalq-api \
-            --resource-group rg-vitalq-prod-centralindia \
-            --secret-name sql-connection-string \
-            --query value -o tsv)
-
-          echo "Applying pending EF Core database migrations to Azure SQL..."
-          dotnet ef database update \
-            --project api/VitalQ.DataAccess \
-            --startup-project api/VitalQ.API \
-            --connection "$SQL_CONN"
-
       - name: Authenticate Docker with Azure Container Registry
         run: |
           az acr login --name crvitalqprod
