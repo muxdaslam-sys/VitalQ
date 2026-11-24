@@ -40,6 +40,9 @@ param apiMinReplicas int = 0
 @description('Minimum replicas for Web container app.')
 param webMinReplicas int = 0
 
+@description('Email address to receive production DevOps health alerts.')
+param alertEmailAddress string = ''
+
 var namingPrefix = 'vitalq-${environment}'
 var tags = {
   Project: 'VitalQ'
@@ -115,9 +118,24 @@ module containerApps 'modules/containerApps.bicep' = {
   }
 }
 
+// 6. Azure Monitor Production Alerts & Action Groups
+module alerts 'modules/alerts.bicep' = {
+  name: 'deploy-alerts'
+  params: {
+    actionGroupName: 'ag-${namingPrefix}-devops'
+    actionGroupShortName: 'VitalQAlert'
+    alertEmailAddress: alertEmailAddress
+    appInsightsId: appInsights.outputs.id
+    apiAppId: containerApps.outputs.apiAppId
+    sqlDatabaseId: sqlServer.outputs.databaseId
+    tags: tags
+  }
+}
+
 output liveWebUrl string = 'https://${containerApps.outputs.webFqdn}'
 output liveApiUrl string = 'https://${containerApps.outputs.apiFqdn}'
 output liveHealthCheckUrl string = 'https://${containerApps.outputs.apiFqdn}/health/live'
 output sqlServerFqdn string = sqlServer.outputs.serverFqdn
 output keyVaultUri string = keyVault.outputs.vaultUri
 output apiPrincipalId string = containerApps.outputs.apiPrincipalId
+output actionGroupId string = alerts.outputs.actionGroupId

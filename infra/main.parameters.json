@@ -28,6 +28,9 @@
     },
     "webMinReplicas": {
       "value": 0
+    },
+    "alertEmailAddress": {
+      "value": ""
     }
   }
 }

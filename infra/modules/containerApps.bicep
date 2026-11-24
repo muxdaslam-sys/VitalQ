@@ -220,4 +220,5 @@ resource webApp 'Microsoft.App/containerApps@2023-05-01' = {
 output apiFqdn string = apiApp.properties.configuration.ingress.fqdn
 output webFqdn string = webApp.properties.configuration.ingress.fqdn
 output apiPrincipalId string = apiApp.identity.principalId
+output apiAppId string = apiApp.id
 output environmentId string = managedEnvironment.id

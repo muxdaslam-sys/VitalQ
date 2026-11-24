@@ -16,7 +16,8 @@ infra/
     ├── appInsights.bicep      # Application Insights APM (appi-vitalq-prod)
     ├── keyVault.bicep         # Azure Key Vault with RBAC & Soft-Delete (kv-vitalq-prod)
     ├── sqlServer.bicep        # Serverless Azure SQL Database & Firewall (sql-vitalq-prod)
-    └── containerApps.bicep    # Managed Environment, Redis, Web, and API with Managed Identity
+    ├── containerApps.bicep    # Managed Environment, Redis, Web, and API with Managed Identity
+    └── alerts.bicep           # Azure Monitor Metric Alerts & Action Group (ag-vitalq-devops)
 ```
 
 ---
@@ -75,3 +76,17 @@ az deployment group create \
   - `minReplicas = 0`: Scales to zero during off-peak hours to keep hosting costs within Azure's monthly free tier grant.
   - `autoPauseDelay = 60`: Automatically pauses the SQL database compute after 60 minutes of inactivity.
 * **Internal Cluster Networking**: Redis runs inside the Container Apps Environment with no external ingress, listening exclusively on internal TCP port 6379.
+
+---
+
+## 5. Production Health Alerting & Metrics (Module 8)
+
+The alerting subsystem [`infra/modules/alerts.bicep`](file:///d:/Projects/VitalQ/infra/modules/alerts.bicep) automates proactive monitoring with automated email notifications via Action Group `ag-vitalq-prod-devops`:
+
+| Alert Rule Name | Target Resource | Metric & Condition | Severity | Clinical / DevOps Impact |
+| :--- | :--- | :--- | :--- | :--- |
+| **`alert-vitalq-api-5xx-errors`** | Application Insights | `requests/failed` > 5 in 5 min | Severity 1 (Error) | Catches unhandled exceptions, network drops, or backend API crashes immediately. |
+| **`alert-vitalq-api-high-memory`**| `ca-vitalq-api` | `MemoryWorkingSetBytes` > 800 MiB | Severity 2 (Warning) | Proactive OOM warning before Linux cgroups terminates container with ExitCode 137. |
+| **`alert-vitalq-api-high-cpu`**   | `ca-vitalq-api` | `UsageNanoCores` > 400M (80% of 0.5 vCore) | Severity 2 (Warning) | Identifies walk-in patient surges requiring additional container replica scaling. |
+| **`alert-vitalq-sql-high-compute`**| `sqldb-vitalq-prod` | `cpu_percent` > 85% for 10 min | Severity 2 (Warning) | Protects against database lock contention, unindexed table scans, or query bottlenecks. |
+
