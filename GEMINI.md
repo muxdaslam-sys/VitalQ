@@ -6,7 +6,7 @@
 > **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 53 xUnit Tests)  
 > **Frontend Status**: 100% Completed, Standalone, OnPush & Verified (Angular 19 & 13 Jasmine Tests)  
 > **Database**: Microsoft SQL Server Express (Local) & Azure SQL Serverless `sql-vitalq-prod.database.windows.net` (`sqldb-vitalq-prod` in `centralindia`, Pune)  
-> **Cloud Status**: Modules 2, 3, 4, 5 & 6 Completed: Live on Azure Container Apps with Serverless Azure SQL Database (Managed Identity), Redis Distributed Cache, Application Insights APM & Azure Key Vault  
+> **Cloud Status**: Modules 2, 3, 4, 5, 6 & 7 Completed: Live on Azure Container Apps with Serverless Azure SQL Database (Managed Identity), Redis Distributed Cache, Application Insights APM, Azure Key Vault & Azure Bicep IaC  
 > **Live Web Client**: [ca-vitalq-web](https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io)  
 > **Live API Service**: [ca-vitalq-api](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io)  
 > **Live Redis Service**: `ca-vitalq-redis` (Internal TCP Port 6379 in `cae-vitalq-prod`)  
@@ -15,8 +15,8 @@
 > **Live Health Endpoint**: [ca-vitalq-api/health/live](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live) (HTTP 200 Healthy)  
 > **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`) with Redis Scale-Out Backplane  
 > **Test Coverage**: 66 Unit & Stress Tests (53 Backend xUnit + 13 Frontend Jasmine, 100% Pass Rate)  
-> **Active Branch**: `feat/security-sanitization-and-docs`  
-> **Upcoming Planned Phase**: Pull Request Merge into `main` & Module 7 (Infrastructure as Code: Azure Bicep & Production Alerting)
+> **Active Branch**: `feat/infrastructure-as-code-bicep`  
+> **Upcoming Planned Phase**: Pull Request Merge into `main` & Module 8 (Production Metric Alerting & Action Groups)
 
 ---
 
@@ -31,6 +31,7 @@ This central index provides direct links to all specialized documentation files 
 | **Frontend Architecture** | [`web/ARCHITECTURE.md`](file:///d:/Projects/VitalQ/web/ARCHITECTURE.md) | Deep technical guide for Angular 19: Signals reactive state, OnPush change detection, Web Audio harmonic chime synthesizer ($C_5 \rightarrow E_5 \rightarrow G_5$), and modal teleportation. |
 | **Web Client Guide** | [`web/README.md`](file:///d:/Projects/VitalQ/web/README.md) | Angular developer guide, npm commands, proxy configuration (`proxy.conf.json`), and build targets. |
 | **Azure Cloud Roadmap** | [`AZURE_MASTER_ROADMAP.md`](file:///d:/Projects/VitalQ/AZURE_MASTER_ROADMAP.md) | The 6-module cloud roadmap (Docker, Azure Container Apps, Azure SQL, Redis distributed caching, GitHub Actions CI/CD, Application Insights) and Infopark Kochi technical interview questions. |
+| **Bicep IaC Guide** | [`infra/README.md`](file:///d:/Projects/VitalQ/infra/README.md) | Declarative Azure Bicep Infrastructure as Code deployment runbook, pre-flight validation, and What-If analysis commands. |
 
 ---
 
@@ -306,9 +307,27 @@ Whenever modifying or analyzing this codebase, every AI agent must strictly foll
    - Sanitized local PC hostnames and fallback signing secrets from `appsettings.json` and HTTP test files.
    - Verified 100% test pass rate across all 66 automated tests.
 
-### F. What We Are Going to Do Next (Module 7: Infrastructure as Code with Azure Bicep)
-1. **Merge Pull Request**: Merge `feat/security-sanitization-and-docs` into `main`.
-2. **Azure Bicep Declarative Infrastructure**:
-   - Author master `infra/main.bicep` and modular templates (`containerApps.bicep`, `sqlServer.bicep`, `keyVault.bicep`, `redis.bicep`, `appInsights.bicep`).
-3. **Module 8: Azure Monitor Alerts & Action Groups**:
-   - Configure metric alerts for 5xx errors, container CPU/RAM limits, and database availability.
+### F. Phase 16 Achievements: Module 7 Declarative Infrastructure as Code (Azure Bicep)
+1. **Modular Infrastructure as Code Architecture**:
+   - Authored master deployment orchestrator [`infra/main.bicep`](file:///d:/Projects/VitalQ/infra/main.bicep).
+   - Authored specialized Bicep modules in `infra/modules/`:
+     - `logAnalytics.bicep`: Log Analytics Workspace (`log-vitalq-prod`).
+     - `appInsights.bicep`: Application Insights APM component (`appi-vitalq-prod`).
+     - `keyVault.bicep`: Azure Key Vault with soft-delete & RBAC permissions (`kv-vitalq-prod`).
+     - `sqlServer.bicep`: Azure SQL Server and Serverless Database (`sqldb-vitalq-prod`).
+     - `containerApps.bicep`: Managed Environment (`cae-vitalq-prod`), Redis, Web client, and .NET API with System-Assigned Managed Identity.
+   - Parameterized configurations cleanly in [`infra/main.parameters.json`](file:///d:/Projects/VitalQ/infra/main.parameters.json).
+2. **Compiler & Linter Verification**:
+   - Compiled with Azure Bicep CLI (`az bicep build --file infra/main.bicep`).
+   - Achieved 100% clean compilation with 0 errors and 0 linter warnings.
+3. **Deployment Runbook**:
+   - Authored comprehensive documentation in [`infra/README.md`](file:///d:/Projects/VitalQ/infra/README.md) for template pre-flight validation, What-If simulation, and group deployments.
+
+### G. What We Are Going to Do Next (Module 8: Azure Monitor Alerts & Action Groups)
+1. **Merge Pull Request**: Merge `feat/infrastructure-as-code-bicep` into `main`.
+2. **Production Metric Alert Rules**:
+   - Configure alerts for HTTP 5xx Server Error rate spikes (> 5 errors in 5 min).
+   - Configure alerts for high container CPU (> 80%) and memory (> 800 MiB) thresholds.
+   - Configure alerts for Azure SQL database connection drops or deadlock occurrences.
+3. **Action Groups & Proactive Notifications**:
+   - Link email / SMS / Webhook notification channels for real-time DevOps on-call alerting.

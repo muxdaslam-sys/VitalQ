@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": {
+      "value": "prod"
+    },
+    "location": {
+      "value": "centralindia"
+    },
+    "sqlAdministratorLogin": {
+      "value": "sqladmin"
+    },
+    "entraAdminLogin": {
+      "value": "Muhammed Aslam"
+    },
+    "entraAdminObjectId": {
+      "value": "78710e79-cdd8-44d8-ba24-adb943c9cfe8"
+    },
+    "apiImage": {
+      "value": "crvitalqprod.azurecr.io/vitalq-api:latest"
+    },
+    "webImage": {
+      "value": "crvitalqprod.azurecr.io/vitalq-web:latest"
+    },
+    "apiMinReplicas": {
+      "value": 0
+    },
+    "webMinReplicas": {
+      "value": 0
+    }
+  }
+}
