@@ -1,6 +1,6 @@
 # VitalQ - System Architecture & Context Memory
 
-> **Last Updated**: 2026-11-21  
+> **Last Updated**: 2026-11-24  
 > **Repository Root**: `d:\Projects\VitalQ`  
 > **Monorepo Structure**: `api/` (.NET 8 Web API & Test Suite) & `web/` (Angular 19 SPA)  
 > **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 53 xUnit Tests)  
@@ -15,7 +15,7 @@
 > **Live Health Endpoint**: [ca-vitalq-api/health/live](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live) (HTTP 200 Healthy)  
 > **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`) with Redis Scale-Out Backplane  
 > **Test Coverage**: 66 Unit & Stress Tests (53 Backend xUnit + 13 Frontend Jasmine, 100% Pass Rate)  
-> **Active Branch**: `feat/zero-secret-managed-identity-and-migrations`  
+> **Active Branch**: `feat/security-sanitization-and-docs`  
 > **Upcoming Planned Phase**: Pull Request Merge into `main` & Module 7 (Infrastructure as Code: Azure Bicep & Production Alerting)
 
 ---
@@ -291,7 +291,24 @@ Whenever modifying or analyzing this codebase, every AI agent must strictly foll
    - Added 2 new unit tests in `PublicServiceTests.cs`.
    - Total test suite at 66 tests (53 backend + 13 frontend, 100% pass rate).
 
-### E. What We Are Going to Do Next (Module 5: Observability & APM)
-1. **Merge Pull Request**: Merge `feat/redis-distributed-caching` into `main`.
-2. **Azure Application Insights**: Integrate distributed tracing across Angular 19 and .NET 8 with W3C TraceContext headers.
-3. **Azure Key Vault & Managed Identity (Module 6)**: Transition to passwordless cloud authentication.
+### E. Phase 15 Achievements: Module 6 Zero-Secret Architecture & EF Core Migrations
+1. **Azure Key Vault & Managed Identity Integration**:
+   - Provisioned Azure Key Vault `kv-vitalq-prod` in `centralindia` (Pune).
+   - Configured System-Assigned Managed Identity on `ca-vitalq-api`.
+   - Stored `JwtKey` in Key Vault; linked via Container Apps Secret Store (`keyvaultref:https://kv-vitalq-prod.vault.azure.net/secrets/JwtKey,identityref:system`).
+   - Configured Passwordless Azure SQL connection string with Active Directory Default authentication.
+2. **Automated In-App EF Core Migrations**:
+   - Baselined initial database schema with `20261121100154_InitialBaseline`.
+   - Configured in-app startup database migration in `Program.cs` (`db.Database.MigrateAsync()`), executing with native Managed Identity privileges inside Azure Container Apps.
+3. **Repository Security Sanitization**:
+   - Removed cleartext credentials from public `README.md` and added Role-Based Access Control matrix.
+   - Redacted internal Azure resource identifiers from public documentation.
+   - Sanitized local PC hostnames and fallback signing secrets from `appsettings.json` and HTTP test files.
+   - Verified 100% test pass rate across all 66 automated tests.
+
+### F. What We Are Going to Do Next (Module 7: Infrastructure as Code with Azure Bicep)
+1. **Merge Pull Request**: Merge `feat/security-sanitization-and-docs` into `main`.
+2. **Azure Bicep Declarative Infrastructure**:
+   - Author master `infra/main.bicep` and modular templates (`containerApps.bicep`, `sqlServer.bicep`, `keyVault.bicep`, `redis.bicep`, `appInsights.bicep`).
+3. **Module 8: Azure Monitor Alerts & Action Groups**:
+   - Configure metric alerts for 5xx errors, container CPU/RAM limits, and database availability.
