@@ -57,3 +57,7 @@ tools/
 ## Local deployment tools & tunnels
 tools/
 *.exe
+
+## Compiled Bicep ARM templates
+infra/main.json
+
