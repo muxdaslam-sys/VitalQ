@@ -6,7 +6,7 @@ Content-Type: application/json
 
 {
   "username": "admin",
-  "password": "AdminPassword123",
+  "password": "SampleAdminPassword123",
   "fullName": "System Administrator",
   "phoneNumber": "9998887770"
 }
@@ -68,7 +68,7 @@ Content-Type: application/json
 
 {
   "username": "dr.smith",
-  "password": "Doctor123",
+  "password": "SampleDoctorPassword123",
   "fullName": "Dr. John Smith",
   "phoneNumber": "9876543210",
   "departmentId": "00000000-0000-0000-0000-000000000000",

@@ -24,7 +24,7 @@
 * **Live Web Client**: [ca-vitalq-web](https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io)
 * **Live API Service**: [ca-vitalq-api](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io)
 * **Live Health Check**: [ca-vitalq-api/health/live](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live) (HTTP 200 Healthy)
-* **Cloud Infrastructure**: Azure Container Apps (`cae-vitalq-prod`), Serverless Azure SQL (`sqldb-vitalq-prod` with Managed Identity), Redis Cache (`ca-vitalq-redis`), Application Insights (`appi-vitalq-prod`), and Azure Key Vault (`kv-vitalq-prod`) in Pune, India (`centralindia`).
+* **Cloud Infrastructure**: Azure Container Apps (Microservices Environment), Serverless Azure SQL Database (Managed Identity), Redis Distributed Cache, Application Insights APM, and Azure Key Vault in Pune, India (`centralindia`).
 
 ---
 
@@ -176,33 +176,35 @@ docker compose up --build
 
 ---
 
-## 🧪 Default Test Credentials
+## 🔐 Clinical Role-Based Portals & Access
 
-| Role | Username / Mobile | Password | Authorized Portal |
+VitalQ segments hospital operations by clinical role. User provisioning, role assignment, and credential administration are managed securely by the Hospital Administrator via the Admin Command Center:
+
+| Clinical Role | Access Level | Workstation Portal | Primary Capabilities |
 | :--- | :--- | :--- | :--- |
-| **System Admin** | `admin` | `Admin@123` | `/admin/dashboard` |
-| **Consulting Physician** | `dr.sarah` | `Doctor@123` | `/doctor` |
-| **Triage Nurse** | `nurse.emily` | `Nurse@123` | `/nurse` |
-| **Registered Patient** | `9876543210` | `Patient@123` | `/patient` |
+| **Hospital Administrator** | Full Clinical Administration | `/admin/dashboard` | Staff provisioning, physician chamber assignment, KPI analytics, and audit logging. |
+| **Consulting Physician** | Doctor Chamber Queue | `/doctor` | Real-time CTAS priority queue, "Call Next" auditory chimes, and mandatory consultation discharge notes. |
+| **Triage Nurse** | Station Intake & Triage | `/nurse` | Emergency walk-ins, station queue filtering, and real-time CTAS vital sign evaluations. |
+| **Outpatient & Dependents** | Patient Self-Service | `/patient` | Live queue pass, wait time tracking, express appointment booking, and family profiles. |
 
 ---
 
 ## 🧪 Automated Testing & Concurrency Stress Verification
 
-The solution includes an enterprise test suite of **64 automated tests across the entire stack (100% pass rate)**:
-* **51 Backend xUnit Tests** (`api/VitalQ.Tests/`) covering algorithms, generators, clinical services, controllers, database health checks, and high-concurrency multi-threaded stress simulations.
+The solution includes an enterprise test suite of **66 automated tests across the entire stack (100% pass rate)**:
+* **53 Backend xUnit Tests** (`api/VitalQ.Tests/`) covering algorithms, generators, clinical services, controllers, database health checks, and high-concurrency multi-threaded stress simulations.
 * **13 Frontend Jasmine Tests** (`web/src/app/`) covering session management, token decoding, consultation discharge validation, and strike calculations using headless Chrome (`ChromeHeadlessNoSandbox`).
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                               64 FULL-STACK TESTS (100% PASS)                          │
+│                               66 FULL-STACK TESTS (100% PASS)                          │
 ├───────────────────────────────┬────────────────────────────────┬───────────────────────┤
-│ BACKEND UNIT TESTS (47)       │ CONCURRENCY STRESS TESTS (4)   │ FRONTEND TESTS (13)   │
+│ BACKEND UNIT TESTS (49)       │ CONCURRENCY STRESS TESTS (4)   │ FRONTEND TESTS (13)   │
 │ • MrnGeneratorTests (5)       │ • 30-Worker Race (0 Collision) │ • AuthService (4)     │
 │ • PriorityScoreTests (13)     │ • 100K SLA Benchmark (<500ms)  │ • CompleteModal (4)   │
 │ • DoctorSafetyTests (9)       │ • Past-1M Dynamic Scale (1)    │ • SkipModal (5)       │
 │ • NurseTriageTests (8)        │ • Token Format Integrity (1)   │                       │
-│ • Patient & Public Tests (8)  │                                │                       │
+│ • Patient & Public Tests (10) │                                │                       │
 │ • DatabaseHealthCheckTest (1) │                                │                       │
 │ • AuthServiceTests (3)        │                                │                       │
 └───────────────────────────────┴────────────────────────────────┴───────────────────────┘
@@ -216,7 +218,7 @@ The solution includes an enterprise test suite of **64 automated tests across th
 ### Running the Test Suite
 
 ```bash
-# Run all 50 backend unit and concurrency stress tests
+# Run all 53 backend unit and concurrency stress tests
 dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj
 
 # Run all 13 frontend Jasmine unit tests
@@ -228,7 +230,7 @@ cd web && npm test -- --watch=false
 ## 🏁 Project State & Production Readiness
 
 - **Release Version**: `v1.0.0 (Production-Ready)`
-- **Test Coverage**: 64 Tests Across the Stack (51 .NET + 13 Angular, 100% Pass Rate)
+- **Test Coverage**: 66 Tests Across the Stack (53 .NET + 13 Angular, 100% Pass Rate)
 - **Backend Quality**: 0 Warnings, 0 Errors (`dotnet build api/VitalQ.sln`)
 - **Frontend Quality**: 0 Errors (`ng build`, Angular 19 AOT Ahead-Of-Time compilation)
 - **Health & Monitoring**: Native ASP.NET Core database connectivity and readiness probe (`/health`, `/health/live`).
