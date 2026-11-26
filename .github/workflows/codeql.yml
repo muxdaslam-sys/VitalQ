@@ -1,0 +1,80 @@
+name: VitalQ DevSecOps - CodeQL Static Application Security Testing (SAST)
+
+on:
+  push:
+    branches: [ main, "feat/**", "fix/**" ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run every Monday at 06:00 UTC for proactive zero-day vulnerability sweeps
+    - cron: '0 6 * * 1'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: CodeQL Security Analysis (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: csharp
+            build-mode: manual
+          - language: javascript-typescript
+            build-mode: none
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      # =======================================================================
+      # 1. SETUP RUNTIMES (Only where needed by the language analyzer)
+      # =======================================================================
+      - name: Setup .NET 8 SDK
+        if: matrix.language == 'csharp'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup Node.js 20
+        if: matrix.language == 'javascript-typescript'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      # =======================================================================
+      # 2. INITIALIZE CODEQL SCANNER
+      # =======================================================================
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
+
+      # =======================================================================
+      # 3. BUILD COMPILED CODE (.NET 8 C# Solution)
+      # =======================================================================
+      - name: Restore and Build .NET Solution
+        if: matrix.language == 'csharp'
+        run: |
+          dotnet restore api/VitalQ.sln
+          dotnet build api/VitalQ.sln --configuration Release --no-restore
+
+      # =======================================================================
+      # 4. EXECUTE CODEQL SEMANTIC ANALYSIS & UPLOAD SARIF
+      # =======================================================================
+      - name: Perform CodeQL Semantic Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+          upload: true

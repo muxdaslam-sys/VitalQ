@@ -13,6 +13,7 @@
 [![Managed Identity](https://img.shields.io/badge/Security-Managed%20Identity-green?logo=azure-devops&logoColor=white)](https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/overview)
 [![Azure Bicep](https://img.shields.io/badge/Azure-Bicep%20IaC-0078D4?logo=microsoft-azure&logoColor=white)](https://learn.microsoft.com/azure/azure-resource-manager/bicep/overview)
 [![CI/CD: GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=github-actions&logoColor=white)](https://github.com/features/actions)
+[![CodeQL SAST](https://img.shields.io/badge/Security-CodeQL%20SAST-2088FF?logo=github&logoColor=white)](https://github.com/muxdaslam-sys/VitalQ/actions/workflows/codeql.yml)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![SQL Server](https://img.shields.io/badge/SQL_Server-Express%20%26%20Azure%20SQL-CC292B?logo=microsoft-sql-server&logoColor=white)](https://www.microsoft.com/sql-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -242,7 +243,7 @@ VitalQ is completing a 5-phase Fortune-500 Enterprise SDLC hardening roadmap ($0
 | :--- | :--- | :--- | :--- |
 | **Phase 19** | **ASP.NET Core Integration Tests** | `WebApplicationFactory<Program>` in-memory HTTP pipeline testing real status codes (200, 401, 403, 429), JWT Bearer auth, and anti-brute-force rate limiting. | **Completed** |
 | **Phase 20** | **Automated Code Coverage Gate** | Coverlet XPlat collector (.NET) + Karma Lcov (Angular) in GitHub Actions CI generating unified markdown scorecards with automated quality gates. | **Completed** |
-| **Phase 21** | **DevSecOps Static Analysis (SAST)** | GitHub CodeQL scanning C# and TypeScript codebases continuously for OWASP Top 10 security vulnerabilities and injection flaws. | Planned |
+| **Phase 21** | **DevSecOps Static Analysis (SAST)** | GitHub CodeQL scanning C# and TypeScript codebases continuously for OWASP Top 10 security vulnerabilities and injection flaws. | **Completed** |
 | **Phase 22** | **Idempotent Zero-Data-Loss DB Evolution** | Decoupled EF Core idempotent SQL migration scripts (`--idempotent`) and guarded seeders (`DbInitializer.cs`) guaranteeing safe schema evolution without data loss. | Planned |
 | **Phase 23** | **End-to-End Clinical Journey (Playwright)** | Headless Chromium browser automation simulating multi-role clinical interactions (Patient booking -> Nurse triage -> Doctor call & discharge) over SignalR WebSockets. | Planned |
 
