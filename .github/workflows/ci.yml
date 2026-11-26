@@ -33,7 +33,7 @@ jobs:
       - name: Build Solution (Release)
         run: dotnet build api/VitalQ.sln --configuration Release --no-restore
 
-      - name: Run Backend Tests with Code Coverage (73 xUnit & Integration Tests)
+      - name: Run Backend Tests with Code Coverage (76 xUnit & Integration Tests)
         run: dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
 
       - name: Upload Backend Coverage Artifact
@@ -41,6 +41,18 @@ jobs:
         with:
           name: backend-coverage
           path: coverage/**/coverage.cobertura.xml
+
+      - name: Install dotnet-ef CLI Tool
+        run: dotnet tool install --global dotnet-ef || true
+
+      - name: Validate Idempotent Database Migration Script
+        run: |
+          dotnet ef migrations script --idempotent \
+            --project api/VitalQ.DataAccess/VitalQ.DataAccess.csproj \
+            --startup-project api/VitalQ.API/VitalQ.API.csproj \
+            --output api/migrations.sql
+          test -s api/migrations.sql
+          echo "Idempotent database migration script validated successfully."
 
   # =========================================================================
   # 2. FRONTEND CI: Angular 19 Build & 13 Headless Jasmine Tests

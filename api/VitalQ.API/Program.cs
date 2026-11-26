@@ -192,19 +192,16 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// 8.0 Automated EF Core Database Migration using Container Managed Identity
+// 8.0 Automated Idempotent Database Migration & Baseline Initialization (Zero Data Loss)
 try
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<VitalQDbContext>();
-    if (db.Database.IsRelational())
-    {
-        await db.Database.MigrateAsync();
-    }
+    await DbInitializer.InitializeAsync(db);
 }
 catch (Exception ex)
 {
-    Console.Error.WriteLine($"[Database Migration Warning] {ex.Message}");
+    Console.Error.WriteLine($"[Database Initialization Warning] {ex.Message}");
 }
 
 // 8.1 Asynchronous Database Connection Pool Priming & EF Core Query Compilation Warmup

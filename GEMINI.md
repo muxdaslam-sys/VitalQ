@@ -3,7 +3,7 @@
 > **Last Updated**: 2026-11-26  
 > **Repository Root**: `d:\Projects\VitalQ`  
 > **Monorepo Structure**: `api/` (.NET 8 Web API & Test Suite) & `web/` (Angular 19 SPA)  
-> **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 73 xUnit/Integration Tests)  
+> **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 76 xUnit/Integration Tests)  
 > **Frontend Status**: 100% Completed, Standalone, OnPush & Verified (Angular 19 & 21 Jasmine Tests)  
 > **Database**: Microsoft SQL Server Express (Local) & Azure SQL Serverless `sql-vitalq-prod.database.windows.net` (`sqldb-vitalq-prod` in `centralindia`, Pune)  
 > **Cloud Status**: Modules 2, 3, 4, 5, 6, 7 & 8 Completed: Live on Azure Container Apps with Serverless Azure SQL Database (Managed Identity), Redis Distributed Cache, Application Insights APM, Azure Key Vault, Azure Bicep IaC, Azure Monitor Metric Alerting, 24/7 Availability Ping Tests, and Trivy CVE Scanners  
@@ -14,9 +14,9 @@
 > **Live Key Vault**: `kv-vitalq-prod` (Azure Key Vault in `centralindia`)  
 > **Live Health Endpoint**: [ca-vitalq-api/health/live](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live) (HTTP 200 Healthy)  
 > **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`) with Redis Scale-Out Backplane  
-> **Test Coverage**: 94 Unit, Stress & Integration Tests (73 Backend xUnit + 21 Frontend Jasmine, 100% Pass Rate)  
-> **Active Branch**: `feat/devsecops-codeql`  
-> **Upcoming Planned Phase**: Phase 21 DevSecOps CodeQL SAST Completed & Phases 22-23 Enterprise SDLC Roadmap
+> **Test Coverage**: 97 Unit, Stress & Integration Tests (76 Backend xUnit + 21 Frontend Jasmine, 100% Pass Rate)  
+> **Active Branch**: `feat/idempotent-db-migrations`  
+> **Upcoming Planned Phase**: Phase 22 Safe Idempotent Database Evolution Completed & Phase 23 Next
 
 ---
 
@@ -213,7 +213,7 @@ VitalQ/
 Whenever modifying or analyzing this codebase, every AI agent must strictly follow these rules:
 
 1. **Zero Em/En Dashes**: Never use em dashes or en dashes anywhere in text, documentation, comments, commit messages, or code. Use standard hyphens `-` or colons `:`.
-2. **Preserve 100% Test Pass Rate**: All 94 automated tests (73 backend and 21 frontend) must remain green on every modification. Run tests before declaring any task complete:
+2. **Preserve 100% Test Pass Rate**: All 97 automated tests (76 backend and 21 frontend) must remain green on every modification. Run tests before declaring any task complete:
    - Backend: `dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --no-restore`
    - Frontend: `npm --prefix web test -- --watch=false`
 3. **Angular 19 Standalone Standard**:
@@ -427,7 +427,7 @@ To achieve 100% Fortune-500 Enterprise SDLC completeness for VitalQ without intr
 * **Cost**: $0.00 (Included free for all public GitHub repositories).
 
 #### 4. Phase 22: Safe Idempotent Database Evolution & Zero Data Loss Migration Strategy
-* **Status**: Planned Phase 22.
+* **Status**: Completed on feature branch `feat/idempotent-db-migrations`.
 * **Objective**: Guarantee that all future schema updates (e.g. adding new tables like `Pharmacy`, adding columns, indexes, or modifying relationships) execute in Azure SQL automatically without deleting, truncating, or corrupting existing live clinical data.
 * **Database Evolution Principles & Guarantees**:
   - **Idempotent Migration Scripts**:
