@@ -62,3 +62,9 @@ tools/
 ## Compiled Bicep ARM templates
 infra/main.json
 
+## Test results & code coverage
+coverage/
+*.cobertura.xml
+*.lcov
+TestResults/
+
