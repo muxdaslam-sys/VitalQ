@@ -57,10 +57,30 @@ jobs:
           docker push crvitalqprod.azurecr.io/vitalq-web:${{ github.sha }}
           docker push crvitalqprod.azurecr.io/vitalq-web:latest
 
+      - name: Configure Container Apps Registry Credentials
+        run: |
+          echo "Configuring private ACR credentials for Azure Container Apps..."
+          ACR_USERNAME=$(az acr credential show --name crvitalqprod --query username -o tsv)
+          ACR_PASSWORD=$(az acr credential show --name crvitalqprod --query "passwords[0].value" -o tsv)
+
+          az containerapp registry set \
+            --name ca-vitalq-api \
+            --resource-group rg-vitalq-prod-centralindia \
+            --server crvitalqprod.azurecr.io \
+            --username "$ACR_USERNAME" \
+            --password "$ACR_PASSWORD"
+
+          az containerapp registry set \
+            --name ca-vitalq-web \
+            --resource-group rg-vitalq-prod-centralindia \
+            --server crvitalqprod.azurecr.io \
+            --username "$ACR_USERNAME" \
+            --password "$ACR_PASSWORD"
+
       - name: Deploy Backend Revision to Azure Container Apps
         id: deploy-backend
         run: |
-          REV_SUFFIX=$(echo "${{ github.sha }}" | cut -c1-7)
+          REV_SUFFIX="rel-$(echo "${{ github.sha }}" | cut -c1-7)"
           echo "Deploying backend revision suffix: $REV_SUFFIX..."
           az containerapp update \
             --name ca-vitalq-api \
@@ -71,7 +91,7 @@ jobs:
       - name: Deploy Frontend Revision to Azure Container Apps
         id: deploy-frontend
         run: |
-          REV_SUFFIX=$(echo "${{ github.sha }}" | cut -c1-7)
+          REV_SUFFIX="rel-$(echo "${{ github.sha }}" | cut -c1-7)"
           echo "Deploying frontend revision suffix: $REV_SUFFIX..."
           az containerapp update \
             --name ca-vitalq-web \
@@ -126,8 +146,8 @@ jobs:
             echo "CRITICAL: $FAILED_COUNT health checks failed! Initiating automated zero-downtime rollback..."
             PREV_REV=$(az containerapp revision list --name ca-vitalq-api --resource-group rg-vitalq-prod-centralindia --query "[?properties.active].name" -o tsv | tail -n 2 | head -n 1)
             if [ -n "$PREV_REV" ]; then
-              echo "Restoring 100% traffic to previous stable API revision: $PREV_REV..."
-              az containerapp ingress traffic set --name ca-vitalq-api --resource-group rg-vitalq-prod-centralindia --revision-weight "$PREV_REV=100"
+              echo "Activating previous stable API revision: $PREV_REV..."
+              az containerapp revision activate --name ca-vitalq-api --resource-group rg-vitalq-prod-centralindia --revision "$PREV_REV"
             fi
             exit 1
           fi
