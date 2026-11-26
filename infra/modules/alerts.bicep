@@ -62,7 +62,7 @@ resource alertFailedRequests 'Microsoft.Insights/metricAlerts@2018-03-01' = {
           metricName: 'requests/failed'
           operator: 'GreaterThan'
           threshold: 5
-          timeAggregation: 'Total'
+          timeAggregation: 'Count'
           criterionType: 'StaticThresholdCriterion'
         }
       ]
@@ -94,7 +94,7 @@ resource alertContainerMemory 'Microsoft.Insights/metricAlerts@2018-03-01' = {
       allOf: [
         {
           name: 'HighMemoryWorkingSet'
-          metricName: 'MemoryWorkingSetBytes'
+          metricName: 'WorkingSetBytes'
           operator: 'GreaterThan'
           threshold: 838860800 // 800 MiB in bytes
           timeAggregation: 'Average'
