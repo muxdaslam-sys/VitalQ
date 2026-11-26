@@ -41,7 +41,6 @@ resource sqlServer 'Microsoft.Sql/servers@2023-05-01-preview' = {
       login: entraAdminLogin
       sid: entraAdminObjectId
       tenantId: subscription().tenantId
-      azureADOnlyAuthentication: false
     } : null
   }
 }
