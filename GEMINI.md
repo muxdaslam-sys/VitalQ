@@ -15,8 +15,8 @@
 > **Live Health Endpoint**: [ca-vitalq-api/health/live](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live) (HTTP 200 Healthy)  
 > **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`) with Redis Scale-Out Backplane  
 > **Test Coverage**: 94 Unit, Stress & Integration Tests (73 Backend xUnit + 21 Frontend Jasmine, 100% Pass Rate)  
-> **Active Branch**: `feat/code-coverage-gate`  
-> **Upcoming Planned Phase**: Phase 20 Automated Code Coverage Gate Completed & Phases 21-23 Enterprise SDLC Roadmap
+> **Active Branch**: `feat/devsecops-codeql`  
+> **Upcoming Planned Phase**: Phase 21 DevSecOps CodeQL SAST Completed & Phases 22-23 Enterprise SDLC Roadmap
 
 ---
 
@@ -413,7 +413,7 @@ To achieve 100% Fortune-500 Enterprise SDLC completeness for VitalQ without intr
 * **Cost**: $0.00 (Standard GitHub Actions compute).
 
 #### 3. Phase 21: DevSecOps Static Code Analysis (GitHub CodeQL SAST)
-* **Status**: Planned Phase 21.
+* **Status**: Completed on feature branch `feat/devsecops-codeql`.
 * **Objective**: Automate continuous application security testing to detect and remediate vulnerabilities, injection flaws, and security weaknesses before deployment to Azure.
 * **Technical Blueprint**:
   - **Workflow**: Authored [`.github/workflows/codeql.yml`](file:///d:/Projects/VitalQ/.github/workflows/codeql.yml).
