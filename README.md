@@ -245,7 +245,7 @@ VitalQ is completing a 5-phase Fortune-500 Enterprise SDLC hardening roadmap ($0
 | **Phase 19** | **ASP.NET Core Integration Tests** | `WebApplicationFactory<Program>` in-memory HTTP pipeline testing real status codes (200, 401, 403, 429), JWT Bearer auth, and anti-brute-force rate limiting. | **Completed** |
 | **Phase 20** | **Automated Code Coverage Gate** | Coverlet XPlat collector (.NET) + Karma Lcov (Angular) in GitHub Actions CI generating unified markdown scorecards with automated quality gates. | **Completed** |
 | **Phase 21** | **DevSecOps Static Analysis (SAST)** | GitHub CodeQL scanning C# and TypeScript codebases continuously for OWASP Top 10 security vulnerabilities and injection flaws. | **Completed** |
-| **Phase 22** | **Idempotent Zero-Data-Loss DB Evolution** | Decoupled EF Core idempotent SQL migration scripts (`--idempotent`) and guarded seeders (`DbInitializer.cs`) guaranteeing safe schema evolution without data loss. | **Completed** |
+| **Phase 22** | **Idempotent Zero-Data-Loss DB Evolution** | Decoupled EF Core idempotent SQL migration scripts (`--idempotent`), guarded seeders (`DbInitializer.cs`), fail-fast CI/CD gates (`dotnet-ef 8.0.10`), root `.editorconfig`, and Nginx security headers. | **Completed** |
 | **Phase 23** | **End-to-End Clinical Journey (Playwright)** | Headless Chromium browser automation simulating multi-role clinical interactions (Patient booking -> Nurse triage -> Doctor call & discharge) over SignalR WebSockets. | Planned |
 
 ---
@@ -259,8 +259,8 @@ VitalQ is completing a 5-phase Fortune-500 Enterprise SDLC hardening roadmap ($0
 - **Health & Monitoring**: Native ASP.NET Core database connectivity and readiness probe (`/health`, `/health/live`).
 - **Collision-Proof Engines**: Atomic SQL sequence token generation + sequential collision-proof MRN engine.
 - **Clinical Alignment**: Fully verified CTAS triage algorithms, SLA priority aging, 3-strike absentee enforcement, and mandatory consultation discharge documentation.
-- **DevOps & Cloud Automation**: Zero-downtime blue/green revisions with emergency auto-rollback guard, declarative Azure Bicep IaC, and continuous 24/7 global availability ping web tests.
-- **Security & Privacy**: HIPAA 15m idle auto-lock, native login rate limiting (10 req/min), and crawler shield (`robots.txt`).
+- **DevOps & Cloud Automation**: Zero-downtime blue/green revisions with emergency auto-rollback guard, declarative Azure Bicep IaC, continuous 24/7 global availability ping web tests, and pre-deployment test stop-gates in CD.
+- **Security & Privacy**: HIPAA 15m idle auto-lock, native login rate limiting (10 req/min), crawler shield (`robots.txt`), root `.editorconfig`, and OWASP/HIPAA Nginx HTTP security headers (HSTS, X-Frame-Options, X-Content-Type-Options).
 
 ---
 

@@ -443,17 +443,17 @@ To achieve 100% Fortune-500 Enterprise SDLC completeness for VitalQ without intr
     - Running an idempotent script 1 time or 100 times produces identical safe results. Existing patient records, active queue tokens, and doctor rosters are completely untouched.
   - **Safe Seed Data Separation (`DbInitializer.cs`)**:
     - Seed data must never run destructive commands (`DROP`, `TRUNCATE`, or blind `INSERT`).
-    - Every seed operation is guarded by existence checks:
-      ```csharp
-      if (!context.Departments.Any())
-      {
-          // Seed standard clinical departments only on initial fresh database install
-      }
-      ```
-  - **CD Pipeline Integration**:
-    - Before deploying new container revisions, GitHub Actions CD executes the idempotent migration script against Azure SQL via Azure CLI / Managed Identity.
-    - If the migration succeeds, container traffic shifts to the new revision; if it fails, the database remains in its previous valid state and deployment aborts.
-* **Cost**: $0.00 (Native EF Core and Azure SQL capability).
+    - Every seed operation is guarded by existence checks (`if (!await context.Departments.AnyAsync())`).
+  - **Fail-Fast CI/CD Pipeline Stop-Gates**:
+    - Pinned `dotnet-ef` to `--version 8.0.10` in CI to eliminate .NET 10 runtime mismatches.
+    - Removed error masking (`|| true`) across all verification steps.
+    - Gated `coverage-gate` on all CI jobs: `needs: [backend-ci, frontend-ci, docker-ci, bicep-ci]`.
+    - Added `verify-build-and-tests` gate in `cd.yml` so production Azure Container Apps deployment stops immediately if any test or migration fails.
+  - **Enterprise Code Quality & Security Hardening**:
+    - Authored root [`.editorconfig`](file:///d:/Projects/VitalQ/.editorconfig) enforcing UTF-8 without BOM, LF line endings, 4-space C# indent, and 2-space web indent.
+    - Hardened [`web/nginx.conf`](file:///d:/Projects/VitalQ/web/nginx.conf) with HTTP security headers: `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, and `Strict-Transport-Security` (HSTS).
+    - Enforced 7 required GitHub Actions status checks, linear history, conversation resolution, and administrator compliance on `main`.
+* **Cost**: $0.00 (Native EF Core, GitHub Actions, and Azure capability).
 
 #### 5. Phase 23: End-to-End Clinical Journey Testing (Microsoft Playwright)
 * **Status**: Planned Phase 23.

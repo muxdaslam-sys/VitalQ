@@ -42,8 +42,8 @@ jobs:
           name: backend-coverage
           path: coverage/**/coverage.cobertura.xml
 
-      - name: Install dotnet-ef CLI Tool
-        run: dotnet tool install --global dotnet-ef || true
+      - name: Install dotnet-ef CLI Tool (.NET 8)
+        run: dotnet tool install --global dotnet-ef --version 8.0.10 || dotnet tool update --global dotnet-ef --version 8.0.10
 
       - name: Validate Idempotent Database Migration Script
         run: |
@@ -151,7 +151,7 @@ jobs:
   # =========================================================================
   coverage-gate:
     name: Code Coverage Quality Gate
-    needs: [backend-ci, frontend-ci]
+    needs: [backend-ci, frontend-ci, docker-ci, bicep-ci]
     runs-on: ubuntu-latest
 
     steps:
