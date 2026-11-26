@@ -3,7 +3,7 @@
 > **Last Updated**: 2026-11-26  
 > **Repository Root**: `d:\Projects\VitalQ`  
 > **Monorepo Structure**: `api/` (.NET 8 Web API & Test Suite) & `web/` (Angular 19 SPA)  
-> **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 53 xUnit Tests)  
+> **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 63 xUnit/Integration Tests)  
 > **Frontend Status**: 100% Completed, Standalone, OnPush & Verified (Angular 19 & 13 Jasmine Tests)  
 > **Database**: Microsoft SQL Server Express (Local) & Azure SQL Serverless `sql-vitalq-prod.database.windows.net` (`sqldb-vitalq-prod` in `centralindia`, Pune)  
 > **Cloud Status**: Modules 2, 3, 4, 5, 6, 7 & 8 Completed: Live on Azure Container Apps with Serverless Azure SQL Database (Managed Identity), Redis Distributed Cache, Application Insights APM, Azure Key Vault, Azure Bicep IaC, Azure Monitor Metric Alerting, 24/7 Availability Ping Tests, and Trivy CVE Scanners  
@@ -14,9 +14,9 @@
 > **Live Key Vault**: `kv-vitalq-prod` (Azure Key Vault in `centralindia`)  
 > **Live Health Endpoint**: [ca-vitalq-api/health/live](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live) (HTTP 200 Healthy)  
 > **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`) with Redis Scale-Out Backplane  
-> **Test Coverage**: 66 Unit & Stress Tests (53 Backend xUnit + 13 Frontend Jasmine, 100% Pass Rate)  
-> **Active Branch**: `feat/enterprise-production-workflow`  
-> **Upcoming Planned Phase**: Pull Request Merge into `main` (Enterprise Production-Ready CI/CD & Security Audited)
+> **Test Coverage**: 76 Unit, Stress & Integration Tests (63 Backend xUnit + 13 Frontend Jasmine, 100% Pass Rate)  
+> **Active Branch**: `feat/api-integration-tests`  
+> **Upcoming Planned Phase**: Phase 19 ASP.NET Core Integration Tests Completed & Phases 20-23 Enterprise SDLC Roadmap
 
 ---
 
@@ -213,7 +213,7 @@ VitalQ/
 Whenever modifying or analyzing this codebase, every AI agent must strictly follow these rules:
 
 1. **Zero Em/En Dashes**: Never use em dashes or en dashes anywhere in text, documentation, comments, commit messages, or code. Use standard hyphens `-` or colons `:`.
-2. **Preserve 100% Test Pass Rate**: All 63 automated tests (50 backend and 13 frontend) must remain green on every modification. Run tests before declaring any task complete:
+2. **Preserve 100% Test Pass Rate**: All 76 automated tests (63 backend and 13 frontend) must remain green on every modification. Run tests before declaring any task complete:
    - Backend: `dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --no-restore`
    - Frontend: `npm --prefix web test -- --watch=false`
 3. **Angular 19 Standalone Standard**:
@@ -351,6 +351,121 @@ Whenever modifying or analyzing this codebase, every AI agent must strictly foll
 5. **HIPAA & SOC2 Diagnostic Audit Settings**:
    - Added `Microsoft.Insights/diagnosticSettings` in [`infra/modules/keyVault.bicep`](file:///d:/Projects/VitalQ/infra/modules/keyVault.bicep) streaming `AuditEvent` and `AllMetrics` continuously to Log Analytics.
 
-### I. What We Are Going to Do Next
-1. **Merge Pull Request**: Merge `feat/enterprise-production-workflow` into `main`.
-2. **Production Verification**: Watch automated GitHub Actions CI/CD build, scan, deploy Bicep, update container apps with zero-downtime Blue/Green, and verify synthetic smoke tests.
+### I. The 100% Complete Enterprise SDLC Roadmap & Architecture Blueprints
+
+To achieve 100% Fortune-500 Enterprise SDLC completeness for VitalQ without introducing cloud infrastructure costs ($0.00 extra cost), the following 5 engineering phases define the complete development roadmap:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                             100% ENTERPRISE SDLC COMPLETENESS ROADMAP                            │
+├───────────────────────┬─────────────────────────────────┬────────────────────────────────────────┤
+│ Phase                 │ Scope & Focus                   │ Tooling & Safety Guarantees            │
+├───────────────────────┼─────────────────────────────────┼────────────────────────────────────────┤
+│ Phase 19 (Current)    │ API Integration Test Suite      │ WebApplicationFactory, Real HTTP 429   │
+│ Phase 20              │ Automated Code Coverage Gate    │ Coverlet, Karma Lcov, 80%+ CI Threshold│
+│ Phase 21              │ DevSecOps Static Analysis       │ GitHub CodeQL SAST (OWASP Top 10)      │
+│ Phase 22              │ Idempotent Zero-Data-Loss DB    │ EF Core Idempotent SQL, Schema Safety  │
+│ Phase 23              │ End-to-End Clinical Journey     │ Microsoft Playwright, WebSockets E2E   │
+└───────────────────────┴─────────────────────────────────┴────────────────────────────────────────┘
+```
+
+#### 1. Phase 19: ASP.NET Core Integration Testing (WebApplicationFactory<Program>)
+* **Status**: Completed on feature branch `feat/api-integration-tests` (63/63 backend and 13/13 frontend passing, 100% pass rate).
+* **Objective**: Move beyond unit tests with mocked services to verify the real ASP.NET Core HTTP hosting pipeline, routing table, dependency injection container, JWT authentication handler, role authorization policies, and anti-brute-force rate limiting middleware.
+* **Component Implementation**:
+  - `VitalQWebApplicationFactory.cs`: Custom factory inheriting from `WebApplicationFactory<Program>`. Replaces SQL Server DbContextPool with an isolated in-memory database per test run (`UseInMemoryDatabase`), configures test environments, and automatically seeds realistic hospital test data (Cardiology department, Admin user, Doctor entity and user, Nurse user, Patient entity and user, and active QueueToken). Provides helper `CreateAuthenticatedClientAsync(username, password)`.
+  - `AuthIntegrationTests.cs`:
+    - `POST /api/auth/login` with valid credentials returns HTTP 200 OK with valid JWT bearer token and role claim.
+    - `POST /api/auth/login` with invalid password returns HTTP 401 Unauthorized.
+    - Unauthenticated access to `GET /api/admin/users` returns HTTP 401 Unauthorized.
+    - Role authorization check: Nurse JWT accessing `GET /api/admin/users` returns HTTP 403 Forbidden.
+    - Doctor role check: Doctor JWT accessing `GET /api/doctor/me` returns HTTP 200 OK with doctor profile.
+  - `RateLimitingIntegrationTests.cs`:
+    - Simulates rapid login requests to `POST /api/auth/login` using client IP header `X-Forwarded-For`.
+    - First 10 requests within 1 minute succeed/reach controller (PermitLimit = 10).
+    - Request #11 is throttled by ASP.NET Core rate limiting middleware with HTTP 429 Too Many Requests.
+    - Requests from an alternate IP header are not throttled, verifying IP partition isolation.
+  - `DoctorQueueIntegrationTests.cs`:
+    - Doctor calls `POST /api/doctor/call-next/{doctorId}`: summons waiting patient, returns HTTP 200 OK, transitions token status to "Called".
+    - Clinical safety guard: `POST /api/doctor/tokens/{id}/complete` with consultation notes under 5 characters returns HTTP 400 Bad Request.
+    - Consultation conclusion: `POST /api/doctor/tokens/{id}/complete` with valid clinical advice returns HTTP 200 OK, marks token "Completed", and timestamps CompletedAtUtc.
+  - `PublicEndpointsIntegrationTests.cs`:
+    - Probes `/health/live` liveness endpoint, asserting HTTP 200 OK.
+    - Probes `/health` readiness endpoint, asserting HTTP 200 OK with database connection health check report.
+    - Probes `GET /api/public/departments`, asserting HTTP 200 OK with active department list.
+* **Cost**: $0.00 (Executes completely in-memory during build/test).
+
+#### 2. Phase 20: Automated Code Coverage Quality Gate (Coverlet + Lcov + ReportGenerator)
+* **Status**: Next Planned Phase.
+* **Objective**: Establish automated line and branch coverage gates in the GitHub Actions CI pipeline, preventing any code regression or untested business logic from merging into `main`.
+* **Technical Blueprint**:
+  - **Backend Coverage (.NET 8)**:
+    - Utilize `coverlet.collector` (already in `VitalQ.Tests.csproj`) with XPlat Code Coverage format.
+    - Command: `dotnet test --collect:"XPlat Code Coverage" --results-directory ./coverage`.
+    - Enforce line coverage and branch coverage thresholds (80%+ target) across `VitalQ.BusinessLogic` and `VitalQ.API`.
+  - **Frontend Coverage (Angular 19)**:
+    - Configure Karma (`karma.conf.js`) with `karma-coverage` reporter producing `lcov.info`.
+    - Command: `npm test -- --watch=false --code-coverage`.
+  - **Unified CI Reporting**:
+    - Add GitHub Actions step using `danielpalme/ReportGenerator-GitHub-Action` to generate a unified markdown coverage summary.
+    - Post coverage delta scorecard directly as a PR comment.
+    - Pipeline fails if overall test coverage drops below 80%.
+* **Cost**: $0.00 (Standard GitHub Actions compute).
+
+#### 3. Phase 21: DevSecOps Static Code Analysis (GitHub CodeQL SAST)
+* **Status**: Planned Phase 21.
+* **Objective**: Automate continuous application security testing to detect and remediate vulnerabilities, injection flaws, and security weaknesses before deployment to Azure.
+* **Technical Blueprint**:
+  - **Workflow**: Authored [`.github/workflows/codeql.yml`](file:///d:/Projects/VitalQ/.github/workflows/codeql.yml).
+  - **Languages Analyzed**: `csharp` (.NET 8 Web API) and `javascript-typescript` (Angular 19 SPA).
+  - **Scanning Scope**:
+    - OWASP Top 10 vulnerabilities (SQL Injection, Cross-Site Scripting, Broken Authentication, Sensitive Data Exposure).
+    - CWE/SANS Top 25 most dangerous software errors.
+    - Cryptographic key strength and JWT signing verification.
+    - Mass assignment and authorization bypass detection.
+  - **Quality Gate**: Blocks pull requests if any High or Critical severity security alert is detected.
+* **Cost**: $0.00 (Included free for all public GitHub repositories).
+
+#### 4. Phase 22: Safe Idempotent Database Evolution & Zero Data Loss Migration Strategy
+* **Status**: Planned Phase 22.
+* **Objective**: Guarantee that all future schema updates (e.g. adding new tables like `Pharmacy`, adding columns, indexes, or modifying relationships) execute in Azure SQL automatically without deleting, truncating, or corrupting existing live clinical data.
+* **Database Evolution Principles & Guarantees**:
+  - **Idempotent Migration Scripts**:
+    - Generate idempotent SQL scripts using `dotnet ef migrations script --idempotent --output migrations.sql`.
+    - In SQL Server, every schema statement is wrapped in an existence check against the `[__EFMigrationsHistory]` table:
+      ```sql
+      IF NOT EXISTS (SELECT * FROM [__EFMigrationsHistory] WHERE [MigrationId] = '20261201_AddPharmacyTable')
+      BEGIN
+          CREATE TABLE [dbo].[PharmacyPrescriptions] (...);
+          INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion]) VALUES ('20261201_AddPharmacyTable', '8.0.10');
+      END;
+      ```
+    - Running an idempotent script 1 time or 100 times produces identical safe results. Existing patient records, active queue tokens, and doctor rosters are completely untouched.
+  - **Safe Seed Data Separation (`DbInitializer.cs`)**:
+    - Seed data must never run destructive commands (`DROP`, `TRUNCATE`, or blind `INSERT`).
+    - Every seed operation is guarded by existence checks:
+      ```csharp
+      if (!context.Departments.Any())
+      {
+          // Seed standard clinical departments only on initial fresh database install
+      }
+      ```
+  - **CD Pipeline Integration**:
+    - Before deploying new container revisions, GitHub Actions CD executes the idempotent migration script against Azure SQL via Azure CLI / Managed Identity.
+    - If the migration succeeds, container traffic shifts to the new revision; if it fails, the database remains in its previous valid state and deployment aborts.
+* **Cost**: $0.00 (Native EF Core and Azure SQL capability).
+
+#### 5. Phase 23: End-to-End Clinical Journey Testing (Microsoft Playwright)
+* **Status**: Planned Phase 23.
+* **Objective**: Validate the complete real-time clinical workflow across multiple distinct browser sessions (Patient, Nurse, Doctor) interacting concurrently over SignalR WebSockets.
+* **Technical Blueprint**:
+  - **Tooling**: Microsoft Playwright (`@playwright/test`) running in GitHub Actions with headless Chromium.
+  - **Clinical Scenario Flow**:
+    1. **Context 1 (Patient Mobile)**: Patient logs in, selects Cardiology, and books an appointment. Receives token `CARD-001` in "Booked" status.
+    2. **Context 2 (Nurse Desktop)**: Triage workstation receives real-time `TokenBooked` SignalR event. Nurse enters vital signs (SpO2 92%, BP 135/88, HR 98). Dynamic CTAS engine calculates Yellow urgency. Token promotes to "Waiting".
+    3. **Context 3 (Doctor PC)**: Doctor console shows patient at top of queue. Doctor clicks "Call Next". Web Audio melodic chime plays ($C_5 \rightarrow E_5 \rightarrow G_5$). Token transitions to "Called".
+    4. **Context 1 Verification**: Patient mobile screen updates in real time to "Called into Room 201".
+    5. **Context 3 Finalization**: Doctor attempts to call next patient without notes (blocked by safety guard), enters clinical advice ("Normal sinus rhythm. Follow-up in 3 months."), and completes consultation.
+    6. **System Verification**: Token transitions to "Completed", queue slides forward for subsequent patients.
+  - **CI Integration**: Executes as an automated end-to-end verification gate in GitHub Actions.
+* **Cost**: $0.00 (Headless Chromium on GitHub-hosted runners).
