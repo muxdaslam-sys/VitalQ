@@ -31,7 +31,7 @@ This central index provides direct links to all specialized documentation files 
 | **Frontend Architecture** | [`web/ARCHITECTURE.md`](file:///d:/Projects/VitalQ/web/ARCHITECTURE.md) | Deep technical guide for Angular 19: Signals reactive state, OnPush change detection, Web Audio harmonic chime synthesizer ($C_5 \rightarrow E_5 \rightarrow G_5$), and modal teleportation. |
 | **Web Client Guide** | [`web/README.md`](file:///d:/Projects/VitalQ/web/README.md) | Angular developer guide, npm commands, proxy configuration (`proxy.conf.json`), and build targets. |
 | **Azure Cloud Roadmap** | [`AZURE_MASTER_ROADMAP.md`](file:///d:/Projects/VitalQ/AZURE_MASTER_ROADMAP.md) | The 6-module cloud roadmap (Docker, Azure Container Apps, Azure SQL, Redis distributed caching, GitHub Actions CI/CD, Application Insights) and Infopark Kochi technical interview questions. |
-| **Bicep IaC Guide** | [`infra/README.md`](file:///d:/Projects/VitalQ/infra/README.md) | Declarative Azure Bicep Infrastructure as Code deployment runbook, pre-flight validation, and What-If analysis commands. |
+| **Bicep IaC Guide** | [`infra/README.md`](file:///d:/Projects/VitalQ/infra/README.md) | Declarative Azure Bicep Infrastructure as Code deployment runbook, pre-flight validation, and What-If analysis commands (Internal Runbook). |
 
 ---
 
