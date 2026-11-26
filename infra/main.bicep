@@ -79,6 +79,7 @@ module keyVault 'modules/keyVault.bicep' = {
     location: location
     tags: tags
     jwtKeySecretValue: jwtKeySecretValue
+    logAnalyticsWorkspaceId: logAnalytics.outputs.id
   }
 }
 

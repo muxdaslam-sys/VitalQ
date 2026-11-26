@@ -11,6 +11,9 @@ param apiPrincipalId string = ''
 @secure()
 param jwtKeySecretValue string = ''
 
+@description('Resource ID of the Log Analytics workspace for audit diagnostic settings.')
+param logAnalyticsWorkspaceId string = ''
+
 @description('Resource tags.')
 param tags object = {}
 
@@ -47,6 +50,27 @@ resource jwtSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(j
   name: 'JwtKey'
   properties: {
     value: jwtKeySecretValue
+  }
+}
+
+// HIPAA & SOC2 Compliant Audit Logging: Streams Key Vault access logs to Log Analytics
+resource keyVaultDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (!empty(logAnalyticsWorkspaceId)) {
+  name: 'diag-${keyVaultName}-logs'
+  scope: keyVault
+  properties: {
+    workspaceId: logAnalyticsWorkspaceId
+    logs: [
+      {
+        category: 'AuditEvent'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+      }
+    ]
   }
 }
 

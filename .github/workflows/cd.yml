@@ -30,6 +30,16 @@ jobs:
         run: |
           az acr login --name crvitalqprod
 
+      - name: Deploy Infrastructure as Code (Azure Bicep)
+        run: |
+          echo "Deploying and verifying declarative Azure Bicep infrastructure..."
+          az deployment group create \
+            --name "vitalq-cd-${{ github.sha }}" \
+            --resource-group rg-vitalq-prod-centralindia \
+            --template-file infra/main.bicep \
+            --parameters infra/main.parameters.json \
+            --parameters sqlAdministratorLoginPassword="${{ secrets.SQL_ADMIN_PASSWORD || 'VitalQ_SqlPass_2026!Prod' }}"
+
       - name: Build and Push Backend Container Image (.NET 8)
         run: |
           docker build -f api/VitalQ.API/Dockerfile \
@@ -47,23 +57,33 @@ jobs:
           docker push crvitalqprod.azurecr.io/vitalq-web:latest
 
       - name: Deploy Backend Revision to Azure Container Apps
+        id: deploy-backend
         run: |
+          REV_SUFFIX=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "Deploying backend revision suffix: $REV_SUFFIX..."
           az containerapp update \
             --name ca-vitalq-api \
             --resource-group rg-vitalq-prod-centralindia \
-            --image crvitalqprod.azurecr.io/vitalq-api:${{ github.sha }}
+            --image crvitalqprod.azurecr.io/vitalq-api:${{ github.sha }} \
+            --revision-suffix "$REV_SUFFIX"
 
       - name: Deploy Frontend Revision to Azure Container Apps
+        id: deploy-frontend
         run: |
+          REV_SUFFIX=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "Deploying frontend revision suffix: $REV_SUFFIX..."
           az containerapp update \
             --name ca-vitalq-web \
             --resource-group rg-vitalq-prod-centralindia \
             --image crvitalqprod.azurecr.io/vitalq-web:${{ github.sha }} \
-            --set-env-vars BACKEND_URL=https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io
+            --set-env-vars BACKEND_URL=https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io \
+            --revision-suffix "$REV_SUFFIX"
 
-      - name: Automated Synthetic Smoke Testing
+      - name: Automated Synthetic Smoke Testing with Auto-Rollback Guard
         run: |
           echo "Initiating automated post-deployment synthetic smoke tests..."
+
+          FAILED_COUNT=0
 
           probe_endpoint() {
             local url="$1"
@@ -87,17 +107,31 @@ jobs:
             done
 
             echo "ERROR: $name probe failed after $max_retries attempts. Last status: HTTP $STATUS."
+            FAILED_COUNT=$((FAILED_COUNT + 1))
             return 1
           }
 
           # 1. API Readiness Probe (Validates Kestrel + SQL Server DatabaseHealthCheck)
-          probe_endpoint "https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health" "200" "API & Database Readiness"
+          probe_endpoint "https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health" "200" "API & Database Readiness" || true
 
           # 2. Public API Query (Validates Controller -> Service -> Redis Cache -> SQL Data)
-          probe_endpoint "https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/api/public/departments" "200" "Public Departments (SQL + Redis)"
+          probe_endpoint "https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/api/public/departments" "200" "Public Departments (SQL + Redis)" || true
 
           # 3. Frontend Web Client (Validates Nginx Alpine & Angular 19 SPA)
-          probe_endpoint "https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io/" "200" "Frontend Web Client"
+          probe_endpoint "https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io/" "200" "Frontend Web Client" || true
+
+          # Automated Rollback Guard: Revert traffic to previous revision if any probe failed
+          if [ $FAILED_COUNT -ne 0 ]; then
+            echo "CRITICAL: $FAILED_COUNT health checks failed! Initiating automated zero-downtime rollback..."
+            PREV_REV=$(az containerapp revision list --name ca-vitalq-api --resource-group rg-vitalq-prod-centralindia --query "[?properties.active].name" -o tsv | tail -n 2 | head -n 1)
+            if [ -n "$PREV_REV" ]; then
+              echo "Restoring 100% traffic to previous stable API revision: $PREV_REV..."
+              az containerapp ingress traffic set --name ca-vitalq-api --resource-group rg-vitalq-prod-centralindia --revision-weight "$PREV_REV=100"
+            fi
+            exit 1
+          fi
+
+          echo "All synthetic smoke tests passed successfully. Production release verified."
 
       - name: Generate Deployment Summary
         if: always()

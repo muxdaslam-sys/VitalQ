@@ -64,10 +64,10 @@ jobs:
         run: npm --prefix web run build
 
   # =========================================================================
-  # 3. DOCKER CI: Production Multi-Stage Container Image Verification
+  # 3. DOCKER CI & TRIVY SECURITY SCAN: Multi-Stage Image & Vulnerability Audit
   # =========================================================================
   docker-ci:
-    name: Verify Docker Container Builds
+    name: Verify Docker Container Builds & Security Scan
     needs: [backend-ci, frontend-ci]
     runs-on: ubuntu-latest
 
@@ -80,7 +80,44 @@ jobs:
           docker build -f api/VitalQ.API/Dockerfile \
             -t vitalq-api:${{ github.sha }} ./api
 
+      - name: Scan Backend Container for Vulnerabilities (Aquasec Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: vitalq-api:${{ github.sha }}
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
       - name: Build Frontend Docker Image (Angular 19 + Nginx Alpine)
         run: |
           docker build -f web/Dockerfile \
             -t vitalq-web:${{ github.sha }} ./web
+
+      - name: Scan Frontend Container for Vulnerabilities (Aquasec Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: vitalq-web:${{ github.sha }}
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  # =========================================================================
+  # 4. INFRASTRUCTURE CI: Azure Bicep Template Validation Gate
+  # =========================================================================
+  bicep-ci:
+    name: Validate Azure Bicep IaC Templates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install Azure Bicep CLI
+        run: az bicep install
+
+      - name: Compile and Validate Bicep Architecture
+        run: az bicep build --file infra/main.bicep
