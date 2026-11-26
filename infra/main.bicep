@@ -12,7 +12,7 @@ param environment string = 'prod'
 param location string = resourceGroup().location
 
 @description('SQL Server administrator username.')
-param sqlAdministratorLogin string = 'sqladmin'
+param sqlAdministratorLogin string = 'vitalqadmin'
 
 @description('SQL Server administrator password.')
 @secure()

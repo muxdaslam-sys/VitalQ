@@ -45,7 +45,7 @@ resource availabilityTest 'Microsoft.Insights/webtests@2022-06-15' = {
     RetryEnabled: true
     Locations: [
       {
-        Id: 'apac-sg-sin-edge'
+        Id: 'apac-sg-sin-azr'
       }
       {
         Id: 'emea-gb-db3-azr'
