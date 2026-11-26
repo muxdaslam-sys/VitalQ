@@ -38,7 +38,8 @@ jobs:
             --resource-group rg-vitalq-prod-centralindia \
             --template-file infra/main.bicep \
             --parameters infra/main.parameters.json \
-            --parameters sqlAdministratorLoginPassword="${{ secrets.SQL_ADMIN_PASSWORD || 'VitalQ_SqlPass_2026!Prod' }}"
+            --parameters sqlAdministratorLogin="${{ secrets.SQL_ADMIN_USERNAME }}" \
+            --parameters sqlAdministratorLoginPassword="${{ secrets.SQL_ADMIN_PASSWORD }}"
 
       - name: Build and Push Backend Container Image (.NET 8)
         run: |

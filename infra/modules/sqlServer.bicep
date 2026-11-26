@@ -8,7 +8,7 @@ param location string = resourceGroup().location
 param databaseName string = 'sqldb-vitalq-prod'
 
 @description('SQL administrator username.')
-param administratorLogin string = 'sqladmin'
+param administratorLogin string = 'vitalqadmin'
 
 @description('SQL administrator password.')
 @secure()
@@ -37,7 +37,7 @@ resource sqlServer 'Microsoft.Sql/servers@2023-05-01-preview' = {
     publicNetworkAccess: 'Enabled'
     administrators: !empty(entraAdminObjectId) ? {
       administratorType: 'ActiveDirectory'
-      principalType: 'User'
+      principalType: 'Group'
       login: entraAdminLogin
       sid: entraAdminObjectId
       tenantId: subscription().tenantId

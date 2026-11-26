@@ -7,7 +7,7 @@ services:
     container_name: vitalq-sqlserver
     environment:
       - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=VitalQ_Production_Password_2026!
+      - MSSQL_SA_PASSWORD=VitalQ_Dev_Password_LocalOnly!
     ports:
       - "1433:1433"
     volumes:
@@ -33,7 +33,7 @@ services:
     container_name: vitalq-backend
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=vitalq-db;Database=VitalQ;User Id=sa;Password=VitalQ_Production_Password_2026!;TrustServerCertificate=True;
+      - ConnectionStrings__DefaultConnection=Server=vitalq-db;Database=VitalQ;User Id=sa;Password=VitalQ_Dev_Password_LocalOnly!;TrustServerCertificate=True;
       - ConnectionStrings__RedisConnection=vitalq-redis:6379
     ports:
       - "5089:8080"
