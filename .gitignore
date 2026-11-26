@@ -43,6 +43,7 @@ dist/
 ## Project state & internal documentation
 PROJECT_STATE.md
 AZURE_MASTER_ROADMAP.md
+infra/*.md
 
 ## Local tools and binaries
 tools/

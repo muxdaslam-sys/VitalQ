@@ -10,6 +10,9 @@ param workspaceId string
 @description('Resource tags.')
 param tags object = {}
 
+@description('Target public URL for 24/7 availability ping tests.')
+param pingTestUrl string = 'https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io/'
+
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   name: appInsightsName
   location: location
@@ -21,6 +24,48 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
     publicNetworkAccessForIngestion: 'Enabled'
     publicNetworkAccessForQuery: 'Enabled'
     IngestionMode: 'LogAnalytics'
+  }
+}
+
+// 24/7 Automated Availability Ping Test (Evaluates health from Singapore, Dublin, and Virginia)
+resource availabilityTest 'Microsoft.Insights/webtests@2022-06-15' = {
+  name: 'webtest-${appInsightsName}-ping'
+  location: location
+  tags: union(tags, {
+    'hidden-link:${appInsights.id}': 'Resource'
+  })
+  properties: {
+    SyntheticMonitorId: 'vitalq-ping-monitor'
+    Name: 'VitalQ Production Availability Ping'
+    Description: 'Continuous 24/7 multi-region ping test evaluating web availability every 5 minutes.'
+    Enabled: true
+    Frequency: 300
+    Timeout: 30
+    Kind: 'standard'
+    RetryEnabled: true
+    Locations: [
+      {
+        Id: 'apac-sg-sin-edge'
+      }
+      {
+        Id: 'emea-gb-db3-azr'
+      }
+      {
+        Id: 'us-va-ash-azr'
+      }
+    ]
+    Configuration: null
+    Request: {
+      RequestUrl: pingTestUrl
+      HttpVerb: 'GET'
+      ParseDependentRequests: false
+    }
+    ValidationRules: {
+      ExpectedHttpStatusCode: 200
+      IgnoreHttpStatusCode: false
+      SSLCheck: true
+      SSLCertRemainingLifetimeCheck: 7
+    }
   }
 }
 

@@ -11,6 +11,8 @@
 [![Azure App Insights](https://img.shields.io/badge/Azure-App%20Insights-68217A?logo=microsoft-azure&logoColor=white)](https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview)
 [![Azure Key Vault](https://img.shields.io/badge/Azure-Key%20Vault-0078D4?logo=microsoft-azure&logoColor=white)](https://azure.microsoft.com/)
 [![Managed Identity](https://img.shields.io/badge/Security-Managed%20Identity-green?logo=azure-devops&logoColor=white)](https://learn.microsoft.com/entra/identity/managed-identities-azure-resources/overview)
+[![Azure Bicep](https://img.shields.io/badge/Azure-Bicep%20IaC-0078D4?logo=microsoft-azure&logoColor=white)](https://learn.microsoft.com/azure/azure-resource-manager/bicep/overview)
+[![CI/CD: GitHub Actions](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF?logo=github-actions&logoColor=white)](https://github.com/features/actions)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![SQL Server](https://img.shields.io/badge/SQL_Server-Express%20%26%20Azure%20SQL-CC292B?logo=microsoft-sql-server&logoColor=white)](https://www.microsoft.com/sql-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -24,7 +26,7 @@
 * **Live Web Client**: [ca-vitalq-web](https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io)
 * **Live API Service**: [ca-vitalq-api](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io)
 * **Live Health Check**: [ca-vitalq-api/health/live](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live) (HTTP 200 Healthy)
-* **Cloud Infrastructure**: Azure Container Apps (Microservices Environment), Serverless Azure SQL Database (Managed Identity), Redis Distributed Cache, Application Insights APM, and Azure Key Vault in Pune, India (`centralindia`).
+* **Cloud Infrastructure**: Azure Container Apps (Microservices Environment), Serverless Azure SQL Database (Managed Identity), Redis Distributed Cache, Application Insights APM, Azure Key Vault, Declarative Azure Bicep IaC, and 24/7 Global Availability Monitoring in Pune, India (`centralindia`).
 
 ---
 
@@ -236,6 +238,7 @@ cd web && npm test -- --watch=false
 - **Health & Monitoring**: Native ASP.NET Core database connectivity and readiness probe (`/health`, `/health/live`).
 - **Collision-Proof Engines**: Atomic SQL sequence token generation + sequential collision-proof MRN engine.
 - **Clinical Alignment**: Fully verified CTAS triage algorithms, SLA priority aging, 3-strike absentee enforcement, and mandatory consultation discharge documentation.
+- **DevOps & Cloud Automation**: Zero-downtime blue/green revisions with emergency auto-rollback guard, declarative Azure Bicep IaC, and continuous 24/7 global availability ping web tests.
 - **Security & Privacy**: HIPAA 15m idle auto-lock, native login rate limiting (10 req/min), and crawler shield (`robots.txt`).
 
 ---

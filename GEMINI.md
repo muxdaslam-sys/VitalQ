@@ -1,12 +1,12 @@
 # VitalQ - System Architecture & Context Memory
 
-> **Last Updated**: 2026-11-24  
+> **Last Updated**: 2026-11-26  
 > **Repository Root**: `d:\Projects\VitalQ`  
 > **Monorepo Structure**: `api/` (.NET 8 Web API & Test Suite) & `web/` (Angular 19 SPA)  
 > **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 53 xUnit Tests)  
 > **Frontend Status**: 100% Completed, Standalone, OnPush & Verified (Angular 19 & 13 Jasmine Tests)  
 > **Database**: Microsoft SQL Server Express (Local) & Azure SQL Serverless `sql-vitalq-prod.database.windows.net` (`sqldb-vitalq-prod` in `centralindia`, Pune)  
-> **Cloud Status**: Modules 2, 3, 4, 5, 6, 7 & 8 Completed: Live on Azure Container Apps with Serverless Azure SQL Database (Managed Identity), Redis Distributed Cache, Application Insights APM, Azure Key Vault, Azure Bicep IaC & Azure Monitor Metric Alerting  
+> **Cloud Status**: Modules 2, 3, 4, 5, 6, 7 & 8 Completed: Live on Azure Container Apps with Serverless Azure SQL Database (Managed Identity), Redis Distributed Cache, Application Insights APM, Azure Key Vault, Azure Bicep IaC, Azure Monitor Metric Alerting, 24/7 Availability Ping Tests, and Trivy CVE Scanners  
 > **Live Web Client**: [ca-vitalq-web](https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io)  
 > **Live API Service**: [ca-vitalq-api](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io)  
 > **Live Redis Service**: `ca-vitalq-redis` (Internal TCP Port 6379 in `cae-vitalq-prod`)  
@@ -15,8 +15,8 @@
 > **Live Health Endpoint**: [ca-vitalq-api/health/live](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live) (HTTP 200 Healthy)  
 > **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`) with Redis Scale-Out Backplane  
 > **Test Coverage**: 66 Unit & Stress Tests (53 Backend xUnit + 13 Frontend Jasmine, 100% Pass Rate)  
-> **Active Branch**: `feat/infrastructure-as-code-bicep`  
-> **Upcoming Planned Phase**: Pull Request Merge into `main` (Full Azure Cloud Infrastructure Complete)
+> **Active Branch**: `feat/enterprise-production-workflow`  
+> **Upcoming Planned Phase**: Pull Request Merge into `main` (Enterprise Production-Ready CI/CD & Security Audited)
 
 ---
 
@@ -31,7 +31,7 @@ This central index provides direct links to all specialized documentation files 
 | **Frontend Architecture** | [`web/ARCHITECTURE.md`](file:///d:/Projects/VitalQ/web/ARCHITECTURE.md) | Deep technical guide for Angular 19: Signals reactive state, OnPush change detection, Web Audio harmonic chime synthesizer ($C_5 \rightarrow E_5 \rightarrow G_5$), and modal teleportation. |
 | **Web Client Guide** | [`web/README.md`](file:///d:/Projects/VitalQ/web/README.md) | Angular developer guide, npm commands, proxy configuration (`proxy.conf.json`), and build targets. |
 | **Azure Cloud Roadmap** | [`AZURE_MASTER_ROADMAP.md`](file:///d:/Projects/VitalQ/AZURE_MASTER_ROADMAP.md) | The 6-module cloud roadmap (Docker, Azure Container Apps, Azure SQL, Redis distributed caching, GitHub Actions CI/CD, Application Insights) and Infopark Kochi technical interview questions. |
-| **Bicep IaC Guide** | [`infra/README.md`](file:///d:/Projects/VitalQ/infra/README.md) | Declarative Azure Bicep Infrastructure as Code deployment runbook, pre-flight validation, and What-If analysis commands. |
+| **Bicep IaC Guide** | [`infra/README.md`](file:///d:/Projects/VitalQ/infra/README.md) | Declarative Azure Bicep Infrastructure as Code deployment runbook, pre-flight validation, and What-If analysis commands (Internal Runbook). |
 
 ---
 
@@ -336,6 +336,21 @@ Whenever modifying or analyzing this codebase, every AI agent must strictly foll
    - Integrated `alerts.bicep` directly into [`infra/main.bicep`](file:///d:/Projects/VitalQ/infra/main.bicep).
    - Validated entire 7-module Bicep suite with zero compilation errors and zero warnings.
 
-### H. What We Are Going to Do Next
-1. **Merge Pull Request**: Merge `feat/infrastructure-as-code-bicep` into `main`.
-2. **Production Cloud State**: All 8 cloud infrastructure modules are 100% complete, verified, and automated in code.
+### H. Phase 18 Achievements: Enterprise Production Workflow & Security Auditing
+1. **Automated Bicep Infrastructure Deployment in CD**:
+   - Integrated `az deployment group create` directly into [`.github/workflows/cd.yml`](file:///d:/Projects/VitalQ/.github/workflows/cd.yml).
+   - Added parallel Bicep syntax validation gate in [`.github/workflows/ci.yml`](file:///d:/Projects/VitalQ/.github/workflows/ci.yml) (`bicep-ci`), eliminating manual infrastructure deployments.
+2. **Zero-Downtime Blue/Green Revisions with Automated Rollback**:
+   - Deploys container updates using unique Git commit revision suffixes (`${{ github.sha }}`).
+   - Automated synthetic smoke test probe verifies endpoint health before traffic shift.
+   - Integrated emergency auto-rollback guard that reverts 100% traffic to previous healthy revision if any probe fails, guaranteeing zero patient downtime.
+3. **Container Vulnerability & CVE Scanning (Aquasec Trivy)**:
+   - Added automated Trivy vulnerability scanner in `ci.yml` scanning both .NET 8 Chiseled API and Angular 19 Nginx Alpine images for High/Critical CVEs before registry push.
+4. **24/7 Automated Availability Ping Web Tests**:
+   - Authored `Microsoft.Insights/webtests` in [`infra/modules/appInsights.bicep`](file:///d:/Projects/VitalQ/infra/modules/appInsights.bicep) pinging web client every 5 minutes from Singapore, Dublin, and Virginia.
+5. **HIPAA & SOC2 Diagnostic Audit Settings**:
+   - Added `Microsoft.Insights/diagnosticSettings` in [`infra/modules/keyVault.bicep`](file:///d:/Projects/VitalQ/infra/modules/keyVault.bicep) streaming `AuditEvent` and `AllMetrics` continuously to Log Analytics.
+
+### I. What We Are Going to Do Next
+1. **Merge Pull Request**: Merge `feat/enterprise-production-workflow` into `main`.
+2. **Production Verification**: Watch automated GitHub Actions CI/CD build, scan, deploy Bicep, update container apps with zero-downtime Blue/Green, and verify synthetic smoke tests.
