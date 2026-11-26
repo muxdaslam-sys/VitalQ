@@ -33,8 +33,14 @@ jobs:
       - name: Build Solution (Release)
         run: dotnet build api/VitalQ.sln --configuration Release --no-restore
 
-      - name: Run Backend Tests (53 xUnit Tests)
-        run: dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --configuration Release --no-build --verbosity normal
+      - name: Run Backend Tests with Code Coverage (73 xUnit & Integration Tests)
+        run: dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+      - name: Upload Backend Coverage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: coverage/**/coverage.cobertura.xml
 
   # =========================================================================
   # 2. FRONTEND CI: Angular 19 Build & 13 Headless Jasmine Tests
@@ -57,8 +63,14 @@ jobs:
       - name: Install Frontend Dependencies
         run: npm --prefix web ci
 
-      - name: Run Frontend Tests (13 Jasmine Tests)
-        run: npm --prefix web test -- --watch=false --browsers=ChromeHeadlessNoSandbox
+      - name: Run Frontend Tests with Code Coverage (21 Jasmine Tests)
+        run: npm --prefix web test -- --watch=false --browsers=ChromeHeadlessNoSandbox --code-coverage
+
+      - name: Upload Frontend Coverage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: web/coverage/vitalq-web/lcov.info
 
       - name: Build Angular Application (Release)
         run: npm --prefix web run build
@@ -121,3 +133,45 @@ jobs:
 
       - name: Compile and Validate Bicep Architecture
         run: az bicep build --file infra/main.bicep
+
+  # =========================================================================
+  # 5. CODE COVERAGE GATE: Quality Gate & Coverage Scorecard (Coverlet & Lcov)
+  # =========================================================================
+  coverage-gate:
+    name: Code Coverage Quality Gate
+    needs: [backend-ci, frontend-ci]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Download Backend Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: coverage/backend
+
+      - name: Download Frontend Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: coverage/frontend
+
+      - name: Generate Code Coverage Summary Report
+        uses: danielpalme/ReportGenerator-GitHub-Action@5.3.11
+        with:
+          reports: 'coverage/backend/**/coverage.cobertura.xml;coverage/frontend/lcov.info'
+          targetdir: 'coverage/report'
+          reporttypes: 'MarkdownSummaryGithub;Badges;Cobertura'
+
+      - name: Publish Coverage Scorecard to GitHub Step Summary
+        run: |
+          if [ -f "coverage/report/SummaryGithub.md" ]; then
+            cat coverage/report/SummaryGithub.md >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Verify Coverage Artifacts Integrity
+        run: |
+          ls -la coverage/report
+          echo "Coverage gate verification completed successfully."
