@@ -29,7 +29,7 @@ jobs:
       - name: Restore and Build .NET Solution
         run: |
           dotnet restore api/VitalQ.sln
-          dotnet build api/VitalQ.sln --configuration Release --no-restore
+          dotnet build api/VitalQ.sln --configuration Release --no-restore --warnaserror
 
       - name: Run Backend Tests (76 Tests)
         run: dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --configuration Release --no-build --verbosity normal

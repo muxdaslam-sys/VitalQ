@@ -69,8 +69,15 @@ public static class DbInitializer
                 }
             };
 
-            await context.Departments.AddRangeAsync(departments);
-            await context.SaveChangesAsync();
+            try
+            {
+                await context.Departments.AddRangeAsync(departments);
+                await context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // A concurrent container replica already seeded departments. Safe to continue.
+            }
         }
 
         // 3. Baseline Nursing Triage Stations Guard
@@ -99,8 +106,15 @@ public static class DbInitializer
                 }
             };
 
-            await context.NursingStations.AddRangeAsync(stations);
-            await context.SaveChangesAsync();
+            try
+            {
+                await context.NursingStations.AddRangeAsync(stations);
+                await context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // A concurrent container replica already seeded nursing stations. Safe to continue.
+            }
         }
 
         // 4. Baseline System Administrator Account Guard
@@ -119,8 +133,15 @@ public static class DbInitializer
                 CreatedAtUtc = DateTime.UtcNow
             };
 
-            await context.Users.AddAsync(defaultAdmin);
-            await context.SaveChangesAsync();
+            try
+            {
+                await context.Users.AddAsync(defaultAdmin);
+                await context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // A concurrent container replica already seeded the admin user. Safe to continue.
+            }
         }
     }
 }

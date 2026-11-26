@@ -451,7 +451,12 @@ To achieve 100% Fortune-500 Enterprise SDLC completeness for VitalQ without intr
     - Added `verify-build-and-tests` gate in `cd.yml` so production Azure Container Apps deployment stops immediately if any test or migration fails.
   - **Enterprise Code Quality & Security Hardening**:
     - Authored root [`.editorconfig`](file:///d:/Projects/VitalQ/.editorconfig) enforcing UTF-8 without BOM, LF line endings, 4-space C# indent, and 2-space web indent.
-    - Hardened [`web/nginx.conf`](file:///d:/Projects/VitalQ/web/nginx.conf) with HTTP security headers: `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, and `Strict-Transport-Security` (HSTS).
+    - Automated Supply-Chain Dependency Patching ([`.github/dependabot.yml`](file:///d:/Projects/VitalQ/.github/dependabot.yml)): Daily scans and weekly automated patch PRs across NuGet, npm, and GitHub Actions.
+    - Automated Secret Leak Prevention: Configured Gitleaks scanning in CI with [`.gitleaks.toml`](file:///d:/Projects/VitalQ/.gitleaks.toml) allowlisting test fixtures.
+    - Two-Tier Native Rate Limiting ([`Program.cs`](file:///d:/Projects/VitalQ/api/VitalQ.API/Program.cs)): Tier 1 Global sliding-window shield (100 req/min/IP) + Tier 2 Login shield (10 req/min/IP) with health check bypass.
+    - Multi-Replica Startup Race Defense ([`DbInitializer.cs`](file:///d:/Projects/VitalQ/api/VitalQ.DataAccess/DbInitializer.cs)): Optimistic concurrency with `DbUpdateException` absorption preventing container crash-loops.
+    - Zero Compiler Warning Quality Gate: Enforced `--warnaserror` across .NET solution builds in CI/CD pipelines.
+    - Production Nginx HTTP Security Headers ([`web/nginx.conf`](file:///d:/Projects/VitalQ/web/nginx.conf)): Injected `Content-Security-Policy` (CSP), `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, and `Strict-Transport-Security` (HSTS).
     - Enforced 7 required GitHub Actions status checks, linear history, conversation resolution, and administrator compliance on `main`.
 * **Cost**: $0.00 (Native EF Core, GitHub Actions, and Azure capability).
 

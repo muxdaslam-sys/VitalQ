@@ -70,10 +70,39 @@ builder.Services.AddCors(options =>
     });
 });
 
-// 2.1 NATIVE RATE LIMITING (DDoS & Brute-Force Shield for Login Endpoint)
+// 2.1 NATIVE RATE LIMITING (Two-Tier DDoS & Brute-Force Shield)
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Tier 1: Global Sliding Window Rate Limiter (100 req/min/IP for general API endpoints)
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    {
+        // Bypass rate limiting for cloud health probes
+        if (httpContext.Request.Path.StartsWithSegments("/health"))
+        {
+            return RateLimitPartition.GetNoLimiter("health");
+        }
+
+        var rawForwarded = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        var clientIp = httpContext.Request.Headers["CF-Connecting-IP"].FirstOrDefault()
+            ?? (!string.IsNullOrWhiteSpace(rawForwarded) ? rawForwarded.Split(',')[0].Trim() : null)
+            ?? httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? "unknown";
+
+        return RateLimitPartition.GetSlidingWindowLimiter(
+            partitionKey: clientIp,
+            factory: _ => new SlidingWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 100,
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 4,
+                QueueLimit = 0
+            });
+    });
+
+    // Tier 2: Strict Fixed Window Rate Limiter for Login (10 req/min/IP brute-force protection)
     options.AddPolicy("LoginLimiter", httpContext =>
     {
         var rawForwarded = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();

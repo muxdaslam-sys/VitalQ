@@ -21,6 +21,14 @@ jobs:
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for Hardcoded Secrets (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
 
       - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
@@ -30,8 +38,8 @@ jobs:
       - name: Restore NuGet Dependencies
         run: dotnet restore api/VitalQ.sln
 
-      - name: Build Solution (Release)
-        run: dotnet build api/VitalQ.sln --configuration Release --no-restore
+      - name: Build Solution (Release with Zero Warnings)
+        run: dotnet build api/VitalQ.sln --configuration Release --no-restore --warnaserror
 
       - name: Run Backend Tests with Code Coverage (76 xUnit & Integration Tests)
         run: dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
