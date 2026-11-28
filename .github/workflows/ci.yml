@@ -21,6 +21,14 @@ jobs:
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for Hardcoded Secrets (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
 
       - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
@@ -30,10 +38,10 @@ jobs:
       - name: Restore NuGet Dependencies
         run: dotnet restore api/VitalQ.sln
 
-      - name: Build Solution (Release)
-        run: dotnet build api/VitalQ.sln --configuration Release --no-restore
+      - name: Build Solution (Release with Zero Warnings)
+        run: dotnet build api/VitalQ.sln --configuration Release --no-restore --warnaserror
 
-      - name: Run Backend Tests with Code Coverage (73 xUnit & Integration Tests)
+      - name: Run Backend Tests with Code Coverage (76 xUnit & Integration Tests)
         run: dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
 
       - name: Upload Backend Coverage Artifact
@@ -41,6 +49,18 @@ jobs:
         with:
           name: backend-coverage
           path: coverage/**/coverage.cobertura.xml
+
+      - name: Install dotnet-ef CLI Tool (.NET 8)
+        run: dotnet tool install --global dotnet-ef --version 8.0.10 || dotnet tool update --global dotnet-ef --version 8.0.10
+
+      - name: Validate Idempotent Database Migration Script
+        run: |
+          dotnet ef migrations script --idempotent \
+            --project api/VitalQ.DataAccess/VitalQ.DataAccess.csproj \
+            --startup-project api/VitalQ.API/VitalQ.API.csproj \
+            --output api/migrations.sql
+          test -s api/migrations.sql
+          echo "Idempotent database migration script validated successfully."
 
   # =========================================================================
   # 2. FRONTEND CI: Angular 19 Build & 13 Headless Jasmine Tests
@@ -139,7 +159,7 @@ jobs:
   # =========================================================================
   coverage-gate:
     name: Code Coverage Quality Gate
-    needs: [backend-ci, frontend-ci]
+    needs: [backend-ci, frontend-ci, docker-ci, bicep-ci]
     runs-on: ubuntu-latest
 
     steps:

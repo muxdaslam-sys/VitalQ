@@ -3,7 +3,7 @@
 > **Last Updated**: 2026-11-26  
 > **Repository Root**: `d:\Projects\VitalQ`  
 > **Monorepo Structure**: `api/` (.NET 8 Web API & Test Suite) & `web/` (Angular 19 SPA)  
-> **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 73 xUnit/Integration Tests)  
+> **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 76 xUnit/Integration Tests)  
 > **Frontend Status**: 100% Completed, Standalone, OnPush & Verified (Angular 19 & 21 Jasmine Tests)  
 > **Database**: Microsoft SQL Server Express (Local) & Azure SQL Serverless `sql-vitalq-prod.database.windows.net` (`sqldb-vitalq-prod` in `centralindia`, Pune)  
 > **Cloud Status**: Modules 2, 3, 4, 5, 6, 7 & 8 Completed: Live on Azure Container Apps with Serverless Azure SQL Database (Managed Identity), Redis Distributed Cache, Application Insights APM, Azure Key Vault, Azure Bicep IaC, Azure Monitor Metric Alerting, 24/7 Availability Ping Tests, and Trivy CVE Scanners  
@@ -14,9 +14,9 @@
 > **Live Key Vault**: `kv-vitalq-prod` (Azure Key Vault in `centralindia`)  
 > **Live Health Endpoint**: [ca-vitalq-api/health/live](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live) (HTTP 200 Healthy)  
 > **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`) with Redis Scale-Out Backplane  
-> **Test Coverage**: 94 Unit, Stress & Integration Tests (73 Backend xUnit + 21 Frontend Jasmine, 100% Pass Rate)  
-> **Active Branch**: `feat/devsecops-codeql`  
-> **Upcoming Planned Phase**: Phase 21 DevSecOps CodeQL SAST Completed & Phases 22-23 Enterprise SDLC Roadmap
+> **Test Coverage**: 97 Unit, Stress & Integration Tests (76 Backend xUnit + 21 Frontend Jasmine, 100% Pass Rate)  
+> **Active Branch**: `feat/idempotent-db-migrations`  
+> **Upcoming Planned Phase**: Phase 22 Safe Idempotent Database Evolution Completed & Phase 23 Next
 
 ---
 
@@ -213,7 +213,7 @@ VitalQ/
 Whenever modifying or analyzing this codebase, every AI agent must strictly follow these rules:
 
 1. **Zero Em/En Dashes**: Never use em dashes or en dashes anywhere in text, documentation, comments, commit messages, or code. Use standard hyphens `-` or colons `:`.
-2. **Preserve 100% Test Pass Rate**: All 94 automated tests (73 backend and 21 frontend) must remain green on every modification. Run tests before declaring any task complete:
+2. **Preserve 100% Test Pass Rate**: All 97 automated tests (76 backend and 21 frontend) must remain green on every modification. Run tests before declaring any task complete:
    - Backend: `dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --no-restore`
    - Frontend: `npm --prefix web test -- --watch=false`
 3. **Angular 19 Standalone Standard**:
@@ -427,7 +427,7 @@ To achieve 100% Fortune-500 Enterprise SDLC completeness for VitalQ without intr
 * **Cost**: $0.00 (Included free for all public GitHub repositories).
 
 #### 4. Phase 22: Safe Idempotent Database Evolution & Zero Data Loss Migration Strategy
-* **Status**: Planned Phase 22.
+* **Status**: Completed on feature branch `feat/idempotent-db-migrations`.
 * **Objective**: Guarantee that all future schema updates (e.g. adding new tables like `Pharmacy`, adding columns, indexes, or modifying relationships) execute in Azure SQL automatically without deleting, truncating, or corrupting existing live clinical data.
 * **Database Evolution Principles & Guarantees**:
   - **Idempotent Migration Scripts**:
@@ -443,17 +443,22 @@ To achieve 100% Fortune-500 Enterprise SDLC completeness for VitalQ without intr
     - Running an idempotent script 1 time or 100 times produces identical safe results. Existing patient records, active queue tokens, and doctor rosters are completely untouched.
   - **Safe Seed Data Separation (`DbInitializer.cs`)**:
     - Seed data must never run destructive commands (`DROP`, `TRUNCATE`, or blind `INSERT`).
-    - Every seed operation is guarded by existence checks:
-      ```csharp
-      if (!context.Departments.Any())
-      {
-          // Seed standard clinical departments only on initial fresh database install
-      }
-      ```
-  - **CD Pipeline Integration**:
-    - Before deploying new container revisions, GitHub Actions CD executes the idempotent migration script against Azure SQL via Azure CLI / Managed Identity.
-    - If the migration succeeds, container traffic shifts to the new revision; if it fails, the database remains in its previous valid state and deployment aborts.
-* **Cost**: $0.00 (Native EF Core and Azure SQL capability).
+    - Every seed operation is guarded by existence checks (`if (!await context.Departments.AnyAsync())`).
+  - **Fail-Fast CI/CD Pipeline Stop-Gates**:
+    - Pinned `dotnet-ef` to `--version 8.0.10` in CI to eliminate .NET 10 runtime mismatches.
+    - Removed error masking (`|| true`) across all verification steps.
+    - Gated `coverage-gate` on all CI jobs: `needs: [backend-ci, frontend-ci, docker-ci, bicep-ci]`.
+    - Added `verify-build-and-tests` gate in `cd.yml` so production Azure Container Apps deployment stops immediately if any test or migration fails.
+  - **Enterprise Code Quality & Security Hardening**:
+    - Authored root [`.editorconfig`](file:///d:/Projects/VitalQ/.editorconfig) enforcing UTF-8 without BOM, LF line endings, 4-space C# indent, and 2-space web indent.
+    - Automated Supply-Chain Dependency Patching ([`.github/dependabot.yml`](file:///d:/Projects/VitalQ/.github/dependabot.yml)): Daily scans and weekly automated patch PRs across NuGet, npm, and GitHub Actions.
+    - Automated Secret Leak Prevention: Configured Gitleaks scanning in CI with [`.gitleaks.toml`](file:///d:/Projects/VitalQ/.gitleaks.toml) allowlisting test fixtures.
+    - Two-Tier Native Rate Limiting ([`Program.cs`](file:///d:/Projects/VitalQ/api/VitalQ.API/Program.cs)): Tier 1 Global sliding-window shield (100 req/min/IP) + Tier 2 Login shield (10 req/min/IP) with health check bypass.
+    - Multi-Replica Startup Race Defense ([`DbInitializer.cs`](file:///d:/Projects/VitalQ/api/VitalQ.DataAccess/DbInitializer.cs)): Optimistic concurrency with `DbUpdateException` absorption preventing container crash-loops.
+    - Zero Compiler Warning Quality Gate: Enforced `--warnaserror` across .NET solution builds in CI/CD pipelines.
+    - Production Nginx HTTP Security Headers ([`web/nginx.conf`](file:///d:/Projects/VitalQ/web/nginx.conf)): Injected `Content-Security-Policy` (CSP), `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, and `Strict-Transport-Security` (HSTS).
+    - Enforced 7 required GitHub Actions status checks, linear history, conversation resolution, and administrator compliance on `main`.
+* **Cost**: $0.00 (Native EF Core, GitHub Actions, and Azure capability).
 
 #### 5. Phase 23: End-to-End Clinical Journey Testing (Microsoft Playwright)
 * **Status**: Planned Phase 23.
