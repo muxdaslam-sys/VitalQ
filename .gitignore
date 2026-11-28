@@ -67,4 +67,8 @@ coverage/
 *.cobertura.xml
 *.lcov
 TestResults/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 

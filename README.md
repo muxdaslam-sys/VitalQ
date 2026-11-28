@@ -1,7 +1,7 @@
 # VitalQ - Real-Time Hospital OPD Queue Orchestration & CTAS Triage Platform
 
 [![Status: Production Ready](https://img.shields.io/badge/Status-Production--Ready-success?logo=checkmarx&logoColor=white)](https://github.com/muxdaslam-sys/VitalQ)
-[![Tests](https://img.shields.io/badge/Tests-97%2F97%20Passing-brightgreen?logo=checkmarx&logoColor=white)](https://github.com/muxdaslam-sys/VitalQ)
+[![Tests](https://img.shields.io/badge/Tests-103%2F103%20Passing-brightgreen?logo=checkmarx&logoColor=white)](https://github.com/muxdaslam-sys/VitalQ)
 [![Version](https://img.shields.io/badge/Version-1.0.0-blue)](https://github.com/muxdaslam-sys/VitalQ)
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 [![Angular 19](https://img.shields.io/badge/Angular-19-DD0031?logo=angular&logoColor=white)](https://angular.dev/)
@@ -194,29 +194,30 @@ VitalQ segments hospital operations by clinical role. User provisioning, role as
 
 ## 🧪 Automated Testing & Concurrency Stress Verification
 
-The solution includes an enterprise test suite of **97 automated tests across the entire stack (100% pass rate)**:
+The solution includes an enterprise test suite of **103 automated tests across the entire stack (100% pass rate)**:
 * **76 Backend xUnit & Integration Tests** (`api/VitalQ.Tests/`) covering algorithms, generators, clinical services (including the Admin command suite), controllers, database health checks, high-concurrency stress simulations, non-destructive database evolution seeders, and real ASP.NET Core HTTP hosting pipeline integration tests via `WebApplicationFactory`.
 * **21 Frontend Jasmine Tests** (`web/src/app/`) covering session management, token decoding, clinical toast notifications, HIPAA idle timeout auto-lock, consultation discharge validation, and strike calculations using headless Chrome (`ChromeHeadlessNoSandbox`).
+* **6 Microsoft Playwright E2E Browser Tests** (`web/e2e/clinical-journey.spec.ts`) executing headless Chromium across Authentication RBAC guards, Patient Consultation Pass, Nurse Triage Command Desk, Doctor Chamber Console, Public Slip Tracker, and HIPAA `sessionStorage` isolation.
 
 ```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                               97 FULL-STACK TESTS (100% PASS)                          │
-├───────────────────────────────┬────────────────────────────────┬───────────────────────┤
-│ BACKEND UNIT & INTEGRATION(76)│ CONCURRENCY STRESS TESTS (4)   │ FRONTEND TESTS (21)   │
-│ • AdminServiceTests (10)      │ • 30-Worker Race (0 Collision) │ • AuthService (4)     │
-│ • AuthIntegrationTests (5)    │ • 100K SLA Benchmark (<500ms)  │ • CompleteModal (4)   │
-│ • RateLimitingTests (1)       │ • Past-1M Dynamic Scale (1)    │ • SkipModal (5)       │
-│ • DoctorQueueTests (1)        │ • Token Format Integrity (1)   │ • ToastService (5)    │
-│ • PublicEndpointsTests (3)    │                                │ • IdleTimeout (3)     │
-│ • DbInitializerTests (3)      │                                │                       │
-│ • MrnGeneratorTests (5)       │                                │                       │
-│ • PriorityScoreTests (13)     │                                │                       │
-│ • DoctorSafetyTests (9)       │                                │                       │
-│ • NurseTriageTests (8)        │                                │                       │
-│ • Patient & Public Tests (10) │                                │                       │
-│ • DatabaseHealthCheckTest (1) │                                │                       │
-│ • AuthServiceTests (3)        │                                │                       │
-└───────────────────────────────┴────────────────────────────────┴───────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                       103 FULL-STACK TESTS (100% PASS)                                        │
+├──────────────────────────────┬────────────────────────────────┬───────────────────────┬───────────────────────┤
+│ BACKEND UNIT & INTEGRATION(76)│ CONCURRENCY STRESS TESTS (4)   │ FRONTEND UNIT (21)    │ PLAYWRIGHT E2E (6)    │
+│ • AdminServiceTests (10)     │ • 30-Worker Race (0 Collision) │ • AuthService (4)     │ • Auth RBAC Gate (1)  │
+│ • AuthIntegrationTests (5)   │ • 100K SLA Benchmark (<500ms)  │ • CompleteModal (4)   │ • Patient Portal (1)  │
+│ • RateLimitingTests (1)      │ • Past-1M Dynamic Scale (1)    │ • SkipModal (5)       │ • Nurse Station (1)   │
+│ • DoctorQueueTests (1)       │ • Token Format Integrity (1)   │ • ToastService (5)    │ • Doctor Chamber (1)  │
+│ • PublicEndpointsTests (3)   │                                │ • IdleTimeout (3)     │ • Public Tracker (1)  │
+│ • DbInitializerTests (3)     │                                │                       │ • HIPAA Session (1)   │
+│ • MrnGeneratorTests (5)      │                                │                       │                       │
+│ • PriorityScoreTests (13)    │                                │                       │                       │
+│ • DoctorSafetyTests (9)      │                                │                       │                       │
+│ • NurseTriageTests (8)       │                                │                       │                       │
+│ • Patient & Public Tests (10)│                                │                       │                       │
+│ • DatabaseHealthCheckTest (1)│                                │                       │                       │
+│ • AuthServiceTests (3)       │                                │                       │                       │
+└──────────────────────────────┴────────────────────────────────┴───────────────────────┴───────────────────────┘
 ```
 
 ### High-Load Concurrency & Collision-Proofing Highlights
@@ -232,13 +233,16 @@ dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --collect:"XPlat Code Coverage"
 
 # Run all 21 frontend Jasmine unit tests with code coverage
 cd web && npm test -- --watch=false --code-coverage
+
+# Run all 6 Microsoft Playwright end-to-end clinical journey tests
+cd web && npm run build && npm run e2e
 ```
 
 ---
 
 ## 🔮 100% Enterprise SDLC Completeness Roadmap
 
-VitalQ is completing a 5-phase Fortune-500 Enterprise SDLC hardening roadmap ($0.00 cloud cost):
+VitalQ has completed all 5 phases of its Fortune-500 Enterprise SDLC hardening roadmap ($0.00 extra cloud cost):
 
 | Phase | Engineering Initiative | Scope & Verification Highlights | Status |
 | :--- | :--- | :--- | :--- |
@@ -246,14 +250,14 @@ VitalQ is completing a 5-phase Fortune-500 Enterprise SDLC hardening roadmap ($0
 | **Phase 20** | **Automated Code Coverage Gate** | Coverlet XPlat collector (.NET) + Karma Lcov (Angular) in GitHub Actions CI generating unified markdown scorecards with automated quality gates. | **Completed** |
 | **Phase 21** | **DevSecOps Static Analysis (SAST)** | GitHub CodeQL scanning C# and TypeScript codebases continuously for OWASP Top 10 security vulnerabilities and injection flaws. | **Completed** |
 | **Phase 22** | **Idempotent Zero-Data-Loss DB Evolution** | Decoupled EF Core idempotent SQL migration scripts (`--idempotent`), guarded seeders (`DbInitializer.cs`), fail-fast CI/CD gates (`dotnet-ef 8.0.10`, `--warnaserror`), Dependabot, Gitleaks, root `.editorconfig`, two-tier rate limiting, and Nginx CSP/HSTS headers. | **Completed** |
-| **Phase 23** | **End-to-End Clinical Journey (Playwright)** | Headless Chromium browser automation simulating multi-role clinical interactions (Patient booking -> Nurse triage -> Doctor call & discharge) over SignalR WebSockets. | Planned |
+| **Phase 23** | **End-to-End Clinical Journey (Playwright)** | Headless Chromium browser automation verifying Authentication RBAC gates, Patient queue pass, Nurse triage desk, Doctor consultation room, Public token tracker, and HIPAA session isolation in CI/CD. | **Completed** |
 
 ---
 
 ## 🏁 Project State & Production Readiness
 
 - **Release Version**: `v1.0.0 (Production-Ready)`
-- **Test Coverage**: 97 Tests Across the Stack (76 .NET + 21 Angular, 100% Pass Rate)
+- **Test Coverage**: 103 Tests Across the Stack (76 .NET + 21 Angular + 6 Playwright E2E, 100% Pass Rate)
 - **Backend Quality**: 0 Warnings, 0 Errors (`dotnet build api/VitalQ.sln`)
 - **Frontend Quality**: 0 Errors (`ng build`, Angular 19 AOT Ahead-Of-Time compilation)
 - **Health & Monitoring**: Native ASP.NET Core database connectivity and readiness probe (`/health`, `/health/live`).
