@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const root = path.join(__dirname, 'dist', 'vitalq-web', 'browser');
+const root = path.resolve(__dirname, 'dist', 'vitalq-web', 'browser');
 const port = 4200;
 
 const mime = {
@@ -18,20 +18,47 @@ const mime = {
   '.woff2': 'font/woff2'
 };
 
-const server = http.createServer((req, res) => {
-  let reqPath = req.url.split('?')[0];
-  let filePath = path.join(root, reqPath);
-  
-  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-    const ext = path.extname(filePath);
-    res.writeHead(200, { 'Content-Type': mime[ext] || 'application/octet-stream' });
-    fs.createReadStream(filePath).pipe(res);
-  } else {
-    // SPA fallback
-    const indexHtml = path.join(root, 'index.html');
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    fs.createReadStream(indexHtml).pipe(res);
+/**
+ * Pre-indexes static build artifacts into a safe in-memory allowlist map at startup
+ * so request paths never touch filesystem resolution APIs directly.
+ */
+function buildAssetAllowlist(dir, baseUrl = '') {
+  const assets = new Map();
+  if (!fs.existsSync(dir)) return assets;
+
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = path.join(dir, entry.name);
+    const urlPath = `${baseUrl}/${entry.name}`;
+    if (entry.isDirectory()) {
+      for (const [childUrl, childAsset] of buildAssetAllowlist(fullPath, urlPath)) {
+        assets.set(childUrl, childAsset);
+      }
+    } else if (entry.isFile()) {
+      const ext = path.extname(entry.name).toLowerCase();
+      assets.set(urlPath, {
+        fullPath,
+        contentType: mime[ext] || 'application/octet-stream'
+      });
+    }
   }
+  return assets;
+}
+
+const allowedAssets = buildAssetAllowlist(root);
+const fallbackAsset = allowedAssets.get('/index.html');
+
+const server = http.createServer((req, res) => {
+  const reqPath = (req.url || '/').split('?')[0];
+  const asset = allowedAssets.get(reqPath) || fallbackAsset;
+
+  if (!asset) {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Build output not found');
+    return;
+  }
+
+  res.writeHead(200, { 'Content-Type': asset.contentType });
+  fs.createReadStream(asset.fullPath).pipe(res);
 });
 
 server.listen(port, '127.0.0.1', () => {
