@@ -179,7 +179,7 @@ jobs:
           path: coverage/frontend
 
       - name: Generate Code Coverage Summary Report
-        uses: danielpalme/ReportGenerator-GitHub-Action@5.3.11
+        uses: danielpalme/ReportGenerator-GitHub-Action@5.6.1
         with:
           reports: 'coverage/backend/**/coverage.cobertura.xml;coverage/frontend/lcov.info'
           targetdir: 'coverage/report'
