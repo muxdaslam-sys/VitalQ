@@ -1,10 +1,10 @@
 # VitalQ - System Architecture & Context Memory
 
-> **Last Updated**: 2026-11-26  
+> **Last Updated**: 2026-11-28  
 > **Repository Root**: `d:\Projects\VitalQ`  
 > **Monorepo Structure**: `api/` (.NET 8 Web API & Test Suite) & `web/` (Angular 19 SPA)  
 > **Backend Status**: 100% Completed, Symmetrical, Hardened & Verified (.NET 8 Web API & 76 xUnit/Integration Tests)  
-> **Frontend Status**: 100% Completed, Standalone, OnPush & Verified (Angular 19 & 21 Jasmine Tests)  
+> **Frontend Status**: 100% Completed, Standalone, OnPush & Verified (Angular 19, 21 Jasmine Tests & 6 Playwright E2E Tests)  
 > **Database**: Microsoft SQL Server Express (Local) & Azure SQL Serverless `sql-vitalq-prod.database.windows.net` (`sqldb-vitalq-prod` in `centralindia`, Pune)  
 > **Cloud Status**: Modules 2, 3, 4, 5, 6, 7 & 8 Completed: Live on Azure Container Apps with Serverless Azure SQL Database (Managed Identity), Redis Distributed Cache, Application Insights APM, Azure Key Vault, Azure Bicep IaC, Azure Monitor Metric Alerting, 24/7 Availability Ping Tests, and Trivy CVE Scanners  
 > **Live Web Client**: [ca-vitalq-web](https://ca-vitalq-web.politeisland-88851c55.centralindia.azurecontainerapps.io)  
@@ -14,9 +14,9 @@
 > **Live Key Vault**: `kv-vitalq-prod` (Azure Key Vault in `centralindia`)  
 > **Live Health Endpoint**: [ca-vitalq-api/health/live](https://ca-vitalq-api.politeisland-88851c55.centralindia.azurecontainerapps.io/health/live) (HTTP 200 Healthy)  
 > **Real-Time Engine**: ASP.NET Core SignalR WebSockets (`/hubs/queue`) with Redis Scale-Out Backplane  
-> **Test Coverage**: 97 Unit, Stress & Integration Tests (76 Backend xUnit + 21 Frontend Jasmine, 100% Pass Rate)  
-> **Active Branch**: `feat/idempotent-db-migrations`  
-> **Upcoming Planned Phase**: Phase 22 Safe Idempotent Database Evolution Completed & Phase 23 Next
+> **Test Coverage**: 103 Automated Tests Across the Stack (76 Backend xUnit + 21 Frontend Jasmine + 6 Playwright E2E, 100% Pass Rate)  
+> **Active Branch**: `feat/playwright-e2e-testing`  
+> **SDLC Completeness**: 100% Completed (Phases 19-23 Enterprise SDLC Roadmap Completed)
 
 ---
 
@@ -213,9 +213,10 @@ VitalQ/
 Whenever modifying or analyzing this codebase, every AI agent must strictly follow these rules:
 
 1. **Zero Em/En Dashes**: Never use em dashes or en dashes anywhere in text, documentation, comments, commit messages, or code. Use standard hyphens `-` or colons `:`.
-2. **Preserve 100% Test Pass Rate**: All 97 automated tests (76 backend and 21 frontend) must remain green on every modification. Run tests before declaring any task complete:
+2. **Preserve 100% Test Pass Rate**: All 103 automated tests (76 backend xUnit, 21 frontend Jasmine, and 6 Playwright E2E) must remain green on every modification. Run tests before declaring any task complete:
    - Backend: `dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --no-restore`
    - Frontend: `npm --prefix web test -- --watch=false`
+   - End-to-End: `npm --prefix web run e2e`
 3. **Angular 19 Standalone Standard**:
    - Use Standalone Components only (`imports: [...]`). Never create or introduce `NgModule`.
    - Use Angular Signals (`signal()`, `computed()`, `effect()`) for reactive state management.
@@ -461,16 +462,20 @@ To achieve 100% Fortune-500 Enterprise SDLC completeness for VitalQ without intr
 * **Cost**: $0.00 (Native EF Core, GitHub Actions, and Azure capability).
 
 #### 5. Phase 23: End-to-End Clinical Journey Testing (Microsoft Playwright)
-* **Status**: Planned Phase 23.
-* **Objective**: Validate the complete real-time clinical workflow across multiple distinct browser sessions (Patient, Nurse, Doctor) interacting concurrently over SignalR WebSockets.
-* **Technical Blueprint**:
-  - **Tooling**: Microsoft Playwright (`@playwright/test`) running in GitHub Actions with headless Chromium.
-  - **Clinical Scenario Flow**:
-    1. **Context 1 (Patient Mobile)**: Patient logs in, selects Cardiology, and books an appointment. Receives token `CARD-001` in "Booked" status.
-    2. **Context 2 (Nurse Desktop)**: Triage workstation receives real-time `TokenBooked` SignalR event. Nurse enters vital signs (SpO2 92%, BP 135/88, HR 98). Dynamic CTAS engine calculates Yellow urgency. Token promotes to "Waiting".
-    3. **Context 3 (Doctor PC)**: Doctor console shows patient at top of queue. Doctor clicks "Call Next". Web Audio melodic chime plays ($C_5 \rightarrow E_5 \rightarrow G_5$). Token transitions to "Called".
-    4. **Context 1 Verification**: Patient mobile screen updates in real time to "Called into Room 201".
-    5. **Context 3 Finalization**: Doctor attempts to call next patient without notes (blocked by safety guard), enters clinical advice ("Normal sinus rhythm. Follow-up in 3 months."), and completes consultation.
-    6. **System Verification**: Token transitions to "Completed", queue slides forward for subsequent patients.
-  - **CI Integration**: Executes as an automated end-to-end verification gate in GitHub Actions.
+* **Status**: Completed on feature branch `feat/playwright-e2e-testing` (100% Enterprise SDLC Roadmap Completed).
+* **Objective**: Validate the complete real-time clinical workflow across multiple browser portals (Authentication Gate, Patient OPD Portal, Nurse Triage Desk, Doctor Consultation Room, Public Tracker, and HIPAA Session Isolation).
+* **Implementation Highlights**:
+  - **Tooling**: Microsoft Playwright (`@playwright/test`) running headless Chromium locally via deterministic SPA server ([`web/serve.js`](file:///d:/Projects/VitalQ/web/serve.js) and [`web/playwright.config.ts`](file:///d:/Projects/VitalQ/web/playwright.config.ts)) and in GitHub Actions CI/CD.
+  - **Automated Multi-Role Clinical Journey Suite ([`web/e2e/clinical-journey.spec.ts`](file:///d:/Projects/VitalQ/web/e2e/clinical-journey.spec.ts))**:
+    1. **Authentication Gate**: Verifies unauthenticated redirects across `/patient`, `/doctor`, `/nurse`, and `/admin/dashboard` routes to `/login`.
+    2. **Patient Journey**: Verifies patient login, active consultation pass rendering (`CARD-261128-001`), department details, and wait queue state.
+    3. **Nurse Triage Journey**: Verifies Nurse Triage Command Desk loading, station metrics synchronization, and pending triage intake rendering in desktop queue tables.
+    4. **Doctor Chamber Journey**: Verifies physician chamber console rendering (`Room 201`), duty status indicator, and prioritized CTAS patient queue display.
+    5. **Public Anonymous Slip Tracker**: Verifies instant token search and live status display at `/track`.
+    6. **Security & HIPAA Safeguards**: Verifies `sessionStorage` tab isolation (`vq_token` and `vq_user`) prior to authentication.
+  - **CI/CD Stop-Gate Integration**:
+    - Added `e2e-playwright` job to [`.github/workflows/ci.yml`](file:///d:/Projects/VitalQ/.github/workflows/ci.yml) and gated `coverage-gate` on all 5 upstream checks.
+    - Enforced Playwright execution inside `verify-build-and-tests` pre-deployment gate in [`.github/workflows/cd.yml`](file:///d:/Projects/VitalQ/.github/workflows/cd.yml).
+  - **Dependabot LTS Governance ([`.github/dependabot.yml`](file:///d:/Projects/VitalQ/.github/dependabot.yml))**:
+    - Configured automated dependency grouping and major-version ignore rules to keep `.NET 8 LTS` and `Angular 19 LTS` protected from breaking upstream bumps.
 * **Cost**: $0.00 (Headless Chromium on GitHub-hosted runners).

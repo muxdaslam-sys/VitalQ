@@ -58,6 +58,11 @@ jobs:
           npm --prefix web test -- --watch=false --browsers=ChromeHeadlessNoSandbox
           npm --prefix web run build
 
+      - name: Run Playwright Clinical Journey E2E Suite (6 E2E Tests)
+        run: |
+          npx --prefix web playwright install --with-deps chromium
+          npm --prefix web run e2e
+
   # =========================================================================
   # 2. PRODUCTION DEPLOYMENT: Gated strictly on pre-deployment tests passing
   # =========================================================================

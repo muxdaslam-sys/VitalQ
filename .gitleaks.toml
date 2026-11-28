@@ -7,6 +7,7 @@ description = "Allowlist test fixture passwords, mocks, and seed data"
 paths = [
   '''api/VitalQ\.Tests/.*''',
   '''web/src/.*\.spec\.ts''',
+  '''web/e2e/.*\.spec\.ts''',
   '''vitalq_cloud_seed\.sql''',
   '''api/VitalQ\.DataAccess/DbInitializer\.cs'''
 ]
