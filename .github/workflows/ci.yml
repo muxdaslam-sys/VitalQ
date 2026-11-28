@@ -20,18 +20,18 @@ jobs:
 
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Check for Hardcoded Secrets (Gitleaks)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
 
       - name: Setup .NET 8 SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
 
@@ -45,7 +45,7 @@ jobs:
         run: dotnet test api/VitalQ.Tests/VitalQ.Tests.csproj --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
 
       - name: Upload Backend Coverage Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage
           path: coverage/**/coverage.cobertura.xml
@@ -71,10 +71,10 @@ jobs:
 
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js 20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: 'npm'
@@ -87,7 +87,7 @@ jobs:
         run: npm --prefix web test -- --watch=false --browsers=ChromeHeadlessNoSandbox --code-coverage
 
       - name: Upload Frontend Coverage Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-coverage
           path: web/coverage/vitalq-web/lcov.info
@@ -105,7 +105,7 @@ jobs:
 
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build Backend Docker Image (.NET 8 Chiseled)
         run: |
@@ -146,7 +146,7 @@ jobs:
 
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Azure Bicep CLI
         run: az bicep install
@@ -163,10 +163,10 @@ jobs:
 
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js 20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: 'npm'
@@ -185,7 +185,7 @@ jobs:
         run: npm --prefix web run e2e
 
       - name: Upload Playwright Report on Failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
@@ -202,22 +202,22 @@ jobs:
 
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download Backend Coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: backend-coverage
           path: coverage/backend
 
       - name: Download Frontend Coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: frontend-coverage
           path: coverage/frontend
 
       - name: Generate Code Coverage Summary Report
-        uses: danielpalme/ReportGenerator-GitHub-Action@5.3.11
+        uses: danielpalme/ReportGenerator-GitHub-Action@5.6.1
         with:
           reports: 'coverage/backend/**/coverage.cobertura.xml;coverage/frontend/lcov.info'
           targetdir: 'coverage/report'
