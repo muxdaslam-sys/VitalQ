@@ -1,13 +1,14 @@
 version: 2
 updates:
   # 1. NuGet (.NET 8 Web API & Test Suite)
+  # Disabled automatic PR creation (limit: 0) to prevent LTS breakage; alerts remain monitored in Security tab.
   - package-ecosystem: "nuget"
     directory: "/api"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "06:00"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     commit-message:
       prefix: "chore(deps-nuget)"
     groups:
@@ -18,27 +19,19 @@ updates:
           - "minor"
           - "patch"
     ignore:
-      # Preserve .NET 8 LTS: do not upgrade EF Core or Microsoft extensions to .NET 9+
-      - dependency-name: "Microsoft.EntityFrameworkCore*"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "Microsoft.Extensions.*"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "Microsoft.AspNetCore.*"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "Microsoft.ApplicationInsights*"
-        update-types: ["version-update:semver-major"]
-      # Preserve FluentAssertions 6.x (v8 has breaking API rewrite and license change)
-      - dependency-name: "FluentAssertions"
+      # Preserve .NET 8 LTS: never auto-bump major package versions
+      - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
   # 2. npm (Angular 19 SPA)
+  # Disabled automatic PR creation (limit: 0) to prevent peer-dependency lockfile breaks; alerts remain in Security tab.
   - package-ecosystem: "npm"
     directory: "/web"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "06:00"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     commit-message:
       prefix: "chore(deps-npm)"
     groups:
@@ -49,11 +42,11 @@ updates:
           - "minor"
           - "patch"
     ignore:
-      # Preserve Angular 19 LTS: framework upgrades must be done via 'ng update'
-      - dependency-name: "@angular/*"
+      # Preserve Angular 19 LTS: never auto-bump major package versions or TypeScript minor versions
+      - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "@angular-devkit/*"
-        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-minor"]
 
   # 3. GitHub Actions Workflows
   - package-ecosystem: "github-actions"
